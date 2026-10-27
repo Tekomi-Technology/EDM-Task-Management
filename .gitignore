@@ -11,3 +11,6 @@ tools/callcenter-sim/.nms-last-scenario.json
 
 # Database and attachment backups (infra/scripts/backup.sh)
 backups/
+
+# Project documents, kept outside the repository
+docs/

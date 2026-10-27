@@ -2,7 +2,7 @@
 
 Technical ticket system for Electricidade de Moçambique: complaints arrive from the Call Center system, team managers assign them, field staff fix them with the mobile app, and the Call Center confirms with the customer before the ticket closes.
 
-Phase 1 (this code): technical foundation and the sample flow. Design: [docs/superpowers/specs/2026-10-26-phase1-foundation-design.md](docs/superpowers/specs/2026-10-26-phase1-foundation-design.md). Plan: [Ke_hoach_trien_khai_EDM-Task-Management.md](Ke_hoach_trien_khai_EDM-Task-Management.md).
+Phases 1 to 5 are done: tickets, network incidents, field staff, stock, new customers, reports and KPIs.
 
 ## What is in the repo
 
@@ -95,4 +95,3 @@ Keycloak imports `infra/keycloak/realm-edm.prod.json` on first start. Unlike the
 
 - **File storage:** the code speaks the S3 protocol. Locally it uses SeaweedFS, because MinIO no longer publishes public Docker images; production can use MinIO, SeaweedFS or any S3 service.
 - **SMS:** phase 1 uses a stand-in that only logs messages (`apps/api/src/notifications/sms-sender.ts`). The Portuguese SMS texts in `messages.ts` need review by a native speaker.
-- Conventions for the team: [docs/conventions.md](docs/conventions.md).
