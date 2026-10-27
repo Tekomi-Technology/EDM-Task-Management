@@ -6,7 +6,7 @@ import {
   type IntegrationSystem,
   type IntegrationsOverview,
   type IntegrationTestResult
-} from '@edm/shared';
+} from '../contract';
 import { Roles } from '../auth/decorators';
 import { IntegrationsService } from './integrations.service';
 

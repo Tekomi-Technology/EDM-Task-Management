@@ -1,4 +1,4 @@
-import type { Lookups, Report } from '@edm/shared';
+import type { Lookups, Report } from '../types';
 import { useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';

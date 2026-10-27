@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
-import type { AdminUser, CreateUser, Role, TeamView, UpdateUser, UserListQuery } from '@edm/shared';
+import type { AdminUser, CreateUser, Role, TeamView, UpdateUser, UserListQuery } from '../contract';
 import { and, arrayContains, asc, eq, ilike, or } from 'drizzle-orm';
 import { randomInt } from 'node:crypto';
 import type { AuthUser } from '../auth/auth-user';

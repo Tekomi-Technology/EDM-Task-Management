@@ -11,7 +11,6 @@ ARG VITE_KEYCLOAK_CLIENT_ID=edm-web
 ENV VITE_API_URL=$VITE_API_URL VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL \
     VITE_KEYCLOAK_REALM=$VITE_KEYCLOAK_REALM VITE_KEYCLOAK_CLIENT_ID=$VITE_KEYCLOAK_CLIENT_ID
 RUN pnpm install --frozen-lockfile --filter @edm/web... \
-  && pnpm --filter @edm/shared build \
   && pnpm --filter @edm/web build
 
 FROM nginx:1.27-alpine

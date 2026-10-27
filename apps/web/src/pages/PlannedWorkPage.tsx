@@ -1,4 +1,4 @@
-import type { Lookups, PlannedWorkItem, PlannedWorkKind, TicketDetail } from '@edm/shared';
+import type { Lookups, PlannedWorkItem, PlannedWorkKind, TicketDetail } from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, type FormEvent } from 'react';

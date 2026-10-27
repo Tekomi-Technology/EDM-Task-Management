@@ -1,4 +1,4 @@
-import type { IntegrationSystem } from '@edm/shared';
+import type { IntegrationSystem } from '../contract';
 import type { NextFunction, Request, Response } from 'express';
 import type { IntegrationsService } from './integrations.service';
 

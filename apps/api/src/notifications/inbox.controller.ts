@@ -1,6 +1,6 @@
 import { Controller, Get, HttpCode, Inject, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { inboxReadSchema, type Inbox, type InboxRead } from '@edm/shared';
+import { inboxReadSchema, type Inbox, type InboxRead } from '../contract';
 import { and, count, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser } from '../auth/decorators';

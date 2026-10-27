@@ -12,9 +12,7 @@
     "nms": "tsx src/nms.ts",
     "sales": "tsx src/sales.ts"
   },
-  "dependencies": {
-    "@edm/shared": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^22.10.5",
     "tsx": "^4.19.2",

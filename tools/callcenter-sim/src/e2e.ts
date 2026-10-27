@@ -8,8 +8,8 @@
  * from survey to activation through the Sales system, help requests, and material taken off the van.
  * Run with `pnpm e2e` while `pnpm infra:up` and the API are running.
  */
-import {
-  OCCURRED_AT_HEADER,
+// The API's contract is CommonJS: values come through its default export, types are erased.
+import contract, {
   type AdminUser,
   type CreatedTicketView,
   type CustomerMatch,
@@ -21,7 +21,7 @@ import {
   type TicketPreview,
   type TeamView,
   type TicketDetail
-} from '@edm/shared';
+} from '../../../apps/api/src/contract/index.js';
 import {
   API_URL,
   call,
@@ -32,6 +32,8 @@ import {
   stockToken,
   userToken
 } from './client.js';
+
+const { OCCURRED_AT_HEADER } = contract;
 
 let step = 0;
 function ok(condition: unknown, message: string): void {

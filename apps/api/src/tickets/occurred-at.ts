@@ -1,5 +1,5 @@
 import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
-import { OCCURRED_AT_HEADER } from '@edm/shared';
+import { OCCURRED_AT_HEADER } from '../contract';
 
 const MAX_AGE_MS = 7 * 24 * 3600_000;
 const CLOCK_SKEW_MS = 2 * 60_000;

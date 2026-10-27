@@ -9,7 +9,7 @@ import {
   TICKET_STATUSES,
   TICKET_TYPES,
   USER_STATUSES
-} from '@edm/shared';
+} from '../contract';
 import { sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {

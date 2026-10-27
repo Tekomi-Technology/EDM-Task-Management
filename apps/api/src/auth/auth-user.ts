@@ -1,4 +1,4 @@
-import type { Role } from '@edm/shared';
+import type { Role } from '../contract';
 
 /** The signed-in person or system, attached to the request by AuthGuard. */
 export interface AuthUser {

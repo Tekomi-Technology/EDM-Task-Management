@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext, SetMetadata } from '@nestjs/common';
-import type { Role } from '@edm/shared';
+import type { Role } from '../contract';
 import type { AuthUser } from './auth-user';
 
 export const IS_PUBLIC = 'isPublic';

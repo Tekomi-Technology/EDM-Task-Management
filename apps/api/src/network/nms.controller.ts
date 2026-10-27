@@ -1,6 +1,6 @@
 import { Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { nmsAlarmBatchSchema, type NmsAlarmBatch } from '@edm/shared';
+import { nmsAlarmBatchSchema, type NmsAlarmBatch } from '../contract';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { ApiZodBody, ZodBody } from '../common/zod';

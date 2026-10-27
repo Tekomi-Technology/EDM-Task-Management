@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import type { HelpReply, HelpRequestInput, HelpRequestView, HelpStatus } from '@edm/shared';
+import type { HelpReply, HelpRequestInput, HelpRequestView, HelpStatus } from '../contract';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { AuthUser } from '../auth/auth-user';

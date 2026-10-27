@@ -10,7 +10,6 @@ Phases 1 to 5 are done: tickets, network incidents, field staff, stock, new cust
 | ---------------------- | ------------------------------------------------------------------------------- |
 | `apps/api`             | NestJS API (Node.js + TypeScript, Drizzle ORM, BullMQ). Swagger at `/api/docs`  |
 | `apps/web`             | React + Vite web app for team managers, NOC, BO and admins                      |
-| `packages/shared`      | Roles, ticket states and rules, request schemas and API types used by all apps  |
 | `tools/callcenter-sim` | Command-line stand-in for the Call Center system, and the end-to-end check      |
 | `infra`                | Docker Compose for local development and for staging/production, Keycloak realm |
 
@@ -21,7 +20,6 @@ Needs Node 24, pnpm 10 and Docker.
 ```bash
 cp .env.example .env
 pnpm install
-pnpm --filter @edm/shared build
 pnpm infra:up                      # Postgres+PostGIS, Redis, S3 storage, Keycloak (takes ~1 min the first time)
 pnpm --filter @edm/api db:migrate
 pnpm --filter @edm/api db:seed     # areas, teams, sample users and customers
@@ -63,9 +61,14 @@ Or run the whole flow automatically against the running stack: `pnpm e2e`.
 ### The mobile app
 
 The field staff app (EDM Field, Expo / React Native) is in its own repository, **EDM-Mobile**, next to this one.
-Its README explains how to run it on a phone against this stack. It copies the API contract from
-`packages/shared` with `pnpm sync-shared`: after changing the API's types or schemas here, tell the mobile side to
-copy them again.
+Its README explains how to run it on a phone against this stack.
+
+### Data formats
+
+The API's data formats (roles, ticket states and rules, request checks, response types) are defined in
+`apps/api/src/contract`. The web app keeps its own copy of the types it uses in `apps/web/src/types.ts`, and the
+mobile app in its `src/types.ts`: when the API changes a format, change those too. The API description at
+`/api/docs` shows the current formats.
 
 ## Checks
 

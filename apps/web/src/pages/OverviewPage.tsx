@@ -1,4 +1,4 @@
-import type { LiveMap, Overview, StaffSuggestion, TicketSummary } from '@edm/shared';
+import type { LiveMap, Overview, StaffSuggestion, TicketSummary } from '../types';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';

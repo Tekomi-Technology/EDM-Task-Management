@@ -24,7 +24,7 @@ import {
   type TransferStock,
   type VehicleInput,
   type VehicleView
-} from '@edm/shared';
+} from '../contract';
 import { z } from 'zod';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser, Roles } from '../auth/decorators';

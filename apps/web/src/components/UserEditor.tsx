@@ -1,4 +1,4 @@
-import type { AdminUser, CreateUser, Lookups, UserRole } from '@edm/shared';
+import type { AdminUser, CreateUser, Lookups, UserRole } from '../types';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { ROLE_HELP, ROLE_LABEL } from '../format';
 

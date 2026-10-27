@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { OPEN_JOB_STATUSES, type Role, type StaffMember, type StaffSuggestion } from '@edm/shared';
+import { OPEN_JOB_STATUSES, type Role, type StaffMember, type StaffSuggestion } from '../contract';
 import { and, arrayContains, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
 import { AppError } from '../common/errors';
 import { DB, type Db, type Tx } from '../db/db.module';

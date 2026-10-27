@@ -17,7 +17,7 @@ import {
   type TicketMessage,
   type TicketSummary,
   type TicketView
-} from '@edm/shared';
+} from '../contract';
 import {
   and,
   arrayContains,

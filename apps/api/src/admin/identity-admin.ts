@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
-import { USER_ROLES, type Role } from '@edm/shared';
+import { USER_ROLES, type Role } from '../contract';
 import { AppError } from '../common/errors';
 import { ENV, type Env } from '../config/env';
 

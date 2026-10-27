@@ -1,4 +1,4 @@
-import type { LiveMap, StaffSuggestion, TicketDetail } from '@edm/shared';
+import type { LiveMap, StaffSuggestion, TicketDetail } from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';

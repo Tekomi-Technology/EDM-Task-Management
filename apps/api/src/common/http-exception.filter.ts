@@ -1,5 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { TransitionError, type ApiError } from '@edm/shared';
+import { TransitionError, type ApiError } from '../contract';
 import type { Request, Response } from 'express';
 import { AppError } from './errors';
 

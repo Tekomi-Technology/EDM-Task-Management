@@ -9,7 +9,7 @@ import {
   type TeamView,
   type UpdateUser,
   type UserListQuery
-} from '@edm/shared';
+} from '../contract';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { ApiZodBody, ZodBody, ZodQuery } from '../common/zod';

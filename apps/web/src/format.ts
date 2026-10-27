@@ -1,4 +1,4 @@
-import type { TicketSource, TicketStatus, TicketSummary, TicketType } from '@edm/shared';
+import type { TicketSource, TicketStatus, TicketSummary, TicketType } from './types';
 
 export const STATUS_LABEL: Record<TicketStatus, string> = {
   new: 'Open',

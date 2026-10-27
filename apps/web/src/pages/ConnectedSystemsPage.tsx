@@ -4,7 +4,7 @@ import type {
   IntegrationSystem,
   IntegrationsOverview,
   IntegrationTestResult
-} from '@edm/shared';
+} from '../types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Bell, Home as HomeIcon, MessageSquare, Package, Phone, X, Zap } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';

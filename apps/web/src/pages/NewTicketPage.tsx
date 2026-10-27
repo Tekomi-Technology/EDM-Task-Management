@@ -8,7 +8,7 @@ import {
   type ProblemType,
   type TicketPreview,
   type TicketPreviewInput
-} from '@edm/shared';
+} from '../types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   Activity,

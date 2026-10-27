@@ -9,7 +9,7 @@ import {
   type CallCenterComplaint,
   type NetworkReport,
   type Reason
-} from '@edm/shared';
+} from '../contract';
 import type { Response } from 'express';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser, Roles } from '../auth/decorators';

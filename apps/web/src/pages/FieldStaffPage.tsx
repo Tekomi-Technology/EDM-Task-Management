@@ -1,4 +1,4 @@
-import type { Lookups, StaffPerformance, StaffState } from '@edm/shared';
+import type { Lookups, StaffPerformance, StaffState } from '../types';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';

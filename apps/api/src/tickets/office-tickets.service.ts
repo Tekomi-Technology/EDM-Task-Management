@@ -8,7 +8,7 @@ import {
   type OfficeTicket,
   type TicketPreview,
   type TicketPreviewInput
-} from '@edm/shared';
+} from '../contract';
 import { and, eq, inArray, notInArray, or, sql } from 'drizzle-orm';
 import type { AuthUser } from '../auth/auth-user';
 import { AppError, notFound } from '../common/errors';

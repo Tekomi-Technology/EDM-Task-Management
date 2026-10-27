@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { INTEGRATION_ROLES, isRole, USER_ROLES, type Role } from '@edm/shared';
+import { INTEGRATION_ROLES, isRole, USER_ROLES, type Role } from '../contract';
 import { errors, jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose';
 import { AppError } from '../common/errors';
 import { ENV, type Env } from '../config/env';

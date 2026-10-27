@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import type { Role } from '@edm/shared';
+import type { Role } from '../src/contract';
 import { randomUUID } from 'node:crypto';
 import { IdentityAdmin, type IdentityProfile } from '../src/admin/identity-admin';
 import { AppError } from '../src/common/errors';

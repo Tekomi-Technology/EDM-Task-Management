@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { LiveMap, StaffLive, StaffPerformance, StaffState } from '@edm/shared';
+import type { LiveMap, StaffLive, StaffPerformance, StaffState } from '../contract';
 import { and, arrayContains, asc, eq, sql } from 'drizzle-orm';
 import type { AuthUser } from '../auth/auth-user';
 import { DB, type Db } from '../db/db.module';

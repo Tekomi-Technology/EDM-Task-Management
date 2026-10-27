@@ -11,7 +11,7 @@ import {
   type TicketSource,
   type TicketStatus,
   type TicketType
-} from '@edm/shared';
+} from '../contract';
 import { and, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 import { actorLabel, SYSTEM_ACTOR, type AuthUser } from '../auth/auth-user';

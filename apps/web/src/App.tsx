@@ -1,4 +1,4 @@
-import type { TicketCounts } from '@edm/shared';
+import type { TicketCounts } from './types';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   BarChart3,

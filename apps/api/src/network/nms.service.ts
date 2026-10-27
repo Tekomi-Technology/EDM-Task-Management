@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SEVERITY_RULES, type AlarmSeverity, type NmsAlarmEvent } from '@edm/shared';
+import { SEVERITY_RULES, type AlarmSeverity, type NmsAlarmEvent } from '../contract';
 import { and, eq, inArray, notInArray, or, sql } from 'drizzle-orm';
 import type { AuthUser } from '../auth/auth-user';
 import { DB, type Db, type Tx } from '../db/db.module';

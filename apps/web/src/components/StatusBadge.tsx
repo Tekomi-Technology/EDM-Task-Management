@@ -1,4 +1,4 @@
-import type { TicketStatus } from '@edm/shared';
+import type { TicketStatus } from '../types';
 import { STATUS_LABEL } from '../format';
 
 export function StatusBadge({ status }: { status: TicketStatus }) {

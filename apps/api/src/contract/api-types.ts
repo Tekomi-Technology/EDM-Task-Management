@@ -15,7 +15,7 @@ import type {
   TicketType
 } from './ticket.js';
 
-/** Shapes returned by the API, shared with the web and the app. */
+/** Shapes returned by the API. */
 export interface TicketSummary {
   id: string;
   code: string;

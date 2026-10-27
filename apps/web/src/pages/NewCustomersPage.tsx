@@ -1,4 +1,4 @@
-import type { NewCustomerCard, NewCustomerStage } from '@edm/shared';
+import type { NewCustomerCard, NewCustomerStage } from '../types';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { api } from '../api';

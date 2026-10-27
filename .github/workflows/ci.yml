@@ -43,7 +43,6 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @edm/shared build
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck

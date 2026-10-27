@@ -1,4 +1,4 @@
-import type { CurrentUser, TicketSummary } from '@edm/shared';
+import type { CurrentUser, TicketSummary } from '../types';
 import { useQuery } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { api } from '../api';

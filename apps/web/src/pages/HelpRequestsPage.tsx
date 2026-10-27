@@ -1,4 +1,4 @@
-import type { HelpRequestView, HelpStatus } from '@edm/shared';
+import type { HelpRequestView, HelpStatus } from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Phone } from 'lucide-react';
 import { useState } from 'react';

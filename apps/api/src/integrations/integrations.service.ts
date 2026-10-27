@@ -8,7 +8,7 @@ import {
   type IntegrationsOverview,
   type IntegrationTestResult,
   type IntegrationView
-} from '@edm/shared';
+} from '../contract';
 import { desc, eq, sql } from 'drizzle-orm';
 import { IdentityAdmin } from '../admin/identity-admin';
 import { ENV, type Env } from '../config/env';

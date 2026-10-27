@@ -1,4 +1,4 @@
-import type { Lookups, TicketDetail, TicketEventView, TicketMessage, TicketStatus } from '@edm/shared';
+import type { Lookups, TicketDetail, TicketEventView, TicketMessage, TicketStatus } from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, MapPin, Phone, UserPlus, XCircle } from 'lucide-react';
 import { useState } from 'react';

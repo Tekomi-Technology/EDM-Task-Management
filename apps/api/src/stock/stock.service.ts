@@ -14,7 +14,7 @@ import type {
   TransferStock,
   VehicleInput,
   VehicleView
-} from '@edm/shared';
+} from '../contract';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { actorLabel, type AuthUser } from '../auth/auth-user';

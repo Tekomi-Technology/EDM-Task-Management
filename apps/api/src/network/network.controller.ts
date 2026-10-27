@@ -11,7 +11,7 @@ import {
   type PlannedWorkItem,
   type PlannedWorkQuery,
   type TicketDetail
-} from '@edm/shared';
+} from '../contract';
 import { z } from 'zod';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser, Roles } from '../auth/decorators';

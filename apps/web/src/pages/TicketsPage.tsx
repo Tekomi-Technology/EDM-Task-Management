@@ -5,7 +5,7 @@ import {
   type TicketCounts,
   type TicketSummary,
   type TicketView
-} from '@edm/shared';
+} from '../types';
 import { useQuery } from '@tanstack/react-query';
 import { Download, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';

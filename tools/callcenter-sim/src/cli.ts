@@ -1,6 +1,9 @@
 import { parseArgs } from 'node:util';
-import { PROBLEM_TYPE_KEYS } from '@edm/shared';
+// The API's contract is CommonJS: its values come through the default export.
+import contract from '../../../apps/api/src/contract/index.js';
 import { call, callCenterToken } from './client.js';
+
+const { PROBLEM_TYPE_KEYS } = contract;
 
 const HELP = `Call Center simulator: behaves like the Call Center system calling the EDM Tasks API.
 

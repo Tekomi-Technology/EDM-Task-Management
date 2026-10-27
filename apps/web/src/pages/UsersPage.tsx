@@ -1,4 +1,4 @@
-import type { AdminUser, CreateUser, Lookups, UserRole } from '@edm/shared';
+import type { AdminUser, CreateUser, Lookups, UserRole } from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';

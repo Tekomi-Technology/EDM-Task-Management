@@ -1,6 +1,6 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { reportQuerySchema, type Report, type ReportQuery } from '@edm/shared';
+import { reportQuerySchema, type Report, type ReportQuery } from '../contract';
 import type { Response } from 'express';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser, Roles } from '../auth/decorators';

@@ -5,7 +5,7 @@ import {
   type ReportQuery,
   type StockUnit,
   type TicketType
-} from '@edm/shared';
+} from '../contract';
 import IORedis from 'ioredis';
 import { and, eq, sql, type SQL } from 'drizzle-orm';
 import type { AuthUser } from '../auth/auth-user';

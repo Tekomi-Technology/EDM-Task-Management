@@ -7,7 +7,7 @@ import {
   type NetworkReport,
   type Reason,
   type TicketStatus
-} from '@edm/shared';
+} from '../contract';
 import { and, desc, eq } from 'drizzle-orm';
 import type { AuthUser } from '../auth/auth-user';
 import { AppError, notFound } from '../common/errors';

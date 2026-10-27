@@ -6,7 +6,7 @@ import {
   type NewCustomerCard,
   type NewCustomerStage,
   type SurveyRequest
-} from '@edm/shared';
+} from '../contract';
 import { and, desc, eq, inArray, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { AuthUser } from '../auth/auth-user';

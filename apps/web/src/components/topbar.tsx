@@ -1,4 +1,4 @@
-import type { Inbox, Lookups } from '@edm/shared';
+import type { Inbox, Lookups } from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, ChevronDown, HelpCircle, MapPin } from 'lucide-react';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';

@@ -1,4 +1,4 @@
-import type { IncidentSummary, TicketDetail } from '@edm/shared';
+import type { IncidentSummary, TicketDetail } from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Eye, MessageSquare, UserPlus } from 'lucide-react';
 import { useState } from 'react';

@@ -4,7 +4,6 @@ RUN corepack enable
 WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile --filter @edm/api... \
-  && pnpm --filter @edm/shared build \
   && pnpm --filter @edm/api build \
   && pnpm --filter @edm/api deploy --legacy --prod /out
 

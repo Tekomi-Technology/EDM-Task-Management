@@ -1,4 +1,4 @@
-import type { LiveMap, StaffLive, StaffState } from '@edm/shared';
+import type { LiveMap, StaffLive, StaffState } from '../types';
 import { useQuery } from '@tanstack/react-query';
 import { Phone, UserPlus } from 'lucide-react';
 import { useState } from 'react';

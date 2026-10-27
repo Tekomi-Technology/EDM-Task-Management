@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { LocationBatch, StaffLocation } from '@edm/shared';
+import type { LocationBatch, StaffLocation } from '../contract';
 import type IORedis from 'ioredis';
 import { ENV, type Env } from '../config/env';
 import { DB, type Db } from '../db/db.module';

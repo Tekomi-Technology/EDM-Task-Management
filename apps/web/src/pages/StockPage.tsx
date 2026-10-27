@@ -5,7 +5,7 @@ import type {
   StockLine,
   StockLocationView,
   VehicleView
-} from '@edm/shared';
+} from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
