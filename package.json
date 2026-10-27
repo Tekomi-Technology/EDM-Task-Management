@@ -1,0 +1,36 @@
+{
+  "name": "edm-task-management",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d --wait",
+    "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "build": "pnpm -r run build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "e2e": "pnpm --filter @edm/callcenter-sim run e2e",
+    "sms-gateway": "pnpm --filter @edm/callcenter-sim run sms-gateway",
+    "nms": "pnpm --filter @edm/callcenter-sim run nms",
+    "sales": "pnpm --filter @edm/callcenter-sim run sales",
+    "loadtest:prepare": "bash tools/loadtest/prepare.sh",
+    "loadtest:api": "API_PORT=3001 DATABASE_URL=postgres://edm:edm_dev_password@localhost:55432/edm_load REDIS_URL=redis://localhost:56379/2 node apps/api/dist/main.js",
+    "loadtest": "docker run --rm -i --add-host host.docker.internal:host-gateway -e API_URL=\"${API_URL:-http://host.docker.internal:3001/api}\" -e KEYCLOAK_URL=\"${KEYCLOAK_URL:-http://host.docker.internal:58080}\" -e PEAK -e ALARM_BATCHES -e ALARMS -e OFFICE -e PHONES -e MINUTES -v \"$PWD/tools/loadtest:/scripts:ro\" grafana/k6:0.54.0 run /scripts/storm.js",
+    "backup": "bash infra/scripts/backup.sh",
+    "restore-check": "bash infra/scripts/restore-check.sh"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.19.0"
+  }
+}

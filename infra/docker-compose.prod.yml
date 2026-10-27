@@ -1,0 +1,116 @@
+# Staging / production stack. Copy infra/.env.prod.example to infra/.env.prod, fill in real values, then:
+#   docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod up -d
+# Put a TLS-terminating reverse proxy (nginx, Traefik, a load balancer) in front of web, api and keycloak.
+name: edm-prod
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: edm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: edm
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/prod-init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U edm -d edm']
+      interval: 10s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    restart: unless-stopped
+    command: start --import-realm --proxy-headers xforwarded --http-enabled true
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: edm
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:?set KEYCLOAK_PUBLIC_URL}
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: 'true'
+      # Read by the realm file on first import (placeholders such as ${CALL_CENTER_CLIENT_SECRET}).
+      WEB_PUBLIC_URL: ${WEB_PUBLIC_URL}
+      CALL_CENTER_CLIENT_SECRET: ${CALL_CENTER_CLIENT_SECRET:?set CALL_CENTER_CLIENT_SECRET}
+      SALES_CLIENT_SECRET: ${SALES_CLIENT_SECRET:?set SALES_CLIENT_SECRET}
+      API_ADMIN_CLIENT_SECRET: ${API_ADMIN_CLIENT_SECRET:?set API_ADMIN_CLIENT_SECRET}
+      NMS_CLIENT_SECRET: ${NMS_CLIENT_SECRET:?set NMS_CLIENT_SECRET}
+      STOCK_CLIENT_SECRET: ${STOCK_CLIENT_SECRET:?set STOCK_CLIENT_SECRET}
+    # Production realm: no sample users or dev clients; secrets come from the variables above.
+    volumes:
+      - ${KEYCLOAK_REALM_FILE:-./keycloak/realm-edm.prod.json}:/opt/keycloak/data/import/realm-edm.json:ro
+      # EDM look for the sign-in pages (web and app)
+      - ./keycloak/themes/edm:/opt/keycloak/themes/edm:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '8080:8080'
+
+  api:
+    image: ${API_IMAGE:-edm-api:latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://edm:${POSTGRES_PASSWORD}@postgres:5432/edm
+      REDIS_URL: redis://redis:6379
+      KEYCLOAK_URL: ${KEYCLOAK_PUBLIC_URL}
+      KEYCLOAK_REALM: edm
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${API_ADMIN_CLIENT_SECRET:?set API_ADMIN_CLIENT_SECRET}
+      S3_ENDPOINT: ${S3_ENDPOINT:?set S3_ENDPOINT}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?set S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-edm-attachments}
+      CORS_ORIGINS: ${WEB_PUBLIC_URL:?set WEB_PUBLIC_URL}
+      SMS_PROVIDER: ${SMS_PROVIDER:-log}
+      SMS_HTTP_URL: ${SMS_HTTP_URL:-}
+      SMS_HTTP_METHOD: ${SMS_HTTP_METHOD:-POST}
+      SMS_HTTP_CONTENT_TYPE: ${SMS_HTTP_CONTENT_TYPE:-json}
+      SMS_HTTP_BODY: ${SMS_HTTP_BODY:-}
+      SMS_HTTP_HEADERS: ${SMS_HTTP_HEADERS:-}
+      SMS_HTTP_SUCCESS_TEXT: ${SMS_HTTP_SUCCESS_TEXT:-}
+      SMS_SENDER_ID: ${SMS_SENDER_ID:-EDM}
+      PUSH_PROVIDER: ${PUSH_PROVIDER:-expo}
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+      STAFF_ALERTS: ${STAFF_ALERTS:-push_or_sms}
+      SALES_WEBHOOK_URL: ${SALES_WEBHOOK_URL:-}
+      SALES_WEBHOOK_SECRET: ${SALES_WEBHOOK_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+
+  web:
+    image: ${WEB_IMAGE:-edm-web:latest}
+    restart: unless-stopped
+    environment:
+      # Where the page may connect and load images from (Content-Security-Policy).
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-${WEB_PUBLIC_URL}}
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-${S3_ENDPOINT}}
+      MAP_TILE_ORIGIN: ${MAP_TILE_ORIGIN:-https://tile.openstreetmap.org}
+    ports:
+      - '8081:80'
+
+volumes:
+  postgres-data:
+  redis-data:

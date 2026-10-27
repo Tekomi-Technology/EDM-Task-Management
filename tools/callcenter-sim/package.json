@@ -1,0 +1,23 @@
+{
+  "name": "@edm/callcenter-sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sim": "tsx src/cli.ts",
+    "e2e": "tsx src/e2e.ts",
+    "typecheck": "tsc --noEmit",
+    "sms-gateway": "tsx src/sms-gateway.ts",
+    "demo-data": "tsx src/demo-data.ts",
+    "nms": "tsx src/nms.ts",
+    "sales": "tsx src/sales.ts"
+  },
+  "dependencies": {
+    "@edm/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "~5.7.2"
+  }
+}

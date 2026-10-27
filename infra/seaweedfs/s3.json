@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "edm",
+      "credentials": [{ "accessKey": "edm", "secretKey": "edm_dev_password" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+mockup-figma
+*.pptx
+*.pdf
+*.zip
+pnpm-lock.yaml
+**/dist
+**/drizzle/meta
+# Documents written and formatted by hand
+Ke_hoach_trien_khai_EDM-Task-Management.md
+docs/superpowers
+
+# Database and attachment backups (infra/scripts/backup.sh)
+backups/

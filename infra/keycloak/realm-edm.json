@@ -1,0 +1,481 @@
+{
+  "realm": "edm",
+  "enabled": true,
+  "displayName": "EDM Tasks",
+  "sslRequired": "none",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 28800,
+  "loginWithEmailAllowed": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["en", "pt"],
+  "defaultLocale": "en",
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Manages users, roles and connected systems"
+      },
+      {
+        "name": "team_manager",
+        "description": "Manages a field team and assigns its tickets"
+      },
+      {
+        "name": "noc",
+        "description": "Network operations centre: watches and closes network tickets"
+      },
+      {
+        "name": "network_team",
+        "description": "Network management team: creates planned work"
+      },
+      {
+        "name": "bo_support",
+        "description": "Back-office support for field staff"
+      },
+      {
+        "name": "field_staff",
+        "description": "Technical staff working in the field"
+      },
+      {
+        "name": "integration_call_center",
+        "description": "Call Center system integration"
+      },
+      {
+        "name": "integration_sales",
+        "description": "Sales system integration"
+      },
+      {
+        "name": "technical_manager",
+        "description": "Senior technical manager: sees everything, told when tickets are badly late"
+      },
+      {
+        "name": "integration_nms",
+        "description": "Network management system (NMS) sending alarms"
+      },
+      {
+        "name": "integration_stock",
+        "description": "EDM's stock management system"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "edm-web",
+      "name": "EDM Tasks web",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "edm-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "edm-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "edm-mobile",
+      "name": "EDM Field app",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": ["edm://*", "exp://*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "edm-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "edm-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "edm-dev-cli",
+      "name": "Developer scripts and tests (dev only)",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "edm-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "edm-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "call-center-system",
+      "name": "Call Center system",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "call-center-dev-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "edm-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "edm-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "sales-system",
+      "name": "Sales system",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "sales-dev-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "edm-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "edm-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "edm-api-admin",
+      "name": "EDM API (account management)",
+      "description": "Used by the API to create, block and reset accounts. Not for people or other systems.",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "edm-api-admin-dev-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "nms-system",
+      "name": "Network management system (NMS)",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "nms-dev-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "edm-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "edm-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "stock-system",
+      "name": "EDM stock management system",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "stock-dev-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "edm-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "edm-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "username": "admin.edm",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "EDM",
+      "email": "admin.edm@edm.example",
+      "realmRoles": ["admin"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "username": "helena.mondlane",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Helena",
+      "lastName": "Mondlane",
+      "email": "helena.mondlane@edm.example",
+      "realmRoles": ["team_manager"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "username": "nadia.mussa",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Nádia",
+      "lastName": "Mussa",
+      "email": "nadia.mussa@edm.example",
+      "realmRoles": ["noc"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "username": "carlos.nhantumbo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Carlos",
+      "lastName": "Nhantumbo",
+      "email": "carlos.nhantumbo@edm.example",
+      "realmRoles": ["network_team"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "username": "paulo.bo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Paulo",
+      "lastName": "Machava",
+      "email": "paulo.bo@edm.example",
+      "realmRoles": ["bo_support"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "username": "armando.cossa",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Armando",
+      "lastName": "Cossa",
+      "email": "armando.cossa@edm.example",
+      "realmRoles": ["field_staff"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "username": "joao.matsinhe",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "João",
+      "lastName": "Matsinhe",
+      "email": "joao.matsinhe@edm.example",
+      "realmRoles": ["team_manager"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "username": "ofelia.tembe",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ofélia",
+      "lastName": "Tembe",
+      "email": "ofelia.tembe@edm.example",
+      "realmRoles": ["field_staff"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000009",
+      "username": "ana.sitoe",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Sitoe",
+      "email": "ana.sitoe@edm.example",
+      "realmRoles": ["field_staff"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "service-account-call-center-system",
+      "enabled": true,
+      "serviceAccountClientId": "call-center-system",
+      "realmRoles": ["integration_call_center"]
+    },
+    {
+      "username": "service-account-sales-system",
+      "enabled": true,
+      "serviceAccountClientId": "sales-system",
+      "realmRoles": ["integration_sales"]
+    },
+    {
+      "username": "service-account-edm-api-admin",
+      "enabled": true,
+      "serviceAccountClientId": "edm-api-admin",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users", "view-realm", "view-clients"]
+      }
+    },
+    {
+      "username": "service-account-nms-system",
+      "enabled": true,
+      "serviceAccountClientId": "nms-system",
+      "realmRoles": ["integration_nms"]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "username": "carla.manhica",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Carla",
+      "lastName": "Manhiça",
+      "email": "carla.manhica@edm.example",
+      "realmRoles": ["technical_manager"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Edm@2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "service-account-stock-system",
+      "enabled": true,
+      "serviceAccountClientId": "stock-system",
+      "realmRoles": ["integration_stock"]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  },
+  "loginTheme": "edm",
+  "rememberMe": true
+}

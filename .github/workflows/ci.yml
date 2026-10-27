@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: edm
+          POSTGRES_PASSWORD: edm_dev_password
+          POSTGRES_DB: edm_test
+        ports: ['55432:5432']
+        options: >-
+          --health-cmd "pg_isready -U edm -d edm_test" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ['56379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start S3-compatible storage
+        run: |
+          docker run -d --name storage -p 59000:8333 -v "$PWD/infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro" \
+            chrislusf/seaweedfs:3.80 server -dir=/data -ip.bind=0.0.0.0 -s3 -s3.config=/etc/seaweedfs/s3.json \
+            -volume.max=100 -master.volumeSizeLimitMB=128 -master.volumePreallocate=false
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @edm/shared build
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+      - name: Wait for storage
+        run: for i in $(seq 1 30); do curl -sf http://localhost:59000/status && break || sleep 2; done
+
+      - run: pnpm test
+        env:
+          TEST_DATABASE_URL: postgres://edm:edm_dev_password@localhost:55432/edm_test
+          TEST_REDIS_URL: redis://localhost:56379/1
+          TEST_S3_ENDPOINT: http://localhost:59000
+
+      - run: pnpm build
+
+  images:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -f apps/api/Dockerfile -t edm-api:${{ github.sha }} .
+      - name: Build web image
+        run: docker build -f apps/web/Dockerfile -t edm-web:${{ github.sha }} .
+      # Push and deploy are added once the staging/production servers and registry are decided.

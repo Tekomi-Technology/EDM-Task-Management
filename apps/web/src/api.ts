@@ -1,0 +1,51 @@
+import type { ApiError } from '@edm/shared';
+import { accessToken } from './auth';
+
+const API_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/api`;
+
+export class ApiRequestError extends Error {
+  constructor(readonly error: ApiError) {
+    super(error.message);
+  }
+}
+
+export async function api<T>(
+  path: string,
+  init: { method?: 'GET' | 'POST' | 'PATCH'; body?: unknown } = {}
+): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: init.method ?? 'GET',
+    headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json' },
+    body: init.body === undefined ? undefined : JSON.stringify(init.body)
+  });
+  const data = res.status === 204 ? null : await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiRequestError(
+      (data as ApiError | null) ?? {
+        statusCode: res.status,
+        code: 'NETWORK_ERROR',
+        message: 'The server did not answer'
+      }
+    );
+  }
+  return data as T;
+}
+
+/** Downloads a file from the API (with the sign-in token) and hands it to the browser to save. */
+export async function download(path: string, fileName: string): Promise<void> {
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: { Authorization: `Bearer ${await accessToken()}` }
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => null)) as ApiError | null;
+    throw new ApiRequestError(
+      data ?? { statusCode: res.status, code: 'NETWORK_ERROR', message: 'The server did not answer' }
+    );
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

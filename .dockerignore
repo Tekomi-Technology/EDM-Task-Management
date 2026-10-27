@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/.expo
+.env
+.git
+mockup-figma
+mockup-figma.zip
+*.pptx
+*.pdf
+docs
+
+# Database and attachment backups (infra/scripts/backup.sh)
+backups/

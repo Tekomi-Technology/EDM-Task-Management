@@ -1,0 +1,86 @@
+# Local development infrastructure. Host ports are offset (55432, 56379, 59000, 58080) to avoid clashing
+# with services already running on a developer machine.
+name: edm
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: edm
+      POSTGRES_PASSWORD: edm_dev_password
+      POSTGRES_DB: edm
+    ports:
+      - '55432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U edm -d edm']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - '56379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # S3-compatible object storage for photos. Public MinIO images are no longer published, so local
+  # development uses SeaweedFS; the API only speaks the S3 protocol and works with MinIO or any S3 in production.
+  # The API creates the bucket on startup.
+  storage:
+    image: chrislusf/seaweedfs:3.80
+    # Small volumes and a generous volume count: each bucket reserves several volumes when first written to.
+    command: >
+      server -dir=/data -ip.bind=0.0.0.0 -s3 -s3.config=/etc/seaweedfs/s3.json
+      -volume.max=100 -master.volumeSizeLimitMB=128 -master.volumePreallocate=false
+    ports:
+      - '59000:8333'
+    volumes:
+      - storage-data:/data
+      - ./seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget -q -O /dev/null http://localhost:9333/cluster/status && wget -q -O /dev/null http://localhost:8333/status'
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    command: start-dev --import-realm --http-port 8080
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: 'true'
+      # Must be the URL that browsers, the app and the API all use, because it becomes the token issuer.
+      # For testing the app on a phone, set KEYCLOAK_PUBLIC_URL to http://<your-LAN-IP>:58080.
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:58080}
+    ports:
+      - '58080:8080'
+    volumes:
+      - ./keycloak/realm-edm.json:/opt/keycloak/data/import/realm-edm.json:ro
+      # EDM look for the sign-in pages (web and app)
+      - ./keycloak/themes/edm:/opt/keycloak/themes/edm:ro
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+volumes:
+  postgres-data:
+  storage-data:

@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+  - packages/*
+  - tools/*
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@swc/core'
+  - esbuild
+  - msgpackr-extract
+
+# Security fixes for packages pulled in by other packages (pnpm audit): multer comes with @nestjs/platform-express
+# (the API takes no multipart uploads, photos go straight to S3), js-yaml with @nestjs/swagger.
+overrides:
+  multer: ^2.5.0
+  js-yaml: ^5.4.1

@@ -1,0 +1,330 @@
+/* EDM sign-in pages, from the approved mockup (W01 web, M01 app). */
+:root {
+  --brand: #f39b3a;
+  --brand-strong: #e88a24;
+  --brand-ink: #2b1a07;
+  --brand-soft: #fff4e8;
+  --brand-text: #8f4c0b;
+  --text: #1d2433;
+  --text-2: #3b4250;
+  --muted: #5d6573;
+  --border: #e8e8ec;
+  --border-strong: #d5d8de;
+  --late: #b42318;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: #fff;
+}
+a {
+  color: var(--brand-text);
+  font-weight: 700;
+  text-decoration: none;
+}
+.edm-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.edm-brand {
+  background: var(--brand-soft);
+  padding: 64px 7vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #3a2208;
+}
+.edm-brand .edm-logo {
+  width: 210px;
+  margin-bottom: 40px;
+}
+.edm-brand h2 {
+  font-size: 34px;
+  line-height: 1.2;
+  margin: 0 0 12px;
+  color: var(--brand-ink);
+}
+.edm-brand p {
+  font-size: 18px;
+  margin: 0 0 28px;
+  max-width: 460px;
+}
+.edm-brand ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 16px;
+}
+.edm-brand li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.edm-brand li::before {
+  content: '✓';
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+.edm-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+.edm-card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.edm-card h1 {
+  font-size: 30px;
+  margin: 0;
+}
+.edm-intro {
+  color: var(--muted);
+  margin: -10px 0 4px;
+}
+.edm-center {
+  text-align: center;
+}
+.edm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.edm-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.edm-label,
+.edm-group label {
+  font-weight: 500;
+}
+.edm-input,
+input[type='text'],
+input[type='password'],
+input[type='email'] {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 0 14px;
+  font: inherit;
+  color: var(--text);
+  background: #fff;
+}
+.edm-input:focus {
+  outline: 2px solid #f9cb94;
+  border-color: var(--brand);
+}
+.edm-input[aria-invalid='true'] {
+  border-color: var(--late);
+}
+.edm-input-group {
+  position: relative;
+}
+.edm-input-group .edm-input {
+  padding-right: 76px;
+}
+.edm-show-text,
+.edm-show {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--brand-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+/* The password toggle on other Keycloak pages has no text, only an icon class: show its label instead. */
+.edm-show::after {
+  content: attr(aria-label);
+  font-size: 13px;
+}
+.edm-field-error {
+  color: var(--late);
+  font-size: 14px;
+}
+.edm-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.edm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.edm-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand-strong);
+}
+.edm-forgot {
+  color: var(--brand-text);
+  font-weight: 700;
+  font-size: 14px;
+}
+.edm-btn {
+  height: 50px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  padding: 0 20px;
+  cursor: pointer;
+}
+.edm-btn-primary,
+input[type='submit'] {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+.edm-btn-primary:hover {
+  background: var(--brand-strong);
+}
+.edm-btn-block,
+.edm-buttons input[type='submit'] {
+  width: 100%;
+}
+.edm-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+.edm-alert {
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+}
+.edm-alert-error {
+  background: #fef3f2;
+  color: #912018;
+}
+.edm-alert-success {
+  background: #ecfdf3;
+  color: #067647;
+}
+.edm-username {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f6f6f7;
+}
+.edm-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.edm-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.edm-language select {
+  height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 0 10px;
+  font: inherit;
+  background: #fff;
+  color: var(--text);
+}
+#kc-form-options,
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* EDM Field app: one column, like a phone screen. */
+.edm-app .edm-page {
+  grid-template-columns: 1fr;
+}
+.edm-app .edm-panel {
+  align-items: flex-start;
+  padding-top: 40px;
+}
+.edm-app .edm-logo {
+  width: 190px;
+  align-self: center;
+}
+.edm-app-name {
+  text-align: center;
+  font-size: 30px;
+}
+.edm-app .edm-intro {
+  margin-top: -6px;
+}
+.edm-offline {
+  background: var(--brand-soft);
+  color: #4a2c0a;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 15px;
+}
+.edm-app .edm-footer {
+  justify-content: center;
+  border-top: 0;
+}
+
+@media (max-width: 860px) {
+  .edm-page {
+    grid-template-columns: 1fr;
+  }
+  .edm-brand {
+    padding: 32px 24px;
+  }
+  .edm-brand .edm-logo {
+    width: 150px;
+    margin-bottom: 20px;
+  }
+  .edm-brand h2 {
+    font-size: 26px;
+  }
+  .edm-brand ul {
+    display: none;
+  }
+}
