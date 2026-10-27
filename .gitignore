@@ -12,5 +12,7 @@ tools/callcenter-sim/.nms-last-scenario.json
 # Database and attachment backups (infra/scripts/backup.sh)
 backups/
 
-# Project documents, kept outside the repository
+# Project documents and design mockups, kept outside the repository (Google Drive, Figma)
 docs/
+mockup-figma/
+mockup-figma.zip
