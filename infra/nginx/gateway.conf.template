@@ -1,0 +1,57 @@
+# Gateway of the single-VPS stack (docker-compose.vps.yml): the server's nginx in front ends TLS and sends the whole
+# public address here; this routes it to the containers by path. ${S3_BUCKET} is filled in when the container starts.
+
+# Keep the scheme and port the visitor used (set by the nginx in front), so Keycloak builds the right links.
+map $http_x_forwarded_proto $forwarded_proto {
+  default $http_x_forwarded_proto;
+  '' $scheme;
+}
+map $http_x_forwarded_port $forwarded_port {
+  default $http_x_forwarded_port;
+  '' $server_port;
+}
+
+server {
+  listen 80;
+  server_tokens off;
+  # Docker's DNS, asked on each request (proxy_pass with a variable) so a recreated container is found at its new address.
+  resolver 127.0.0.11 valid=10s ipv6=off;
+
+  client_max_body_size 50m;
+  proxy_http_version 1.1;
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $forwarded_proto;
+  proxy_set_header X-Forwarded-Host $host;
+  proxy_set_header X-Forwarded-Port $forwarded_port;
+  # Keycloak's sign-in answers carry large cookies.
+  proxy_buffer_size 128k;
+  proxy_buffers 8 128k;
+  proxy_busy_buffers_size 256k;
+
+  location /api/ {
+    set $upstream http://api:3000;
+    proxy_pass $upstream;
+    proxy_read_timeout 120s;
+  }
+
+  # Keycloak listens under /auth itself (KC_HTTP_RELATIVE_PATH), so the path passes unchanged.
+  location /auth/ {
+    set $upstream http://keycloak:8080;
+    proxy_pass $upstream;
+  }
+
+  # Photos: presigned S3 links in path style (https://<address>/<bucket>/<key>). The path and the Host header are
+  # part of the signature, so both pass unchanged; uploads stream straight through.
+  location ~ ^/${S3_BUCKET}(/|$) {
+    set $upstream http://storage:8333;
+    proxy_pass $upstream;
+    proxy_request_buffering off;
+    proxy_buffering off;
+  }
+
+  location / {
+    set $upstream http://web:80;
+    proxy_pass $upstream;
+  }
+}

@@ -17,7 +17,7 @@
   "waitIncrementSeconds": 60,
   "maxFailureWaitSeconds": 900,
   "internationalizationEnabled": true,
-  "supportedLocales": ["en", "pt"],
+  "supportedLocales": ["en", "pt", "vi"],
   "defaultLocale": "pt",
   "roles": {
     "realm": [

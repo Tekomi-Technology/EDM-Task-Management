@@ -1,5 +1,5 @@
 import { applyDecorators, ArgumentMetadata, Body, HttpStatus, PipeTransform, Query } from '@nestjs/common';
-import { ApiBody } from '@nestjs/swagger';
+import { ApiBody, ApiQuery } from '@nestjs/swagger';
 import { z } from 'zod';
 import { AppError } from './errors';
 
@@ -32,3 +32,21 @@ export const ApiZodBody = (schema: z.ZodType) =>
       schema: z.toJSONSchema(schema, { target: 'openapi-3.0', io: 'input', unrepresentable: 'any' }) as object
     })
   );
+
+/** Documents the query parameters of a zod object schema in Swagger, one by one. */
+export const ApiZodQuery = (schema: z.ZodObject) => {
+  const json = z.toJSONSchema(schema, { target: 'openapi-3.0', io: 'input', unrepresentable: 'any' }) as {
+    properties?: Record<string, { description?: string }>;
+    required?: string[];
+  };
+  return applyDecorators(
+    ...Object.entries(json.properties ?? {}).map(([name, property]) =>
+      ApiQuery({
+        name,
+        required: json.required?.includes(name) ?? false,
+        description: property.description,
+        schema: property as object
+      })
+    )
+  );
+};

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router';
 import { api } from '../api';
 import { ago, STATUS_LABEL } from '../format';
 import { hasRole, useMe } from './ui';
+import { t } from '../i18n';
 
 /** People who see every area and can narrow the screens to one; team managers already see their own team. */
 const SEES_ALL_AREAS = ['admin', 'technical_manager', 'noc', 'bo_support', 'network_team'];
@@ -48,7 +49,7 @@ export function useRegion() {
     queryFn: () => api<Lookups>('/lookups'),
     enabled: !!areaId
   });
-  const name = (areaId && lookups.data?.areas.find((a) => a.id === areaId)?.name) || 'Maputo region';
+  const name = (areaId && lookups.data?.areas.find((a) => a.id === areaId)?.name) || t('Maputo region');
   const withArea = (path: string) =>
     areaId ? `${path}${path.includes('?') ? '&' : '?'}areaId=${areaId}` : path;
   return { areaId, name, withArea };
@@ -73,9 +74,9 @@ export function RegionPicker() {
   return (
     <label className="region-picker">
       <MapPin size={18} aria-hidden />
-      <span className="sr-only">Area</span>
+      <span className="sr-only">{t('Area')}</span>
       <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
-        <option value="">All areas</option>
+        <option value="">{t('All areas')}</option>
         {areas.map((a) => (
           <option key={a.id} value={a.id}>
             {a.name}
@@ -128,7 +129,7 @@ export function NotificationBell() {
       <button
         type="button"
         className="icon-button"
-        aria-label={unread ? `Notifications, ${unread} not read` : 'Notifications'}
+        aria-label={unread ? t('Notifications, {0} not read', { 0: unread }) : t('Notifications')}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => {
@@ -140,18 +141,20 @@ export function NotificationBell() {
         {unread > 0 && <span className="bell-count">{unread > 99 ? '99+' : unread}</span>}
       </button>
       {open && (
-        <div className="menu inbox" role="menu" aria-label="Notifications">
+        <div className="menu inbox" role="menu" aria-label={t('Notifications')}>
           <div className="inbox-head">
-            <strong>Notifications</strong>
+            <strong>{t('Notifications')}</strong>
             {unread > 0 && (
               <button type="button" className="link-button" onClick={() => read.mutate(undefined)}>
-                Mark all as read
+                {t('Mark all as read')}
               </button>
             )}
           </div>
           {items.length === 0 ? (
             <div className="meta" style={{ padding: '12px 10px' }}>
-              Nothing yet. New tickets waiting for someone, late tickets and help requests show up here.
+              {t(
+                'Nothing yet. New tickets waiting for someone, late tickets and help requests show up here.'
+              )}
             </div>
           ) : (
             items.map((n) => (
@@ -191,7 +194,7 @@ export function HelpButton() {
       <button
         type="button"
         className="icon-button"
-        aria-label="Help"
+        aria-label={t('Help')}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
@@ -199,34 +202,34 @@ export function HelpButton() {
         <HelpCircle size={22} />
       </button>
       {open && (
-        <div className="menu help-panel" role="dialog" aria-label="Help">
-          <strong>Quick help</strong>
+        <div className="menu help-panel" role="dialog" aria-label={t('Help')}>
+          <strong>{t('Quick help')}</strong>
           <dl>
             <dt>
               <kbd>/</kbd>
             </dt>
-            <dd>Search tickets by code, customer name, contract or phone.</dd>
+            <dd>{t('Search tickets by code, customer name, contract or phone.')}</dd>
             {hasRole(me.data, ...SEES_ALL_AREAS) && (
               <>
                 <dt>
                   <MapPin size={14} aria-hidden />
                 </dt>
-                <dd>The area next to the search narrows lists, maps and reports to that area.</dd>
+                <dd>{t('The area next to the search narrows lists, maps and reports to that area.')}</dd>
               </>
             )}
           </dl>
-          <strong>What the ticket states mean</strong>
+          <strong>{t('What the ticket states mean')}</strong>
           <dl>
             {(
               [
-                ['new', 'Nobody has the job yet.'],
-                ['assigned', 'Sent to a staff member, who has not accepted yet.'],
-                ['accepted', 'The staff member is on the way.'],
-                ['in_progress', 'Being fixed on site.'],
-                ['on_hold', 'Work stopped for a reason given by the staff member.'],
-                ['resolved', 'Reported fixed; the Call Center or NOC checks with the customer.'],
-                ['reopened', 'The check found it not fixed; it needs someone again.'],
-                ['closed', 'Checked and finished.']
+                ['new', t('Nobody has the job yet.')],
+                ['assigned', t('Sent to a staff member, who has not accepted yet.')],
+                ['accepted', t('The staff member is on the way.')],
+                ['in_progress', t('Being fixed on site.')],
+                ['on_hold', t('Work stopped for a reason given by the staff member.')],
+                ['resolved', t('Reported fixed; the Call Center or NOC checks with the customer.')],
+                ['reopened', t('The check found it not fixed; it needs someone again.')],
+                ['closed', t('Checked and finished.')]
               ] as const
             ).map(([status, text]) => (
               <div key={status} style={{ display: 'contents' }}>
@@ -235,7 +238,9 @@ export function HelpButton() {
               </div>
             ))}
           </dl>
-          <div className="meta">For an account or access problem, ask your EDM Tasks administrator.</div>
+          <div className="meta">
+            {t('For an account or access problem, ask your EDM Tasks administrator.')}
+          </div>
         </div>
       )}
     </div>

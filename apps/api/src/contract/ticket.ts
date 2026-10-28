@@ -23,7 +23,9 @@ export const TICKET_TYPES = [
   'network_incident',
   'planned_work',
   'new_customer_survey',
-  'new_connection'
+  'new_connection',
+  /** Anything else that comes up; the office says what it is, picks the priority and checks it before closing. */
+  'other'
 ] as const;
 export type TicketType = (typeof TICKET_TYPES)[number];
 
@@ -121,15 +123,30 @@ export const ACTION_RULES: Record<TicketAction, ActionRule> = {
   resume: { from: ['on_hold'], to: 'in_progress', roles: ['field_staff'], assigneeOnly: true },
   resolve: { from: ['in_progress'], to: 'resolved', roles: ['field_staff'], assigneeOnly: true },
   /** The Sales system closes new connections when the service is activated (checked in the service). */
+  /** Team and technical managers only check "other" tickets (checked in the service). */
   close: {
     from: ['resolved'],
     to: 'closed',
-    roles: ['integration_call_center', 'integration_sales', 'noc', 'admin']
+    roles: [
+      'integration_call_center',
+      'integration_sales',
+      'noc',
+      'admin',
+      'team_manager',
+      'technical_manager'
+    ]
   },
   reopen: {
     from: ['resolved'],
     to: 'reopened',
-    roles: ['integration_call_center', 'integration_sales', 'noc', 'admin']
+    roles: [
+      'integration_call_center',
+      'integration_sales',
+      'noc',
+      'admin',
+      'team_manager',
+      'technical_manager'
+    ]
   },
   cancel: {
     from: ['new', 'assigned', 'accepted', 'in_progress', 'on_hold', 'resolved', 'reopened'],
@@ -137,6 +154,16 @@ export const ACTION_RULES: Record<TicketAction, ActionRule> = {
     roles: ['integration_call_center', 'noc', 'admin', 'team_manager', 'technical_manager']
   }
 };
+
+/** Who may check a finished ticket and close or reopen it: team and technical managers only check "other" tickets. */
+export function mayCheck(type: TicketType, roles: readonly Role[]): boolean {
+  return (
+    roles.some(
+      (r) => r === 'integration_call_center' || r === 'integration_sales' || r === 'noc' || r === 'admin'
+    ) ||
+    (type === 'other' && roles.some((r) => r === 'team_manager' || r === 'technical_manager'))
+  );
+}
 
 export class TransitionError extends Error {
   constructor(

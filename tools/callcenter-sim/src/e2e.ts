@@ -195,12 +195,12 @@ async function reportsAndSystems(): Promise<void> {
   const paulo = await userToken('paulo.bo');
   const [rosa] = (await call<CustomerMatch[]>(paulo, 'GET', '/customers/lookup?q=84%20111%200001')).body;
   const preview = await call<TicketPreview>(paulo, 'POST', '/tickets/preview', {
-    caller: 'customer',
+    type: 'customer_complaint',
     customerId: rosa!.id,
     problemType: 'low_voltage'
   });
   const made = await call<CreatedTicketView>(paulo, 'POST', '/tickets', {
-    caller: 'customer',
+    type: 'customer_complaint',
     customerId: rosa!.id,
     problemType: 'low_voltage',
     description: 'Lights flicker every evening'

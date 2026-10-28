@@ -2,9 +2,10 @@ import type { TicketCounts } from './types';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   BarChart3,
-  Cable,
+  BookOpen,
   CalendarDays,
   ChevronDown,
+  Languages,
   ChevronRight,
   LayoutGrid,
   LogOut,
@@ -26,6 +27,7 @@ import { signOut } from './auth';
 import { HelpButton, NotificationBell, RegionPicker, RegionProvider, useRegion } from './components/topbar';
 import { Avatar, CrumbContext, hasRole, OFFICE_ROLES, useMe, type Crumb } from './components/ui';
 import { ROLE_LABEL } from './format';
+import { ApiDocsPage } from './pages/ApiDocsPage';
 import { AssignPage } from './pages/AssignPage';
 import { ClosingChecksPage } from './pages/ClosingChecksPage';
 import { FieldStaffPage } from './pages/FieldStaffPage';
@@ -41,7 +43,7 @@ import { TicketDetailPage } from './pages/TicketDetailPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { UsersPage } from './pages/UsersPage';
 import { ReportsPage } from './pages/ReportsPage';
-import { ConnectedSystemsPage } from './pages/ConnectedSystemsPage';
+import { LANGUAGES, setLanguage, t, useLanguage, type Language } from './i18n';
 
 function NavItem({ to, icon, label, count }: { to: string; icon: ReactNode; label: string; count?: number }) {
   return (
@@ -83,8 +85,8 @@ function GlobalSearch() {
       <input
         ref={input}
         type="search"
-        aria-label="Search tickets"
-        placeholder="Search tickets, customers, phone…"
+        aria-label={t('Search tickets')}
+        placeholder={t('Search tickets, customers, phone…')}
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
@@ -95,6 +97,7 @@ function GlobalSearch() {
 
 function UserMenu() {
   const me = useMe();
+  const language = useLanguage();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -120,8 +123,22 @@ function UserMenu() {
               {me.data.teamName ? ` · ${me.data.teamName}` : ''}
             </div>
           </div>
+          <div className="menu-language" role="group" aria-label={t('Language')}>
+            <Languages size={16} aria-hidden />
+            {(Object.keys(LANGUAGES) as Language[]).map((l) => (
+              <button
+                key={l}
+                type="button"
+                role="menuitemradio"
+                aria-checked={language === l}
+                onClick={() => setLanguage(l)}
+              >
+                {LANGUAGES[l]}
+              </button>
+            ))}
+          </div>
           <button type="button" role="menuitem" onClick={signOut}>
-            <LogOut size={16} /> Sign out
+            <LogOut size={16} /> {t('Sign out')}
           </button>
         </div>
       )}
@@ -153,27 +170,27 @@ function ShellLayout() {
   return (
     <CrumbContext.Provider value={setCrumbs}>
       <div className="shell">
-        <nav className="nav" aria-label="Main">
+        <nav className="nav" aria-label={t('Main')}>
           <Link to="/" className="brand" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <img src="/edm-emblem.png" alt="EDM logo" />
+            <img src="/edm-emblem.png" alt={t('EDM logo')} />
             <div>
-              <strong>EDM Tasks</strong>
-              <small>Electricidade de Moçambique</small>
+              <strong>{t('EDM Tasks')}</strong>
+              <small>{t('Electricidade de Moçambique')}</small>
             </div>
           </Link>
-          {office && <NavItem to="/" icon={<LayoutGrid size={20} />} label="Overview" />}
-          <div className="nav-group">Tickets</div>
+          {office && <NavItem to="/" icon={<LayoutGrid size={20} />} label={t('Overview')} />}
+          <div className="nav-group">{t('Tickets')}</div>
           <NavItem
             to="/tickets"
             icon={<Ticket size={20} />}
-            label={office ? 'All tickets' : 'My tickets'}
+            label={office ? t('All tickets') : t('My tickets')}
             count={counts.data?.active}
           />
           {office && (
             <NavItem
               to="/checks"
               icon={<Phone size={20} />}
-              label="Closing checks"
+              label={t('Closing checks')}
               count={counts.data?.waiting_check}
             />
           )}
@@ -182,43 +199,43 @@ function ShellLayout() {
               <NavItem
                 to="/incidents"
                 icon={<Zap size={20} />}
-                label="Network incidents"
+                label={t('Network incidents')}
                 count={counts.data?.incidents}
               />
-              <NavItem to="/planned" icon={<CalendarDays size={20} />} label="Planned work" />
-              <NavItem to="/new-customers" icon={<HomeIcon size={20} />} label="New customers" />
-              <div className="nav-group">Field</div>
-              <NavItem to="/live" icon={<MapPin size={20} />} label="Live map" />
-              <NavItem to="/staff" icon={<Users size={20} />} label="Field staff" />
+              <NavItem to="/planned" icon={<CalendarDays size={20} />} label={t('Planned work')} />
+              <NavItem to="/new-customers" icon={<HomeIcon size={20} />} label={t('New customers')} />
+              <div className="nav-group">{t('Field')}</div>
+              <NavItem to="/live" icon={<MapPin size={20} />} label={t('Live map')} />
+              <NavItem to="/staff" icon={<Users size={20} />} label={t('Field staff')} />
               <NavItem
                 to="/help"
                 icon={<HelpCircle size={20} />}
-                label="Help requests"
+                label={t('Help requests')}
                 count={counts.data?.help}
               />
-              <NavItem to="/stock" icon={<Package size={20} />} label="Stock" />
+              <NavItem to="/stock" icon={<Package size={20} />} label={t('Stock')} />
             </>
           )}
           {hasRole(me.data, 'admin', 'technical_manager', 'team_manager', 'noc') && (
             <>
-              <div className="nav-group">Insights</div>
-              <NavItem to="/reports" icon={<BarChart3 size={20} />} label="Reports" />
+              <div className="nav-group">{t('Insights')}</div>
+              <NavItem to="/reports" icon={<BarChart3 size={20} />} label={t('Reports')} />
             </>
           )}
           {hasRole(me.data, 'admin', 'technical_manager') && (
             <>
-              <div className="nav-group">Settings</div>
+              <div className="nav-group">{t('Settings')}</div>
               {hasRole(me.data, 'admin') && (
-                <NavItem to="/users" icon={<UserCog size={20} />} label="Users & roles" />
+                <NavItem to="/users" icon={<UserCog size={20} />} label={t('Users & roles')} />
               )}
-              <NavItem to="/systems" icon={<Cable size={20} />} label="Connected systems" />
+              <NavItem to="/api-docs" icon={<BookOpen size={20} />} label={t('API documentation')} />
             </>
           )}
-          <div className="version">EDM Tasks · version 1.0</div>
+          <div className="version">{t('EDM Tasks · version 1.0')}</div>
         </nav>
         <div className="main">
           <header className="topbar">
-            <div className="crumbs" aria-label="You are here">
+            <div className="crumbs" aria-label={t('You are here')}>
               {crumbs.map((c, i) => (
                 <span key={i} style={{ display: 'contents' }}>
                   {i > 0 && <ChevronRight size={16} />}
@@ -271,7 +288,7 @@ export function App() {
         <Route path="/stock" element={<StockPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/systems" element={<ConnectedSystemsPage />} />
+        <Route path="/api-docs" element={<ApiDocsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

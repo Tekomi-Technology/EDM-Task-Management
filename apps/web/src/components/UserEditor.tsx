@@ -1,6 +1,7 @@
 import type { AdminUser, CreateUser, Lookups, UserRole } from '../types';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { ROLE_HELP, ROLE_LABEL } from '../format';
+import { t } from '../i18n';
 
 const ROLES: UserRole[] = [
   'field_staff',
@@ -36,7 +37,7 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
 
   const needsTeam = TEAM_ROLES.includes(role);
   const teams = lookups.teams.filter((t) => !areaId || t.areaId === areaId);
-  const problem = needsTeam && !teamId ? 'Field staff and team managers need a team.' : null;
+  const problem = needsTeam && !teamId ? t('Field staff and team managers need a team.') : null;
   const otherRoles = (user?.roles ?? []).filter((r) => r !== role);
 
   function submit(e: FormEvent) {
@@ -57,26 +58,26 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
       className="card card-pad editor"
       style={{ gap: 16, padding: 24 }}
       onSubmit={submit}
-      aria-label={user ? 'Edit account' : 'New account'}
+      aria-label={user ? t('Edit account') : t('New account')}
     >
-      <h2 style={{ fontSize: 20 }}>{user ? user.fullName : 'New account'}</h2>
+      <h2 style={{ fontSize: 20 }}>{user ? user.fullName : t('New account')}</h2>
       <div className="field">
-        <label htmlFor="u-name">Full name</label>
+        <label htmlFor="u-name">{t('Full name')}</label>
         <input id="u-name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
       </div>
       <div className="field">
-        <label htmlFor="u-username">Username</label>
+        <label htmlFor="u-username">{t('Username')}</label>
         <input
           id="u-username"
           required
           disabled={!!user}
           value={username}
-          placeholder="e.g. rui.langa"
+          placeholder={t('e.g. rui.langa')}
           onChange={(e) => setUsername(e.target.value)}
         />
       </div>
       <div className="field">
-        <label htmlFor="u-role">Role</label>
+        <label htmlFor="u-role">{t('Role')}</label>
         <select id="u-role" value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
           {ROLES.map((r) => (
             <option key={r} value={r}>
@@ -86,14 +87,14 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
         </select>
         {otherRoles.length > 0 && (
           <span className="meta">
-            Also has: {otherRoles.map((r) => ROLE_LABEL[r] ?? r).join(', ')}. Saving keeps only the role
-            above.
+            {t('Also has:')} {otherRoles.map((r) => ROLE_LABEL[r] ?? r).join(', ')}
+            {t('. Saving keeps only the role above.')}
           </span>
         )}
       </div>
       <div className="form-grid">
         <div className="field">
-          <label htmlFor="u-area">Working area</label>
+          <label htmlFor="u-area">{t('Working area')}</label>
           <select
             id="u-area"
             value={areaId}
@@ -102,7 +103,7 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
               setTeamId('');
             }}
           >
-            <option value="">All areas</option>
+            <option value="">{t('All areas')}</option>
             {lookups.areas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -111,9 +112,12 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="u-team">Team{needsTeam ? '' : ' (optional)'}</label>
+          <label htmlFor="u-team">
+            {t('Team')}
+            {needsTeam ? '' : t(' (optional)')}
+          </label>
           <select id="u-team" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-            <option value="">No team</option>
+            <option value="">{t('No team')}</option>
             {teams.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
@@ -123,7 +127,7 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
         </div>
       </div>
       <div className="field">
-        <label htmlFor="u-phone">Phone for SMS</label>
+        <label htmlFor="u-phone">{t('Phone for SMS')}</label>
         <input
           id="u-phone"
           value={phone}
@@ -132,17 +136,17 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
         />
       </div>
       <div className="field">
-        <label htmlFor="u-email">Email (optional)</label>
+        <label htmlFor="u-email">{t('Email (optional)')}</label>
         <input id="u-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div className="role-help">
-        <strong>What this role can do</strong>
+        <strong>{t('What this role can do')}</strong>
         <div style={{ color: 'var(--text-2)', marginTop: 4 }}>{ROLE_HELP[role]}</div>
       </div>
       {problem && <div className="meta">{problem}</div>}
       {actions && <div className="btn-row">{actions}</div>}
       <button type="submit" className="btn btn-primary btn-lg" disabled={busy || !!problem}>
-        {busy ? 'Saving…' : user ? 'Save changes' : 'Create account'}
+        {busy ? t('Saving…') : user ? t('Save changes') : t('Create account')}
       </button>
     </form>
   );

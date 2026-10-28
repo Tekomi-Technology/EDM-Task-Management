@@ -12,9 +12,10 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { api } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
-import { AssigneeCell, hasRole, OFFICE_ROLES, TAKES_CALLS_ROLES, useCrumbs, useMe } from '../components/ui';
-import { SOURCE_LABEL, STATUS_LABEL, timeCell, TYPE_LABEL } from '../format';
+import { AssigneeCell, creatableTypes, hasRole, OFFICE_ROLES, useCrumbs, useMe } from '../components/ui';
+import { SOURCE_LABEL, STATUS_LABEL, timeCell, TYPE_LABEL, ticketTitle } from '../format';
 import { useRegion } from '../components/topbar';
+import { t as tr } from '../i18n';
 
 const PAGE_SIZE = 20;
 
@@ -43,18 +44,18 @@ async function exportCsv(params: URLSearchParams): Promise<void> {
     if (rows.length >= page.total || page.items.length === 0) break;
   }
   const header = [
-    'Code',
-    'Title',
-    'Type',
-    'From',
-    'Area',
-    'Team',
-    'Customer',
-    'Address',
-    'Assigned to',
-    'Status',
-    'Due',
-    'Created'
+    tr('Code'),
+    tr('Title'),
+    tr('Type'),
+    tr('From'),
+    tr('Area'),
+    tr('Team'),
+    tr('Customer'),
+    tr('Address'),
+    tr('Assigned to'),
+    tr('Status'),
+    tr('Due'),
+    tr('Created')
   ];
   const cell = (v: string | null | undefined) => `"${(v ?? '').replace(/"/g, '""')}"`;
   const lines = rows.map((t) =>
@@ -90,7 +91,10 @@ export function TicketsPage() {
   const me = useMe();
   const office = hasRole(me.data, ...OFFICE_ROLES);
   const canAssign = hasRole(me.data, 'team_manager', 'admin');
-  useCrumbs([{ label: 'Tickets', to: '/tickets' }, { label: office ? 'All tickets' : 'My tickets' }]);
+  useCrumbs([
+    { label: tr('Tickets'), to: '/tickets' },
+    { label: office ? tr('All tickets') : tr('My tickets') }
+  ]);
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const view = (params.get('view') as TicketView | null) ?? 'active';
@@ -142,13 +146,20 @@ export function TicketsPage() {
     <div className="content">
       <div className="page-head">
         <div>
-          <h1>{office ? 'All tickets' : 'My tickets'}</h1>
+          <h1>{office ? tr('All tickets') : tr('My tickets')}</h1>
           <div className="subtitle">
             {counts.data
-              ? `${counts.data.active} active ${counts.data.active === 1 ? 'ticket' : 'tickets'}${
-                  me.data?.teamName ? ` in team ${me.data.teamName}` : ` in ${region.name}`
-                }`
-              : 'Tickets you are working on'}
+              ? tr(
+                  me.data?.teamName
+                    ? counts.data.active === 1
+                      ? '{0} active ticket in team {1}'
+                      : '{0} active tickets in team {1}'
+                    : counts.data.active === 1
+                      ? '{0} active ticket in {1}'
+                      : '{0} active tickets in {1}',
+                  { 0: counts.data.active, 1: me.data?.teamName ?? region.name }
+                )
+              : tr('Tickets you are working on')}
           </div>
         </div>
         {office && (
@@ -162,19 +173,19 @@ export function TicketsPage() {
                 void exportCsv(query).finally(() => setExporting(false));
               }}
             >
-              <Download size={18} /> {exporting ? 'Preparing…' : 'Export to Excel'}
+              <Download size={18} /> {exporting ? tr('Preparing…') : tr('Export to Excel')}
             </button>
-            {hasRole(me.data, ...TAKES_CALLS_ROLES) && (
+            {creatableTypes(me.data).length > 0 && (
               <Link to="/tickets/new" className="btn btn-primary btn-lg">
-                <Plus size={18} /> New ticket
+                <Plus size={18} /> {tr('New ticket')}
               </Link>
             )}
           </div>
         )}
       </div>
 
-      <section className="card" aria-label="Tickets">
-        <div className="tabs" role="tablist" aria-label="Ticket views">
+      <section className="card" aria-label={tr('Tickets')}>
+        <div className="tabs" role="tablist" aria-label={tr('Ticket views')}>
           {TABS.filter((t) => office || ['active', 'closed', 'all'].includes(t.view)).map((t) => (
             <button
               key={t.view}
@@ -183,7 +194,7 @@ export function TicketsPage() {
               aria-selected={t.view === view}
               onClick={() => update({ view: t.view === 'active' ? null : t.view })}
             >
-              {t.label}
+              {tr(t.label)}
               {t.count && counts.data && <span className="pill-count">{counts.data[t.count]}</span>}
             </button>
           ))}
@@ -201,8 +212,8 @@ export function TicketsPage() {
               <Search size={18} />
               <input
                 type="search"
-                aria-label="Search"
-                placeholder="Code, customer, contract, phone, address"
+                aria-label={tr('Search')}
+                placeholder={tr('Code, customer, contract, phone, address')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onBlur={() =>
@@ -211,11 +222,11 @@ export function TicketsPage() {
               />
             </form>
             <select
-              aria-label="Type"
+              aria-label={tr('Type')}
               value={params.get('type') ?? ''}
               onChange={(e) => update({ type: e.target.value })}
             >
-              <option value="">All types</option>
+              <option value="">{tr('All types')}</option>
               {TICKET_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {TYPE_LABEL[t]}
@@ -223,11 +234,11 @@ export function TicketsPage() {
               ))}
             </select>
             <select
-              aria-label="Source"
+              aria-label={tr('Source')}
               value={params.get('source') ?? ''}
               onChange={(e) => update({ source: e.target.value })}
             >
-              <option value="">All sources</option>
+              <option value="">{tr('All sources')}</option>
               {TICKET_SOURCES.map((s) => (
                 <option key={s} value={s}>
                   {SOURCE_LABEL[s]}
@@ -235,11 +246,11 @@ export function TicketsPage() {
               ))}
             </select>
             <select
-              aria-label="Area"
+              aria-label={tr('Area')}
               value={areaId ?? ''}
               onChange={(e) => update({ areaId: e.target.value, teamId: null })}
             >
-              <option value="">All areas</option>
+              <option value="">{tr('All areas')}</option>
               {lookups.data?.areas.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -247,11 +258,11 @@ export function TicketsPage() {
               ))}
             </select>
             <select
-              aria-label="Team"
+              aria-label={tr('Team')}
               value={params.get('teamId') ?? ''}
               onChange={(e) => update({ teamId: e.target.value })}
             >
-              <option value="">All teams</option>
+              <option value="">{tr('All teams')}</option>
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
@@ -265,10 +276,10 @@ export function TicketsPage() {
             {(list.error as Error).message}
           </div>
         )}
-        {list.isLoading && <div className="empty">Loading…</div>}
+        {list.isLoading && <div className="empty">{tr('Loading…')}</div>}
         {list.data && list.data.items.length === 0 && (
           <div className="empty">
-            {params.get('q') ? 'No ticket matches your search.' : 'No tickets here.'}
+            {params.get('q') ? tr('No ticket matches your search.') : tr('No tickets here.')}
           </div>
         )}
         {list.data && list.data.items.length > 0 && (
@@ -277,13 +288,13 @@ export function TicketsPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>Ticket</th>
-                    <th>From</th>
-                    <th>Area</th>
-                    <th>Assigned to</th>
-                    <th>Status</th>
-                    <th className="right">Time left</th>
-                    <th aria-label="Actions" />
+                    <th>{tr('Ticket')}</th>
+                    <th>{tr('From')}</th>
+                    <th>{tr('Area')}</th>
+                    <th>{tr('Assigned to')}</th>
+                    <th>{tr('Status')}</th>
+                    <th className="right">{tr('Time left')}</th>
+                    <th aria-label={tr('Actions')} />
                   </tr>
                 </thead>
                 <tbody>
@@ -299,7 +310,7 @@ export function TicketsPage() {
                             to={`/tickets/${t.id}`}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {t.title}
+                            {ticketTitle(t.title)}
                           </Link>
                           <div className="meta">
                             {t.code} · {TYPE_LABEL[t.type]}
@@ -307,7 +318,7 @@ export function TicketsPage() {
                           </div>
                         </td>
                         <td>{SOURCE_LABEL[t.source]}</td>
-                        <td>{t.areaName ?? <span className="meta">No area</span>}</td>
+                        <td>{t.areaName ?? <span className="meta">{tr('No area')}</span>}</td>
                         <td>
                           <AssigneeCell ticket={t} />
                         </td>
@@ -325,11 +336,11 @@ export function TicketsPage() {
                                 navigate(`/tickets/${t.id}/assign`);
                               }}
                             >
-                              Assign
+                              {tr('Assign')}
                             </button>
                           ) : (
                             <button type="button" className="btn btn-sm">
-                              Open
+                              {tr('View')}
                             </button>
                           )}
                         </td>
@@ -341,7 +352,8 @@ export function TicketsPage() {
             </div>
             <div className="pager">
               <span className="meta" style={{ fontSize: 14 }}>
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+                {tr('Showing')} {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} {tr('of')}{' '}
+                {total}
               </span>
               <div className="btn-row">
                 <button
@@ -350,7 +362,7 @@ export function TicketsPage() {
                   disabled={page <= 1}
                   onClick={() => update({ page: String(page - 1) })}
                 >
-                  Previous
+                  {tr('Previous')}
                 </button>
                 <button
                   type="button"
@@ -358,7 +370,7 @@ export function TicketsPage() {
                   disabled={page * PAGE_SIZE >= total}
                   onClick={() => update({ page: String(page + 1) })}
                 >
-                  Next
+                  {tr('Next')}
                 </button>
               </div>
             </div>

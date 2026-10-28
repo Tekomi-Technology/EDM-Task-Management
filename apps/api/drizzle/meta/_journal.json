@@ -92,6 +92,13 @@
       "when": 1793096086636,
       "tag": "0012_customer_meter",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793162821777,
+      "tag": "0013_other_type",
+      "breakpoints": true
     }
   ]
 }

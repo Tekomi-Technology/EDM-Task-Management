@@ -5,6 +5,8 @@ import {
   type ConnectionRequest,
   type NewCustomerCard,
   type NewCustomerStage,
+  type OfficeConnection,
+  type OfficeSurvey,
   type SurveyRequest
 } from '../contract';
 import { and, desc, eq, inArray, notInArray, or, sql } from 'drizzle-orm';
@@ -61,40 +63,19 @@ export class SalesService {
   ): Promise<SalesRequestView & { created: boolean }> {
     const existing = await this.find(input.externalRef);
     if (existing) return { ...existing, created: false };
-    const [customer] = await this.db
-      .insert(customers)
-      .values({
-        fullName: input.customer.fullName,
-        phone: input.customer.phone ?? null,
-        address: input.customer.address,
-        location: input.customer.location ?? null
-      })
-      .returning({ id: customers.id });
     let created = true;
     try {
-      await this.tickets.create(
-        {
-          type: 'new_customer_survey',
-          source: 'sales',
-          externalRef: input.externalRef,
-          problemType: null,
-          priority: 3,
-          slaMinutes: NEW_CUSTOMER_SLA_MINUTES.survey,
-          title: `Survey for new ${PREMISES_LABEL[input.premises]}`,
-          description: input.notes ?? `Technical survey for a ${input.supply.replace('_', '-')} connection.`,
-          customerId: customer!.id,
-          customerPhone: input.customer.phone ?? null,
-          receivedSms: sms.customerSurveyReceived,
-          location: input.customer.location ?? null,
-          details: { premises: input.premises, supply: input.supply, requestedLoadKw: input.requestedLoadKw }
-        },
-        actor
-      );
+      await this.createSurvey(input, actor, input.externalRef);
     } catch (err) {
       if (!(err instanceof DuplicateExternalRef)) throw err;
       created = false;
     }
     return { ...(await this.find(input.externalRef))!, created };
+  }
+
+  /** A survey typed in by the office (New ticket screen), without the Sales system. */
+  async officeSurvey(input: OfficeSurvey, actor: AuthUser): Promise<{ id: string; code: string }> {
+    return this.createSurvey(input, actor, null);
   }
 
   /**
@@ -123,6 +104,87 @@ export class SalesService {
     if (input.surveyRef && !survey) {
       throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, 'SURVEY_NOT_FOUND', `No survey ${input.surveyRef}`);
     }
+    let created = true;
+    try {
+      await this.createConnection(input, survey, actor, input.externalRef);
+    } catch (err) {
+      if (!(err instanceof DuplicateExternalRef)) throw err;
+      created = false;
+    }
+    return { ...(await this.find(input.externalRef))!, created };
+  }
+
+  /**
+   * A connection typed in by the office, without the Sales system. Once built, the Call Center checks it with the
+   * customer and the office closes it.
+   */
+  async officeConnection(input: OfficeConnection, actor: AuthUser): Promise<{ id: string; code: string }> {
+    const [survey] = input.surveyTicketId
+      ? await this.db
+          .select()
+          .from(tickets)
+          .where(and(eq(tickets.id, input.surveyTicketId), eq(tickets.type, 'new_customer_survey')))
+      : [];
+    if (input.surveyTicketId && !survey) {
+      throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, 'SURVEY_NOT_FOUND', 'No such survey');
+    }
+    if (input.customerId && !survey) {
+      const [known] = await this.db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, input.customerId));
+      if (!known) throw notFound('Customer');
+    }
+    return this.createConnection(input, survey, actor, null);
+  }
+
+  private async createSurvey(
+    input: OfficeSurvey,
+    actor: AuthUser,
+    externalRef: string | null
+  ): Promise<{ id: string; code: string }> {
+    const [customer] = await this.db
+      .insert(customers)
+      .values({
+        fullName: input.customer.fullName,
+        phone: input.customer.phone ?? null,
+        address: input.customer.address,
+        location: input.customer.location ?? null
+      })
+      .returning({ id: customers.id });
+    return this.tickets.create(
+      {
+        type: 'new_customer_survey',
+        source: externalRef ? 'sales' : 'office',
+        externalRef,
+        problemType: null,
+        priority: 3,
+        slaMinutes: NEW_CUSTOMER_SLA_MINUTES.survey,
+        title: `Survey for new ${PREMISES_LABEL[input.premises]}`,
+        description: input.notes ?? `Technical survey for a ${input.supply.replace('_', '-')} connection.`,
+        customerId: customer!.id,
+        customerPhone: input.customer.phone ?? null,
+        receivedSms: sms.customerSurveyReceived,
+        location: input.customer.location ?? null,
+        details: { premises: input.premises, supply: input.supply, requestedLoadKw: input.requestedLoadKw }
+      },
+      actor
+    );
+  }
+
+  private async createConnection(
+    input: {
+      contractNo: string;
+      supply: OfficeConnection['supply'];
+      premises?: OfficeConnection['premises'];
+      notes?: string;
+      customerId?: string;
+      customer?: OfficeConnection['customer'];
+    },
+    survey: typeof tickets.$inferSelect | undefined,
+    actor: AuthUser,
+    externalRef: string | null
+  ): Promise<{ id: string; code: string }> {
     if (survey?.details?.survey?.result === 'not_feasible') {
       throw new AppError(
         HttpStatus.UNPROCESSABLE_ENTITY,
@@ -131,8 +193,8 @@ export class SalesService {
       );
     }
 
-    // The customer: the one surveyed (now with a contract), the one with this contract, or a new one.
-    let customerId = survey?.customerId ?? null;
+    // The customer: the one surveyed (now with a contract), the one chosen, the one with this contract, or a new one.
+    let customerId = survey?.customerId ?? input.customerId ?? null;
     const [byContract] = await this.db
       .select()
       .from(customers)
@@ -166,45 +228,39 @@ export class SalesService {
     }
     const [customer] = await this.db.select().from(customers).where(eq(customers.id, customerId!));
 
-    let created = true;
-    try {
-      const ticket = await this.tickets.create(
-        {
-          type: 'new_connection',
-          source: 'sales',
-          externalRef: input.externalRef,
-          problemType: null,
-          priority: 3,
-          slaMinutes: NEW_CUSTOMER_SLA_MINUTES.connection,
-          title: `New connection, contract ${input.contractNo}`,
-          description:
-            input.notes ?? `New ${input.supply.replace('_', '-')} connection for ${customer!.fullName}.`,
-          customerId: customer!.id,
-          customerPhone: customer!.phone,
-          receivedSms: sms.customerConnectionReceived,
-          location: customer!.location ?? survey?.location ?? null,
-          details: {
-            premises: input.premises ?? survey?.details?.premises,
-            supply: input.supply,
-            contractNo: input.contractNo,
-            surveyTicketId: survey?.id
-          }
-        },
-        actor
-      );
-      const estimate = survey?.details?.survey?.estimatedMaterials ?? [];
-      if (estimate.length) {
-        await this.db.transaction(async (tx) => {
-          const [t] = await tx.select().from(tickets).where(eq(tickets.id, ticket.id));
-          const missing = await this.stock.reserve(tx, t!, estimate, true);
-          await this.tickets.event(tx, ticket.id, 'reserved', actor, { lines: estimate.length, missing });
-        });
-      }
-    } catch (err) {
-      if (!(err instanceof DuplicateExternalRef)) throw err;
-      created = false;
+    const ticket = await this.tickets.create(
+      {
+        type: 'new_connection',
+        source: externalRef ? 'sales' : 'office',
+        externalRef,
+        problemType: null,
+        priority: 3,
+        slaMinutes: NEW_CUSTOMER_SLA_MINUTES.connection,
+        title: `New connection, contract ${input.contractNo}`,
+        description:
+          input.notes ?? `New ${input.supply.replace('_', '-')} connection for ${customer!.fullName}.`,
+        customerId: customer!.id,
+        customerPhone: customer!.phone,
+        receivedSms: sms.customerConnectionReceived,
+        location: customer!.location ?? survey?.location ?? null,
+        details: {
+          premises: input.premises ?? survey?.details?.premises,
+          supply: input.supply,
+          contractNo: input.contractNo,
+          surveyTicketId: survey?.id
+        }
+      },
+      actor
+    );
+    const estimate = survey?.details?.survey?.estimatedMaterials ?? [];
+    if (estimate.length) {
+      await this.db.transaction(async (tx) => {
+        const [t] = await tx.select().from(tickets).where(eq(tickets.id, ticket.id));
+        const missing = await this.stock.reserve(tx, t!, estimate, true);
+        await this.tickets.event(tx, ticket.id, 'reserved', actor, { lines: estimate.length, missing });
+      });
     }
-    return { ...(await this.find(input.externalRef))!, created };
+    return ticket;
   }
 
   async status(externalRef: string): Promise<SalesRequestView> {

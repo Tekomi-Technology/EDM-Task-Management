@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { api } from '../api';
 import { Avatar, useCrumbs } from '../components/ui';
-import { formatWhen, PREMISES_LABEL, SUPPLY_LABEL } from '../format';
+import { formatWhen, PREMISES_LABEL, SUPPLY_LABEL, ticketTitle } from '../format';
 import { useRegion } from '../components/topbar';
+import { t, translated } from '../i18n';
 
 const COLUMNS: { stage: NewCustomerStage; title: string; hint: string; color: string }[] = [
   {
@@ -30,11 +31,21 @@ const COLUMNS: { stage: NewCustomerStage; title: string; hint: string; color: st
 ];
 
 const TONE: Record<string, string> = { good: 'badge-active', warn: 'badge-brand', bad: 'badge-blocked' };
+/** The badges the server puts on the cards. */
+const BADGE_LABEL: Record<string, string> = translated({
+  Feasible: 'Feasible',
+  'Works needed': 'Works needed',
+  'Not feasible': 'Not feasible',
+  'Not assigned': 'Not assigned',
+  Active: 'Active',
+  'Waiting for activation': 'Waiting for activation',
+  'Needs a team': 'Needs a team'
+});
 
 /** W10: surveys and connections requested by the Sales system, by stage. */
 export function NewCustomersPage() {
   const { areaId, withArea } = useRegion();
-  useCrumbs([{ label: 'Tickets', to: '/tickets' }, { label: 'New customers' }]);
+  useCrumbs([{ label: t('Tickets'), to: '/tickets' }, { label: t('New customers') }]);
   const board = useQuery({
     queryKey: ['new-customers', areaId],
     queryFn: () => api<NewCustomerCard[]>(withArea('/new-customers')),
@@ -46,10 +57,11 @@ export function NewCustomersPage() {
     <div className="content" style={{ maxWidth: 'none' }}>
       <div className="page-head">
         <div>
-          <h1>New customers</h1>
+          <h1>{t('New customers')}</h1>
           <div className="subtitle">
-            Survey and connection requests arrive from the Sales system. Results go back to Sales
-            automatically.
+            {t(
+              'Survey and connection requests arrive from the Sales system. Results go back to Sales automatically.'
+            )}
           </div>
         </div>
       </div>
@@ -89,14 +101,14 @@ export function NewCustomersPage() {
                       display: 'inline-block'
                     }}
                   />
-                  <strong style={{ flex: 1, fontSize: 15 }}>{col.title}</strong>
+                  <strong style={{ flex: 1, fontSize: 15 }}>{t(col.title)}</strong>
                   <span className="meta">{inCol.length}</span>
                 </div>
-                <div className="meta">{col.hint}</div>
+                <div className="meta">{t(col.hint)}</div>
               </div>
               {inCol.length === 0 && (
                 <span className="meta" style={{ padding: '8px 2px' }}>
-                  Nothing here.
+                  {t('Nothing here.')}
                 </span>
               )}
               {inCol.map((c) => (
@@ -106,9 +118,9 @@ export function NewCustomersPage() {
                   className="card card-pad"
                   style={{ textDecoration: 'none', color: 'inherit', gap: 6, padding: 14 }}
                 >
-                  <strong style={{ fontSize: 15, overflowWrap: 'anywhere' }}>{c.title}</strong>
+                  <strong style={{ fontSize: 15, overflowWrap: 'anywhere' }}>{ticketTitle(c.title)}</strong>
                   <span className="meta" style={{ fontSize: 14 }}>
-                    {c.place ?? 'No area yet'}
+                    {c.place ?? t('No area yet')}
                   </span>
                   <span style={{ fontSize: 14 }}>
                     {[
@@ -123,7 +135,7 @@ export function NewCustomersPage() {
                       className={`badge ${c.badgeTone ? TONE[c.badgeTone] : ''}`}
                       style={{ alignSelf: 'flex-start' }}
                     >
-                      {c.badge}
+                      {BADGE_LABEL[c.badge] ?? c.badge}
                     </span>
                   )}
                   <span
@@ -135,9 +147,11 @@ export function NewCustomersPage() {
                         size="sm"
                         kind={c.assignee ? undefined : 'nobody'}
                       />
-                      {c.assignee?.fullName ?? <span className="meta">Nobody yet</span>}
+                      {c.assignee?.fullName ?? <span className="meta">{t('Nobody yet')}</span>}
                     </span>
-                    <span className="meta">{formatWhen(c.date)}</span>
+                    <span className="meta" style={{ whiteSpace: 'nowrap' }}>
+                      {formatWhen(c.date)}
+                    </span>
                   </span>
                 </Link>
               ))}

@@ -6,6 +6,7 @@ import { api, download } from '../api';
 import { hasRole, useCrumbs, useMe } from '../components/ui';
 import { qty, TYPE_LABEL } from '../format';
 import { useRegion } from '../components/topbar';
+import { t, dateLocale } from '../i18n';
 
 type PeriodKey = '7' | '14' | '30' | '90' | 'month' | 'last_month';
 const PERIODS: { key: PeriodKey; label: string }[] = [
@@ -37,26 +38,30 @@ export function periodDates(key: PeriodKey, today = maputoToday()): { from: stri
 /** "2 h 41 min", "1 day 2 h", "35 min". */
 export function duration(minutes: number | null): string {
   if (minutes === null) return '—';
-  if (minutes < 1) return 'Under 1 min';
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 1) return t('Under 1 min');
+  if (minutes < 60) return t('{0} min', { 0: minutes });
   if (minutes < 1440) {
+    const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return `${Math.floor(minutes / 60)} h${m ? ` ${m} min` : ''}`;
+    return m ? t('{h} h {m} min', { h, m }) : t('{h} h', { h });
   }
   const d = Math.floor(minutes / 1440);
   const h = Math.round((minutes % 1440) / 60);
-  return `${d} ${d === 1 ? 'day' : 'days'}${h ? ` ${h} h` : ''}`;
+  const dayText = d === 1 ? t('1 day') : t('{n} days', { n: d });
+  return h ? t('{days} {h} h', { days: dayText, h }) : dayText;
 }
 
 const avgDays = (v: number | null) =>
-  v === null ? '—' : v < 0.1 ? 'Same day' : `${v} ${v === 1 ? 'day' : 'days'}`;
+  v === null ? '—' : v < 0.1 ? t('Same day') : v === 1 ? t('1 day') : t('{n} days', { n: v });
 const pct = (v: number | null) => (v === null ? '—' : `${v}%`);
 
 function comparison(now: number, before: number, days: number): string {
-  if (before === 0) return now === 0 ? 'None closed' : `None in the ${days} days before`;
+  if (before === 0) return now === 0 ? t('None closed') : t('None in the {0} days before', { 0: days });
   const change = Math.round(((now - before) / before) * 100);
-  if (change === 0) return `Same as the ${days} days before`;
-  return `${Math.abs(change)}% ${change > 0 ? 'more' : 'fewer'} than the ${days} days before`;
+  if (change === 0) return t('Same as the {0} days before', { 0: days });
+  return change > 0
+    ? t('{p}% more than the {n} days before', { p: change, n: days })
+    : t('{p}% fewer than the {n} days before', { p: -change, n: days });
 }
 
 function Kpi({ title, value, note, alert }: { title: string; value: string; note: string; alert?: boolean }) {
@@ -94,7 +99,7 @@ function niceMax(v: number): number {
 }
 
 const dayLabel = (day: string) =>
-  new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', {
+  new Date(`${day}T12:00:00Z`).toLocaleDateString(dateLocale(), {
     day: 'numeric',
     month: 'short',
     timeZone: 'UTC'
@@ -123,14 +128,17 @@ function ClosedPerDay({ days, today }: { days: Report['perDay']; today: string }
           width={width}
           height={height}
           role="img"
-          aria-label={`Tickets closed per day, from ${days[0]?.day ?? ''} to ${days.at(-1)?.day ?? ''}`}
+          aria-label={t('Tickets closed per day, from {0} to {1}', {
+            0: days[0]?.day ?? '',
+            1: days.at(-1)?.day ?? ''
+          })}
           onMouseLeave={() => setHover(null)}
         >
           {[0, top / 2, top].map((v) => (
             <g key={v}>
               <line x1={pad.left} x2={width - pad.right} y1={y(v)} y2={y(v)} stroke="var(--border)" />
               <text x={pad.left - 8} y={y(v) + 4} textAnchor="end" fontSize={12} fill="var(--muted)">
-                {v.toLocaleString('en')}
+                {v.toLocaleString(dateLocale())}
               </text>
             </g>
           ))}
@@ -158,7 +166,7 @@ function ClosedPerDay({ days, today }: { days: Report['perDay']; today: string }
                     fontWeight={700}
                     fill="var(--text)"
                   >
-                    {d.closed.toLocaleString('en')}
+                    {d.closed.toLocaleString(dateLocale())}
                   </text>
                 )}
                 {i % labelEvery === 0 && (
@@ -199,9 +207,11 @@ function ClosedPerDay({ days, today }: { days: Report['perDay']; today: string }
         >
           <div className="meta">
             {dayLabel(tip.day)}
-            {tip.day === today ? ' (so far)' : ''}
+            {tip.day === today ? t(' (so far)') : ''}
           </div>
-          <strong>{tip.closed.toLocaleString('en')} closed</strong>
+          <strong>
+            {tip.closed.toLocaleString(dateLocale())} {t('closed')}
+          </strong>
         </div>
       )}
     </div>
@@ -210,14 +220,14 @@ function ClosedPerDay({ days, today }: { days: Report['perDay']; today: string }
 
 function ByType({ rows }: { rows: Report['byType'] }) {
   const max = Math.max(1, ...rows.map((r) => r.closed));
-  if (rows.length === 0) return <div className="empty">No tickets closed in this period.</div>;
+  if (rows.length === 0) return <div className="empty">{t('No tickets closed in this period.')}</div>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '4px 24px 24px' }}>
       {rows.map((r) => (
         <div key={r.type} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>{TYPE_LABEL[r.type]}</span>
-            <strong>{r.closed.toLocaleString('en')}</strong>
+            <strong>{r.closed.toLocaleString(dateLocale())}</strong>
           </div>
           <div style={{ height: 10, borderRadius: 5, background: 'var(--gray-soft)' }}>
             <div
@@ -251,7 +261,7 @@ function Figures({ items }: { items: [string, string][] }) {
 
 /** W15: how the technical teams are doing over a period. */
 export function ReportsPage() {
-  useCrumbs([{ label: 'Insights' }, { label: 'Reports' }]);
+  useCrumbs([{ label: t('Insights') }, { label: t('Reports') }]);
   const me = useMe();
   const [period, setPeriod] = useState<PeriodKey>('14');
   const region = useRegion();
@@ -289,20 +299,24 @@ export function ReportsPage() {
     <div className="content">
       <div className="page-head">
         <div>
-          <h1>Reports</h1>
-          <div className="subtitle">How the technical teams are doing</div>
+          <h1>{t('Reports')}</h1>
+          <div className="subtitle">{t('How the technical teams are doing')}</div>
         </div>
         <div className="btn-row">
-          <select aria-label="Period" value={period} onChange={(e) => setPeriod(e.target.value as PeriodKey)}>
+          <select
+            aria-label={t('Period')}
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as PeriodKey)}
+          >
             {PERIODS.map((p) => (
               <option key={p.key} value={p.key}>
-                {p.label}
+                {t(p.label)}
               </option>
             ))}
           </select>
           {seesAll && (
-            <select aria-label="Area" value={areaId} onChange={(e) => setAreaId(e.target.value)}>
-              <option value="">All areas</option>
+            <select aria-label={t('Area')} value={areaId} onChange={(e) => setAreaId(e.target.value)}>
+              <option value="">{t('All areas')}</option>
               {lookups.data?.areas.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -311,7 +325,7 @@ export function ReportsPage() {
             </select>
           )}
           <button type="button" className="btn btn-primary" onClick={() => void save()}>
-            <Download size={18} /> Download report
+            <Download size={18} /> {t('Download report')}
           </button>
         </div>
       </div>
@@ -322,28 +336,28 @@ export function ReportsPage() {
         <>
           <div className="kpis">
             <Kpi
-              title="Tickets closed"
-              value={r.closed.toLocaleString('en')}
+              title={t('Tickets closed')}
+              value={r.closed.toLocaleString(dateLocale())}
               note={comparison(r.closed, r.closedBefore, days)}
             />
             <Kpi
-              title="Fixed on time"
+              title={t('Fixed on time')}
               value={pct(r.onTimePct)}
-              note={`Target ${r.onTimeTarget}%`}
+              note={t('Target {0}%', { 0: r.onTimeTarget })}
               alert={r.onTimePct !== null && r.onTimePct < r.onTimeTarget}
             />
             <Kpi
-              title="Average time to fix (MTTR)"
+              title={t('Average time to fix (MTTR)')}
               value={duration(r.mttrMinutes)}
-              note="From ticket created to fixed"
+              note={t('From ticket created to fixed')}
             />
             <Kpi
-              title="Fixed the first time"
+              title={t('Fixed the first time')}
               value={pct(r.firstTimePct)}
               note={
                 r.firstTimePct === null
-                  ? 'Nothing checked yet'
-                  : `${100 - r.firstTimePct}% were reopened after the check`
+                  ? t('Nothing checked yet')
+                  : t('{0}% were reopened after the check', { 0: 100 - r.firstTimePct })
               }
             />
           </div>
@@ -351,9 +365,9 @@ export function ReportsPage() {
           <div className="two-col" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 420px)' }}>
             <section className="card">
               <div className="card-head">
-                <h2>Tickets closed per day</h2>
+                <h2>{t('Tickets closed per day')}</h2>
                 <button type="button" className="btn btn-sm btn-soft" onClick={() => setAsTable((v) => !v)}>
-                  {asTable ? 'Show chart' : 'Show as table'}
+                  {asTable ? t('Show chart') : t('Show as table')}
                 </button>
               </div>
               <div style={{ padding: '0 24px 16px' }}>
@@ -362,15 +376,15 @@ export function ReportsPage() {
                     <table>
                       <thead>
                         <tr>
-                          <th>Day</th>
-                          <th className="right">Closed</th>
+                          <th>{t('Day')}</th>
+                          <th className="right">{t('Closed')}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {r.perDay.map((d) => (
                           <tr key={d.day}>
                             <td>{dayLabel(d.day)}</td>
-                            <td className="right">{d.closed.toLocaleString('en')}</td>
+                            <td className="right">{d.closed.toLocaleString(dateLocale())}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -383,7 +397,7 @@ export function ReportsPage() {
             </section>
             <section className="card">
               <div className="card-head">
-                <h2>Tickets by type</h2>
+                <h2>{t('Tickets by type')}</h2>
               </div>
               <ByType rows={r.byType} />
             </section>
@@ -391,20 +405,20 @@ export function ReportsPage() {
 
           <section className="card">
             <div className="card-head">
-              <h2>By team</h2>
+              <h2>{t('By team')}</h2>
             </div>
             {r.byTeam.length === 0 ? (
-              <div className="empty">No tickets closed or fixed in this period.</div>
+              <div className="empty">{t('No tickets closed or fixed in this period.')}</div>
             ) : (
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Team</th>
-                      <th className="right">Closed</th>
-                      <th className="right">On time</th>
-                      <th className="right">Avg. time to fix</th>
-                      <th className="right">Reopened</th>
+                      <th>{t('Team')}</th>
+                      <th className="right">{t('Closed')}</th>
+                      <th className="right">{t('On time')}</th>
+                      <th className="right">{t('Avg. time to fix')}</th>
+                      <th className="right">{t('Reopened')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -413,7 +427,7 @@ export function ReportsPage() {
                         <td>
                           <strong>{t.teamName}</strong>
                         </td>
-                        <td className="right">{t.closed.toLocaleString('en')}</td>
+                        <td className="right">{t.closed.toLocaleString(dateLocale())}</td>
                         <td
                           className="right"
                           style={
@@ -437,21 +451,21 @@ export function ReportsPage() {
           <div className="two-col" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 420px)' }}>
             <section className="card">
               <div className="card-head">
-                <h2>By staff member</h2>
+                <h2>{t('By staff member')}</h2>
               </div>
               {r.byStaff.length === 0 ? (
-                <div className="empty">Nobody fixed a job in this period.</div>
+                <div className="empty">{t('Nobody fixed a job in this period.')}</div>
               ) : (
                 <div className="table-wrap">
                   <table>
                     <thead>
                       <tr>
-                        <th>Name</th>
-                        <th>Team</th>
-                        <th className="right">Jobs fixed</th>
-                        <th className="right">On time</th>
-                        <th className="right">Avg. time to fix</th>
-                        <th className="right">First time</th>
+                        <th>{t('Name')}</th>
+                        <th>{t('Team')}</th>
+                        <th className="right">{t('Jobs fixed')}</th>
+                        <th className="right">{t('On time')}</th>
+                        <th className="right">{t('Avg. time to fix')}</th>
+                        <th className="right">{t('First time')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -475,28 +489,28 @@ export function ReportsPage() {
             <div className="stack">
               <section className="card">
                 <div className="card-head">
-                  <h2>Network incidents</h2>
+                  <h2>{t('Network incidents')}</h2>
                 </div>
                 <Figures
                   items={[
-                    ['Incidents', r.incidents.count.toLocaleString('en')],
-                    ['Alarms from the NMS', r.incidents.alarms.toLocaleString('en')],
-                    ['Average time to restore', duration(r.incidents.avgRestoreMinutes)],
-                    ['Customers affected', r.incidents.customersAffected.toLocaleString('en')]
+                    [t('Incidents'), r.incidents.count.toLocaleString(dateLocale())],
+                    [t('Alarms from the NMS'), r.incidents.alarms.toLocaleString(dateLocale())],
+                    [t('Average time to restore'), duration(r.incidents.avgRestoreMinutes)],
+                    [t('Customers affected'), r.incidents.customersAffected.toLocaleString(dateLocale())]
                   ]}
                 />
               </section>
               <section className="card">
                 <div className="card-head">
-                  <h2>New customers</h2>
+                  <h2>{t('New customers')}</h2>
                 </div>
                 <Figures
                   items={[
-                    ['Surveys done', String(r.newCustomers.surveysDone)],
-                    ['Average survey time', avgDays(r.newCustomers.avgSurveyDays)],
-                    ['Connections done', String(r.newCustomers.connectionsDone)],
-                    ['Average connection time', avgDays(r.newCustomers.avgConnectionDays)],
-                    ['Waiting for activation by Sales', String(r.newCustomers.waitingActivation)]
+                    [t('Surveys done'), String(r.newCustomers.surveysDone)],
+                    [t('Average survey time'), avgDays(r.newCustomers.avgSurveyDays)],
+                    [t('Connections done'), String(r.newCustomers.connectionsDone)],
+                    [t('Average connection time'), avgDays(r.newCustomers.avgConnectionDays)],
+                    [t('Waiting for activation by Sales'), String(r.newCustomers.waitingActivation)]
                   ]}
                 />
               </section>
@@ -505,19 +519,19 @@ export function ReportsPage() {
 
           <section className="card">
             <div className="card-head">
-              <h2>Materials used</h2>
+              <h2>{t('Materials used')}</h2>
             </div>
             {r.materials.length === 0 ? (
-              <div className="empty">No material taken off stock in this period.</div>
+              <div className="empty">{t('No material taken off stock in this period.')}</div>
             ) : (
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Item</th>
-                      <th>Code</th>
-                      <th className="right">Used</th>
-                      <th className="right">On tickets</th>
+                      <th>{t('Item')}</th>
+                      <th>{t('Code')}</th>
+                      <th className="right">{t('Used')}</th>
+                      <th className="right">{t('On tickets')}</th>
                     </tr>
                   </thead>
                   <tbody>

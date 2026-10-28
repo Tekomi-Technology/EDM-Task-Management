@@ -9,3 +9,7 @@ docs
 
 # Database and attachment backups (infra/scripts/backup.sh)
 backups/
+
+# Server settings with real secrets (infra/.env.prod) and design mockups
+infra/.env.prod
+mockup-figma

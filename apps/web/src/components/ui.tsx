@@ -1,8 +1,9 @@
-import type { CurrentUser, TicketSummary } from '../types';
+import type { CurrentUser, TicketSummary, TicketType } from '../types';
 import { useQuery } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { api } from '../api';
 import { initials } from '../format';
+import { t } from '../i18n';
 
 export function Avatar({
   name,
@@ -26,7 +27,7 @@ export function AssigneeCell({ ticket }: { ticket: Pick<TicketSummary, 'assignee
     return (
       <span className="person meta" style={{ fontSize: 14 }}>
         <Avatar name="?" size="sm" kind="nobody" />
-        Nobody yet
+        {t('Nobody yet')}
       </span>
     );
   }
@@ -61,6 +62,21 @@ export function useMe() {
 
 /** EDM staff who may answer a call and enter a ticket themselves (New ticket screen). */
 export const TAKES_CALLS_ROLES = ['admin', 'technical_manager', 'team_manager', 'noc', 'bo_support'];
+
+/** Who may create each ticket type on the New ticket screen (the API checks it too). */
+export const CREATE_ROLES: Record<TicketType, string[]> = {
+  customer_complaint: TAKES_CALLS_ROLES,
+  network_incident: TAKES_CALLS_ROLES,
+  planned_work: ['network_team', 'noc', 'technical_manager', 'admin'],
+  new_customer_survey: ['technical_manager', 'admin'],
+  new_connection: ['technical_manager', 'admin'],
+  other: TAKES_CALLS_ROLES
+};
+
+/** The ticket types this person may create, in the order of the New ticket screen. */
+export function creatableTypes(me: CurrentUser | undefined): TicketType[] {
+  return (Object.keys(CREATE_ROLES) as TicketType[]).filter((type) => hasRole(me, ...CREATE_ROLES[type]));
+}
 
 export const OFFICE_ROLES = [
   'admin',

@@ -28,7 +28,7 @@ import {
 import { z } from 'zod';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser, Roles } from '../auth/decorators';
-import { ApiZodBody, ZodBody, ZodQuery } from '../common/zod';
+import { ApiZodBody, ApiZodQuery, ZodBody, ZodQuery } from '../common/zod';
 import { eq } from 'drizzle-orm';
 import { notFound } from '../common/errors';
 import { DB, type Db } from '../db/db.module';
@@ -222,6 +222,7 @@ export class StockIntakeController {
 
   @Get('consumption')
   @ApiOperation({ summary: 'Materials used on jobs since a time (oldest first), to deduct on your side' })
+  @ApiZodQuery(consumptionQuerySchema)
   consumption(@ZodQuery(consumptionQuerySchema) q: z.infer<typeof consumptionQuerySchema>) {
     return this.stock.consumption(q.since, q.limit);
   }

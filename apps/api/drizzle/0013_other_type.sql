@@ -1,0 +1,1 @@
+ALTER TYPE "public"."ticket_type" ADD VALUE 'other';

@@ -294,4 +294,55 @@ describe('new customers from the Sales system: survey, connection, handover, act
     });
     expect(failed.body.status).toBe('reopened');
   });
+
+  it('takes a survey and a connection typed in by the office, without Sales, checked by the Call Center queue', async () => {
+    await t.as('armando.cossa').post('/api/me/duty', { onDuty: true });
+    const form: Record<string, unknown> = survey('unused');
+    delete form.externalRef;
+    expect((await t.as('helena.mondlane').post('/api/new-customers/surveys', form)).status).toBe(403);
+    const made = await t.as('carla.manhica').post('/api/new-customers/surveys', form);
+    expect(made.status).toBe(201);
+    const surveyed = (await t.as('carla.manhica').get(`/api/tickets/${made.body.id}`)).body;
+    expect(surveyed).toMatchObject({ type: 'new_customer_survey', source: 'office', code: made.body.code });
+
+    const conn = await t.as('carla.manhica').post('/api/new-customers/connections', {
+      contractNo: '88301',
+      surveyTicketId: made.body.id,
+      supply: 'single_phase'
+    });
+    expect(conn.status).toBe(201);
+    const id = conn.body.id as string;
+    const detail = (await t.as('carla.manhica').get(`/api/tickets/${id}`)).body;
+    expect(detail).toMatchObject({
+      type: 'new_connection',
+      source: 'office',
+      customer: { fullName: 'Loja Esperança' }
+    });
+
+    for (const step of ['accept', 'start']) await t.as('armando.cossa').post(`/api/tickets/${id}/${step}`);
+    await t.as('armando.cossa').post(`/api/tickets/${id}/handover-code`);
+    const code = (await smsTo(PROSPECT_PHONE)).at(-1)!.match(/\b(\d{4})\b/)![1]!;
+    const done = await t.as('armando.cossa').post(`/api/tickets/${id}/resolve`, {
+      note: 'Meter installed',
+      installation: { meterNumber: 'MP-0050001', handoverCode: code }
+    });
+    expect(done.body.status).toBe('resolved');
+    // Nothing goes to Sales: it never asked for this connection.
+    expect(
+      await t.db.select().from(notificationOutbox).where(eq(notificationOutbox.channel, 'webhook'))
+    ).toEqual([]);
+    // A team manager does not close connections; NOC records what the customer said.
+    expect((await t.as('helena.mondlane').post(`/api/tickets/${id}/close`, {})).status).toBe(403);
+    const closed = await t.as('nadia.mussa').post(`/api/tickets/${id}/close`, { note: 'Customer has power' });
+    expect(closed.body).toMatchObject({ status: 'closed' });
+
+    expect(
+      (
+        await t.as('carla.manhica').post('/api/new-customers/connections', {
+          contractNo: '88302',
+          supply: 'single_phase'
+        })
+      ).status
+    ).toBe(400);
+  });
 });

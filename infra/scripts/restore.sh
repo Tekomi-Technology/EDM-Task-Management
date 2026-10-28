@@ -50,7 +50,7 @@ fi
 
 if [[ "$attachments" == true ]]; then
   endpoint="${S3_ENDPOINT:?set S3_ENDPOINT}"
-  endpoint="${endpoint/localhost/host.docker.internal}"
+  endpoint="${BACKUP_S3_ENDPOINT:-${endpoint/localhost/host.docker.internal}}"
   docker run --rm --add-host host.docker.internal:host-gateway \
     -e AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY" -e AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY" \
     -e AWS_DEFAULT_REGION="${S3_REGION:-us-east-1}" \

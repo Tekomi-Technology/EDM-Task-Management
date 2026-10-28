@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   allowedActions,
+  mayCheck,
   OPEN_JOB_STATUSES,
   type IncidentSummary,
   type Lookups,
@@ -629,9 +630,13 @@ export class TicketsQuery {
       { userId: user.userId, roles: user.roles },
       summary.assignee?.id ?? null
     );
+    if (!mayCheck(summary.type, user.roles)) actions = actions.filter((a) => a !== 'close' && a !== 'reopen');
     const isManagerOnly = user.roles.includes('team_manager') && !user.roles.includes('admin');
     if (isManagerOnly && summary.teamId !== user.teamId) {
-      actions = actions.filter((a) => a !== 'assign' && a !== 'cancel');
+      actions = actions.filter(
+        (a) =>
+          a !== 'assign' && a !== 'cancel' && (summary.type !== 'other' || (a !== 'close' && a !== 'reopen'))
+      );
     }
 
     return {

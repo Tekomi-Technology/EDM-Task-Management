@@ -83,6 +83,9 @@ CI (`.github/workflows/ci.yml`) runs lint, type check, tests and build on every 
 
 ## Deploy (staging / production)
 
+On a single VPS with everything in Docker under one address (https://edm.tekomi.vn), follow
+[infra/DEPLOY-VPS.md](infra/DEPLOY-VPS.md). The generic steps, with an external S3 and proxy:
+
 ```bash
 docker build -f apps/api/Dockerfile -t edm-api .
 docker build -f apps/web/Dockerfile --build-arg VITE_API_URL=https://... --build-arg VITE_KEYCLOAK_URL=https://... -t edm-web .

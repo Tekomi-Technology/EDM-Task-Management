@@ -4,6 +4,7 @@ import { Logger } from 'nestjs-pino';
 import type { NextFunction, Request, Response } from 'express';
 import type { Env } from './config/env';
 import { integrationLog } from './integrations/integration-log';
+import { IntegrationDocsService, type OpenApiDocument } from './integrations/integration-docs';
 import { IntegrationsService } from './integrations/integrations.service';
 
 /** Shared by main.ts and the tests so both run the same app configuration. */
@@ -26,9 +27,10 @@ export function configureApp(app: INestApplication, env: Env): void {
     .setVersion('0.1.0')
     .addBearerAuth()
     .build();
-  if (env.API_DOCS ?? env.NODE_ENV !== 'production') {
-    SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
-  }
+  const document = SwaggerModule.createDocument(app, config);
+  // The API documentation screen in the web app reads it too, also when the Swagger page is off.
+  app.get(IntegrationDocsService).use(document as unknown as OpenApiDocument);
+  if (env.API_DOCS ?? env.NODE_ENV !== 'production') SwaggerModule.setup('api/docs', app, document);
 }
 
 /** The API only returns JSON and files: nothing may sniff, frame or cache what it sends. */

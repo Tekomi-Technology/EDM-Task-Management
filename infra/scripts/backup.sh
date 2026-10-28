@@ -6,7 +6,8 @@
 #   COMPOSE_FILE=infra/docker-compose.prod.yml ENV_FILE=infra/.env.prod infra/scripts/backup.sh
 #
 # Settings (environment): BACKUP_DIR (./backups), KEEP_DAYS (14), DATABASES ("edm keycloak"; missing ones are
-# skipped), and for attachments S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET (read from ENV_FILE too).
+# skipped), and for attachments S3_ENDPOINT (or BACKUP_S3_ENDPOINT when the storage is only reachable through
+# the public address, as on the single VPS), S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET (read from ENV_FILE too).
 # Run it every night from cron, e.g.  15 2 * * *  cd /srv/edm && infra/scripts/backup.sh >> /var/log/edm-backup.log 2>&1
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -38,7 +39,7 @@ done
 
 if [[ -n "${S3_ENDPOINT:-}" && -n "${S3_ACCESS_KEY:-}" ]]; then
   # One mirror, updated each night: only new photos are copied. Photos are never changed or deleted by the app.
-  endpoint="${S3_ENDPOINT/localhost/host.docker.internal}"
+  endpoint="${BACKUP_S3_ENDPOINT:-${S3_ENDPOINT/localhost/host.docker.internal}}"
   mkdir -p "$BACKUP_DIR/attachments"
   docker run --rm --add-host host.docker.internal:host-gateway \
     -e AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY" -e AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY" \

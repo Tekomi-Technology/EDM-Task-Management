@@ -1,5 +1,18 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, resetData, waitFor, type TestContext } from './helpers';
+import {
+  activationResultSchema,
+  callCenterCheckResultSchema,
+  callCenterComplaintSchema,
+  connectionRequestSchema,
+  networkReportSchema,
+  nmsAlarmBatchSchema,
+  reasonSchema,
+  stockItemsSyncSchema,
+  stockReceiptSyncSchema,
+  surveyRequestSchema,
+  type IntegrationDocs
+} from '../src/contract';
 import { mockServer } from './mock-server';
 
 /** Connected systems (W17): what the other systems sent, what we sent them, and whether they answer. */
@@ -118,5 +131,62 @@ describe('connected systems', () => {
     expect(await test('sms')).toMatchObject({ ok: true, message: expect.stringContaining('Test mode') });
     expect((await t.as('admin.edm').post('/api/integrations/teams/test')).status).toBe(400);
     expect((await t.as('helena.mondlane').get('/api/integrations')).status).toBe(403);
+  });
+
+  it('documents the integration APIs for administrators, with examples that the API accepts', async () => {
+    const res = await t.as('admin.edm').get('/api/integrations/docs');
+    expect(res.status).toBe(200);
+    const docs = res.body as IntegrationDocs;
+    expect(docs.tokenUrl).toMatch(/\/realms\/edm\/protocol\/openid-connect\/token$/);
+    expect(docs.systems.map((s) => [s.system, s.clientId])).toEqual([
+      ['call_center', 'call-center-system'],
+      ['sales', 'sales-system'],
+      ['nms', 'nms-system'],
+      ['stock', 'stock-system']
+    ]);
+
+    const sales = docs.systems.find((s) => s.system === 'sales')!;
+    const survey = sales.operations.find((o) => o.path === '/api/intake/sales/survey-requests')!;
+    expect(survey.method).toBe('POST');
+    expect(survey.fields.find((f) => f.name === 'customer.fullName')).toMatchObject({
+      in: 'body',
+      required: true,
+      description: 'Customer or company name.',
+      min: 2,
+      max: 200
+    });
+    expect(survey.fields.find((f) => f.name === 'premises')?.values).toContain('shop');
+    expect(sales.webhooks.map((w) => w.event)).toEqual([
+      'survey_completed',
+      'connection_installed',
+      'request_cancelled'
+    ]);
+    const nms = docs.systems.find((s) => s.system === 'nms')!;
+    expect(nms.operations[0]!.fields.find((f) => f.name === 'alarms[].severity')?.required).toBe(true);
+    const stock = docs.systems.find((s) => s.system === 'stock')!;
+    expect(stock.operations.find((o) => o.path.endsWith('/consumption'))!.fields).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'since', in: 'query', required: true })])
+    );
+
+    // Every example body is valid as it is, so it can be copied.
+    const schemas = {
+      '/api/intake/call-center/complaints': callCenterComplaintSchema,
+      '/api/intake/call-center/network-reports': networkReportSchema,
+      '/api/intake/call-center/tickets/{externalRef}/check-result': callCenterCheckResultSchema,
+      '/api/intake/call-center/tickets/{externalRef}/cancel': reasonSchema,
+      '/api/intake/sales/survey-requests': surveyRequestSchema,
+      '/api/intake/sales/connection-requests': connectionRequestSchema,
+      '/api/intake/sales/connections/{externalRef}/activation': activationResultSchema,
+      '/api/intake/nms/alarms': nmsAlarmBatchSchema,
+      '/api/intake/stock/receipts': stockReceiptSyncSchema,
+      '/api/intake/stock/items': stockItemsSyncSchema
+    } as const;
+    const withBody = docs.systems.flatMap((s) => s.operations).filter((o) => o.example !== null);
+    expect(withBody.map((o) => o.path).sort()).toEqual(Object.keys(schemas).sort());
+    for (const o of withBody) {
+      expect(schemas[o.path as keyof typeof schemas].safeParse(o.example).success, o.path).toBe(true);
+    }
+
+    expect((await t.as('helena.mondlane').get('/api/integrations/docs')).status).toBe(403);
   });
 });

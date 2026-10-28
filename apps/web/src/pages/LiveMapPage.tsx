@@ -6,8 +6,9 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../api';
 import { MAP_COLORS, TicketMap } from '../components/TicketMap';
 import { Avatar, useCrumbs } from '../components/ui';
-import { ago, formatTime, STAFF_STATE_LABEL, STATUS_LABEL } from '../format';
+import { ago, formatTime, STAFF_STATE_LABEL, STATUS_LABEL, ticketTitle } from '../format';
 import { useRegion } from '../components/topbar';
+import { t } from '../i18n';
 
 const STATE_BADGE: Record<StaffState, string> = {
   on_job: 'badge-assigned',
@@ -36,10 +37,10 @@ function StaffCard({ s, onClose }: { s: StaffLive; onClose: () => void }) {
           <strong style={{ fontSize: 16 }}>{s.fullName}</strong>
           <div className="meta">
             {s.teamName ? `${s.teamName} · ` : ''}
-            {s.location ? `seen ${ago(s.location.at)}` : 'no position yet'}
+            {s.location ? t('seen {0}', { 0: ago(s.location.at) }) : t('no position yet')}
           </div>
         </div>
-        <button type="button" className="btn btn-sm" aria-label="Close" onClick={onClose}>
+        <button type="button" className="btn btn-sm" aria-label={t('Close')} onClick={onClose}>
           ×
         </button>
       </div>
@@ -47,7 +48,7 @@ function StaffCard({ s, onClose }: { s: StaffLive; onClose: () => void }) {
         <div>
           {STATUS_LABEL[s.currentJob.status]}:{' '}
           <Link to={`/tickets/${s.currentJob.id}`} style={{ fontWeight: 700 }}>
-            {s.currentJob.title}
+            {ticketTitle(s.currentJob.title)}
           </Link>
         </div>
       ) : (
@@ -56,12 +57,12 @@ function StaffCard({ s, onClose }: { s: StaffLive; onClose: () => void }) {
         </span>
       )}
       <span className="meta" style={{ fontSize: 14 }}>
-        Jobs today: {s.doneToday} done · {s.openJobs} to go
+        {t('Jobs today:')} {s.doneToday} {t('done ·')} {s.openJobs} {t('to go')}
       </span>
       <div className="btn-row">
         {s.phone && (
           <a className="btn" href={`tel:${s.phone}`} style={{ flex: 1 }}>
-            <Phone size={16} /> Call
+            <Phone size={16} /> {t('Call')}
           </a>
         )}
         <button
@@ -70,7 +71,7 @@ function StaffCard({ s, onClose }: { s: StaffLive; onClose: () => void }) {
           style={{ flex: 1 }}
           onClick={() => navigate(`/tickets?view=unassigned${s.teamId ? `&teamId=${s.teamId}` : ''}`)}
         >
-          <UserPlus size={16} /> Give a job
+          <UserPlus size={16} /> {t('Give a job')}
         </button>
       </div>
     </section>
@@ -80,7 +81,7 @@ function StaffCard({ s, onClose }: { s: StaffLive; onClose: () => void }) {
 /** W11: where field staff are, open tickets and the team areas, refreshed every 15 seconds. */
 export function LiveMapPage() {
   const { areaId, withArea } = useRegion();
-  useCrumbs([{ label: 'Field' }, { label: 'Live map' }]);
+  useCrumbs([{ label: t('Field') }, { label: t('Live map') }]);
   const navigate = useNavigate();
   const [tab, setTab] = useState<'staff' | 'tickets'>('staff');
   const [filter, setFilter] = useState<StaffState | 'all'>('all');
@@ -104,17 +105,26 @@ export function LiveMapPage() {
     <div className="content">
       <div className="page-head">
         <div>
-          <h1>Live map</h1>
-          <div className="subtitle">Field staff on duty, open tickets and the team areas.</div>
+          <h1>{t('Live map')}</h1>
+          <div className="subtitle">{t('Field staff on duty, open tickets and the team areas.')}</div>
         </div>
-        {data && <span className="live">Live · updated {formatTime(data.updatedAt)}</span>}
+        {data && (
+          <span className="live">
+            {t('Live · updated')} {formatTime(data.updatedAt)}
+          </span>
+        )}
       </div>
       <div className="btn-row">
         {[
-          { label: 'on a job', value: count('on_job'), color: MAP_COLORS.staff, fill: true },
+          { label: t('on a job'), value: count('on_job'), color: MAP_COLORS.staff, fill: true },
           { label: 'free', value: count('free'), color: MAP_COLORS.staff },
           { label: 'offline', value: count('offline'), color: MAP_COLORS.offline },
-          { label: 'open tickets', value: data?.tickets.length ?? 0, color: MAP_COLORS.working, fill: true }
+          {
+            label: t('open tickets'),
+            value: data?.tickets.length ?? 0,
+            color: MAP_COLORS.working,
+            fill: true
+          }
         ].map((c) => (
           <span
             key={c.label}
@@ -142,7 +152,7 @@ export function LiveMapPage() {
             fontWeight: 700
           }}
         >
-          {late} late · {incidents} network
+          {late} {t('late ·')} {incidents} {t('network')}
         </span>
       </div>
 
@@ -150,7 +160,8 @@ export function LiveMapPage() {
         <section className="card" style={{ maxHeight: 640, overflowY: 'auto' }}>
           <div className="tabs" role="tablist">
             <button type="button" role="tab" aria-selected={tab === 'staff'} onClick={() => setTab('staff')}>
-              Staff <span className="pill-count">{staff.filter((s) => s.state !== 'off_duty').length}</span>
+              {t('Staff')}{' '}
+              <span className="pill-count">{staff.filter((s) => s.state !== 'off_duty').length}</span>
             </button>
             <button
               type="button"
@@ -158,7 +169,7 @@ export function LiveMapPage() {
               aria-selected={tab === 'tickets'}
               onClick={() => setTab('tickets')}
             >
-              Tickets <span className="pill-count">{data?.tickets.length ?? 0}</span>
+              {t('Tickets')} <span className="pill-count">{data?.tickets.length ?? 0}</span>
             </button>
           </div>
           {tab === 'staff' && (
@@ -172,11 +183,11 @@ export function LiveMapPage() {
                     aria-pressed={filter === f}
                     onClick={() => setFilter(f)}
                   >
-                    {f === 'all' ? 'All' : STAFF_STATE_LABEL[f]}
+                    {f === 'all' ? t('All') : STAFF_STATE_LABEL[f]}
                   </button>
                 ))}
               </div>
-              {shown.length === 0 && <div className="empty">Nobody here.</div>}
+              {shown.length === 0 && <div className="empty">{t('Nobody here.')}</div>}
               {shown.map((s) => (
                 <button
                   key={s.id}
@@ -191,8 +202,10 @@ export function LiveMapPage() {
                     <strong>{s.fullName}</strong>
                     <div className="meta">
                       {s.teamName}
-                      {s.currentJob ? ` · ${s.currentJob.title}` : ''}
-                      {s.state === 'offline' && s.location ? ` · last seen ${ago(s.location.at)}` : ''}
+                      {s.currentJob ? ` · ${ticketTitle(s.currentJob.title)}` : ''}
+                      {s.state === 'offline' && s.location
+                        ? t(' · last seen {0}', { 0: ago(s.location.at) })
+                        : ''}
                     </div>
                   </span>
                   <span className={`badge ${STATE_BADGE[s.state]}`}>{STAFF_STATE_LABEL[s.state]}</span>
@@ -223,7 +236,7 @@ export function LiveMapPage() {
                     }}
                   />
                   <span className="grow">
-                    <strong>{t.title}</strong>
+                    <strong>{ticketTitle(t.title)}</strong>
                     <div className="meta">
                       {t.code} · {t.late ? 'late' : STATUS_LABEL[t.status]}
                     </div>
@@ -231,7 +244,7 @@ export function LiveMapPage() {
                 </Link>
               ))
             ) : (
-              <div className="empty">No open tickets with a location.</div>
+              <div className="empty">{t('No open tickets with a location.')}</div>
             ))}
         </section>
 
@@ -248,7 +261,7 @@ export function LiveMapPage() {
                   checked={layers[l]}
                   onChange={(e) => setLayers({ ...layers, [l]: e.target.checked })}
                 />
-                {l === 'tickets' ? 'Tickets' : l === 'staff' ? 'Staff' : 'Areas'}
+                {l === 'tickets' ? t('Tickets') : l === 'staff' ? t('Staff') : t('Areas')}
               </label>
             ))}
           </div>
@@ -266,28 +279,28 @@ export function LiveMapPage() {
           {chosen && <StaffCard s={chosen} onClose={() => setSelected(null)} />}
           <div className="legend" style={{ borderTop: '1px solid var(--border-soft)' }}>
             <span>
-              <i style={{ background: MAP_COLORS.staff }} /> Staff on a job
+              <i style={{ background: MAP_COLORS.staff }} /> {t('Staff on a job')}
             </span>
             <span>
-              <i style={{ border: `2px solid ${MAP_COLORS.staff}`, background: '#fff' }} /> Free
+              <i style={{ border: `2px solid ${MAP_COLORS.staff}`, background: '#fff' }} /> {t('Free')}
             </span>
             <span>
-              <i style={{ border: `2px solid ${MAP_COLORS.offline}`, background: '#fff' }} /> Offline
+              <i style={{ border: `2px solid ${MAP_COLORS.offline}`, background: '#fff' }} /> {t('Offline')}
             </span>
             <span>
-              <i style={{ background: MAP_COLORS.late }} /> Late
+              <i style={{ background: MAP_COLORS.late }} /> {t('Late')}
             </span>
             <span>
-              <i style={{ background: MAP_COLORS.working }} /> Being fixed
+              <i style={{ background: MAP_COLORS.working }} /> {t('Being fixed')}
             </span>
             <span>
-              <i style={{ background: MAP_COLORS.open }} /> Open
+              <i style={{ background: MAP_COLORS.open }} /> {t('Open')}
             </span>
             <span>
-              <i style={{ background: MAP_COLORS.waiting }} /> Waiting for check
+              <i style={{ background: MAP_COLORS.waiting }} /> {t('Waiting for check')}
             </span>
             <span>
-              <i style={{ background: MAP_COLORS.open, borderRadius: 2 }} /> Network incident
+              <i style={{ background: MAP_COLORS.open, borderRadius: 2 }} /> {t('Network incident')}
             </span>
           </div>
         </section>

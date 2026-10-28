@@ -5,10 +5,14 @@ import {
   type AreaFilter,
   activationResultSchema,
   connectionRequestSchema,
+  officeConnectionSchema,
+  officeSurveySchema,
   surveyRequestSchema,
   type ActivationResult,
   type ConnectionRequest,
   type NewCustomerCard,
+  type OfficeConnection,
+  type OfficeSurvey,
   type SurveyRequest
 } from '../contract';
 import type { Response } from 'express';
@@ -97,5 +101,27 @@ export class NewCustomersController {
     @ZodQuery(areaFilterSchema) q: AreaFilter
   ): Promise<NewCustomerCard[]> {
     return this.sales.board(user, q.areaId);
+  }
+
+  /** New ticket screen: a survey without the Sales system (nothing is sent back to Sales). */
+  @Post('surveys')
+  @Roles('admin', 'technical_manager')
+  @ApiZodBody(officeSurveySchema)
+  survey(
+    @ZodBody(officeSurveySchema) body: OfficeSurvey,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ id: string; code: string }> {
+    return this.sales.officeSurvey(body, user).then(({ id, code }) => ({ id, code }));
+  }
+
+  /** New ticket screen: a connection without the Sales system; the Call Center checks it, the office closes it. */
+  @Post('connections')
+  @Roles('admin', 'technical_manager')
+  @ApiZodBody(officeConnectionSchema)
+  connection(
+    @ZodBody(officeConnectionSchema) body: OfficeConnection,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ id: string; code: string }> {
+    return this.sales.officeConnection(body, user).then(({ id, code }) => ({ id, code }));
   }
 }

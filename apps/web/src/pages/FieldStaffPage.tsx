@@ -4,8 +4,9 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
 import { Avatar, hasRole, useCrumbs, useMe } from '../components/ui';
-import { ago, STAFF_STATE_LABEL, STATUS_LABEL } from '../format';
+import { ago, STAFF_STATE_LABEL, STATUS_LABEL, ticketTitle } from '../format';
 import { useRegion } from '../components/topbar';
+import { t } from '../i18n';
 
 const STATE_BADGE: Record<StaffState, string> = {
   on_job: 'badge-assigned',
@@ -15,7 +16,8 @@ const STATE_BADGE: Record<StaffState, string> = {
 };
 
 const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
-const mins = (v: number | null) => (v === null ? '—' : v >= 120 ? `${Math.round(v / 60)} h` : `${v} min`);
+const mins = (v: number | null) =>
+  v === null ? '—' : v >= 120 ? `${Math.round(v / 60)} h` : t('{0} min', { 0: v });
 
 function Figure({ label, value, alert }: { label: string; value: string | number; alert?: boolean }) {
   return (
@@ -29,7 +31,7 @@ function Figure({ label, value, alert }: { label: string; value: string | number
 /** W12: how each field staff member is doing now and over a period. */
 export function FieldStaffPage() {
   const { areaId, withArea } = useRegion();
-  useCrumbs([{ label: 'Field' }, { label: 'Field staff' }]);
+  useCrumbs([{ label: t('Field') }, { label: t('Field staff') }]);
   const me = useMe();
   const [teamId, setTeamId] = useState('');
   const [days, setDays] = useState(30);
@@ -55,16 +57,19 @@ export function FieldStaffPage() {
     <div className="content">
       <div className="page-head">
         <div>
-          <h1>Field staff</h1>
+          <h1>{t('Field staff')}</h1>
           <div className="subtitle">
-            {onDuty} on duty now in {teamsOnDuty} {teamsOnDuty === 1 ? 'team' : 'teams'} · figures for the
-            last {days} days
+            {t(teamsOnDuty === 1 ? '{0} on duty now in {1} team' : '{0} on duty now in {1} teams', {
+              0: onDuty,
+              1: teamsOnDuty
+            })}{' '}
+            {t('· figures for the last {0} days', { 0: days })}
           </div>
         </div>
         <div className="btn-row">
           {seesAll && (
-            <select aria-label="Team" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-              <option value="">All teams</option>
+            <select aria-label={t('Team')} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+              <option value="">{t('All teams')}</option>
               {lookups.data?.teams.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
@@ -72,30 +77,30 @@ export function FieldStaffPage() {
               ))}
             </select>
           )}
-          <select aria-label="Period" value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={1}>Today</option>
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={90}>Last 90 days</option>
+          <select aria-label={t('Period')} value={days} onChange={(e) => setDays(Number(e.target.value))}>
+            <option value={1}>{t('Today')}</option>
+            <option value={7}>{t('Last 7 days')}</option>
+            <option value={30}>{t('Last 30 days')}</option>
+            <option value={90}>{t('Last 90 days')}</option>
           </select>
         </div>
       </div>
       {staff.error && <div className="error">{(staff.error as Error).message}</div>}
       <div className="two-col" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 400px)' }}>
         <section className="card">
-          {staff.isLoading && <div className="empty">Loading…</div>}
-          {staff.data && rows.length === 0 && <div className="empty">No field staff here.</div>}
+          {staff.isLoading && <div className="empty">{t('Loading…')}</div>}
+          {staff.data && rows.length === 0 && <div className="empty">{t('No field staff here.')}</div>}
           {rows.length > 0 && (
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Now</th>
-                    <th className="right">Jobs done</th>
-                    <th className="right">On time</th>
-                    <th className="right">Avg. to arrive</th>
-                    <th className="right">Fixed first time</th>
+                    <th>{t('Name')}</th>
+                    <th>{t('Now')}</th>
+                    <th className="right">{t('Jobs done')}</th>
+                    <th className="right">{t('On time')}</th>
+                    <th className="right">{t('Avg. to arrive')}</th>
+                    <th className="right">{t('Fixed first time')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -110,7 +115,7 @@ export function FieldStaffPage() {
                           <Avatar name={s.fullName} size="sm" />
                           <span>
                             <strong>{s.fullName}</strong>
-                            <div className="meta">{s.teamName ?? 'No team'}</div>
+                            <div className="meta">{s.teamName ?? t('No team')}</div>
                           </span>
                         </span>
                       </td>
@@ -142,32 +147,35 @@ export function FieldStaffPage() {
               <div>
                 <strong style={{ fontSize: 18 }}>{current.fullName}</strong>
                 <div className="meta" style={{ fontSize: 14 }}>
-                  Field staff · {current.teamName ?? 'no team'}
+                  {t('Field staff ·')} {current.teamName ?? t('no team')}
                 </div>
               </div>
             </div>
             <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <Figure label="Jobs done" value={current.jobsDone} />
+              <Figure label={t('Jobs done')} value={current.jobsDone} />
               <Figure
-                label="On time"
+                label={t('On time')}
                 value={pct(current.onTimeRate)}
                 alert={current.onTimeRate !== null && current.onTimeRate < 0.85}
               />
-              <Figure label="Avg. to arrive" value={mins(current.avgToArriveMin)} />
-              <Figure label="Avg. to fix" value={mins(current.avgFixMin)} />
-              <Figure label="Reopened" value={current.reopened} alert={current.reopened > 0} />
-              <Figure label="Declined" value={current.declined} />
+              <Figure label={t('Avg. to arrive')} value={mins(current.avgToArriveMin)} />
+              <Figure label={t('Avg. to fix')} value={mins(current.avgFixMin)} />
+              <Figure label={t('Reopened')} value={current.reopened} alert={current.reopened > 0} />
+              <Figure label={t('Declined')} value={current.declined} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <h2>Now</h2>
-              <Row label="State" value={STAFF_STATE_LABEL[current.state]} />
-              <Row label="Jobs today" value={`${current.doneToday} done · ${current.openJobs} to go`} />
+              <h2>{t('Now')}</h2>
+              <Row label={t('State')} value={STAFF_STATE_LABEL[current.state]} />
               <Row
-                label="Working on"
+                label={t('Jobs today')}
+                value={t('{0} done · {1} to go', { 0: current.doneToday, 1: current.openJobs })}
+              />
+              <Row
+                label={t('Working on')}
                 value={
                   current.currentJob ? (
                     <Link to={`/tickets/${current.currentJob.id}`}>
-                      {current.currentJob.title} ({STATUS_LABEL[current.currentJob.status]})
+                      {ticketTitle(current.currentJob.title)} ({STATUS_LABEL[current.currentJob.status]})
                     </Link>
                   ) : (
                     '—'
@@ -175,18 +183,18 @@ export function FieldStaffPage() {
                 }
               />
               <Row
-                label="Last position"
+                label={t('Last position')}
                 value={current.location ? ago(current.location.at) : 'not shared yet'}
               />
-              <Row label="Jobs given" value={current.jobsAssigned} />
+              <Row label={t('Jobs given')} value={current.jobsAssigned} />
             </div>
             <div className="btn-row">
               <Link className="btn" to="/live" style={{ flex: 1 }}>
-                See on map
+                {t('See on map')}
               </Link>
               {current.phone && (
                 <a className="btn" href={`tel:${current.phone}`} style={{ flex: 1 }}>
-                  Call
+                  {t('Call')}
                 </a>
               )}
             </div>

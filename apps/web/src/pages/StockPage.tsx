@@ -13,6 +13,7 @@ import { Link } from 'react-router';
 import { api, ApiRequestError } from '../api';
 import { hasRole, useCrumbs, useMe } from '../components/ui';
 import { formatWhen, MOVEMENT_LABEL, qty } from '../format';
+import { t } from '../i18n';
 
 const LEVEL: Record<string, { label: string; className: string }> = {
   good: { label: 'Good', className: 'badge-active' },
@@ -44,14 +45,14 @@ function Lines({
         return (
           <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <select
-              aria-label="Item"
+              aria-label={t('Item')}
               style={{ flex: 1 }}
               value={l.itemId}
               onChange={(e) =>
                 onChange(lines.map((x, j) => (j === i ? { ...x, itemId: e.target.value } : x)))
               }
             >
-              <option value="">Choose an item…</option>
+              <option value="">{t('Choose an item…')}</option>
               {items.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.name} ({x.code})
@@ -59,7 +60,7 @@ function Lines({
               ))}
             </select>
             <input
-              aria-label="Quantity"
+              aria-label={t('Quantity')}
               type="number"
               min={0}
               step="any"
@@ -71,12 +72,12 @@ function Lines({
             />
             <span className="meta" style={{ width: 110 }}>
               {item ? item.unit : ''}
-              {there ? ` · ${qty(there.quantity - there.reserved, there.unit)} free` : ''}
+              {there ? t(' · {0} free', { 0: qty(there.quantity - there.reserved, there.unit) }) : ''}
             </span>
             <button
               type="button"
               className="btn btn-sm"
-              aria-label="Remove line"
+              aria-label={t('Remove line')}
               onClick={() => onChange(lines.filter((_, j) => j !== i))}
             >
               <Trash2 size={14} />
@@ -90,7 +91,7 @@ function Lines({
         style={{ alignSelf: 'flex-start' }}
         onClick={() => onChange([...lines, { itemId: '', quantity: '' }])}
       >
-        <Plus size={14} /> Add item
+        <Plus size={14} /> {t('Add item')}
       </button>
     </div>
   );
@@ -134,22 +135,22 @@ function StockForm({
           method: 'POST',
           body: { locationId: to, lines: valid, reference: reference || undefined }
         });
-        return `Received ${valid.length} ${valid.length === 1 ? 'item' : 'items'}.`;
+        return t(valid.length === 1 ? 'Received {0} item.' : 'Received {0} items.', { 0: valid.length });
       }
       if (form === 'transfer') {
         await api('/stock/transfer', {
           method: 'POST',
           body: { fromLocationId: from, toLocationId: to, lines: valid }
         });
-        return 'Stock moved.';
+        return t('Stock moved.');
       }
       const r = await api<{ difference: number }>('/stock/adjust', {
         method: 'POST',
         body: { locationId: to, itemId, countedQuantity: Number(counted), reason }
       });
       return r.difference === 0
-        ? 'The count matches the books.'
-        : `Corrected by ${r.difference > 0 ? '+' : ''}${r.difference}.`;
+        ? t('The count matches the books.')
+        : t('Corrected by {0}{1}.', { 0: r.difference > 0 ? '+' : '', 1: r.difference });
     },
     onSuccess: onDone
   });
@@ -163,18 +164,18 @@ function StockForm({
       : valid.length > 0 && !!to && (form !== 'transfer' || (!!from && from !== to));
 
   return (
-    <form className="card card-pad" style={{ gap: 14 }} onSubmit={submit} aria-label="Stock form">
+    <form className="card card-pad" style={{ gap: 14 }} onSubmit={submit} aria-label={t('Stock form')}>
       <h2>
         {form === 'receive'
-          ? 'Receive stock into a depot'
+          ? t('Receive stock into a depot')
           : form === 'transfer'
-            ? 'Give to a van, or move stock'
-            : 'Correct a count'}
+            ? t('Give to a van, or move stock')
+            : t('Correct a count')}
       </h2>
       <div className="form-grid">
         {form === 'transfer' && (
           <div className="field">
-            <label htmlFor="s-from">From</label>
+            <label htmlFor="s-from">{t('From')}</label>
             <select id="s-from" value={from} onChange={(e) => setFrom(e.target.value)}>
               {places.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -185,7 +186,9 @@ function StockForm({
           </div>
         )}
         <div className="field">
-          <label htmlFor="s-to">{form === 'transfer' ? 'To' : form === 'receive' ? 'Depot' : 'Place'}</label>
+          <label htmlFor="s-to">
+            {form === 'transfer' ? t('To') : form === 'receive' ? t('Depot') : t('Place')}
+          </label>
           <select id="s-to" value={to} onChange={(e) => setTo(e.target.value)}>
             {(form === 'receive' ? depots : places).map((p) => (
               <option key={p.id} value={p.id}>
@@ -196,7 +199,7 @@ function StockForm({
         </div>
         {form === 'receive' && (
           <div className="field">
-            <label htmlFor="s-ref">Delivery note (optional)</label>
+            <label htmlFor="s-ref">{t('Delivery note (optional)')}</label>
             <input id="s-ref" value={reference} onChange={(e) => setReference(e.target.value)} />
           </div>
         )}
@@ -204,9 +207,9 @@ function StockForm({
       {form === 'adjust' ? (
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="s-item">Item</label>
+            <label htmlFor="s-item">{t('Item')}</label>
             <select id="s-item" value={itemId} onChange={(e) => setItemId(e.target.value)}>
-              <option value="">Choose an item…</option>
+              <option value="">{t('Choose an item…')}</option>
               {items.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.name}
@@ -215,7 +218,7 @@ function StockForm({
             </select>
           </div>
           <div className="field">
-            <label htmlFor="s-count">Counted quantity</label>
+            <label htmlFor="s-count">{t('Counted quantity')}</label>
             <input
               id="s-count"
               type="number"
@@ -226,11 +229,11 @@ function StockForm({
             />
           </div>
           <div className="field">
-            <label htmlFor="s-reason">Why</label>
+            <label htmlFor="s-reason">{t('Why')}</label>
             <input
               id="s-reason"
               value={reason}
-              placeholder="e.g. Monthly count"
+              placeholder={t('e.g. Monthly count')}
               onChange={(e) => setReason(e.target.value)}
             />
           </div>
@@ -246,10 +249,10 @@ function StockForm({
       {save.error && <div className="error">{(save.error as ApiRequestError).message}</div>}
       <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
         <button type="button" className="btn" onClick={onClose}>
-          Close
+          {t('Close')}
         </button>
         <button type="submit" className="btn btn-primary" disabled={!ready || save.isPending}>
-          {save.isPending ? 'Saving…' : 'Save'}
+          {save.isPending ? t('Saving…') : t('Save')}
         </button>
       </div>
     </form>
@@ -284,10 +287,10 @@ function Vans({ canManage }: { canManage: boolean }) {
         <table>
           <thead>
             <tr>
-              <th>Van</th>
-              <th>Team</th>
-              <th>Driver</th>
-              <th className="right">Items on board</th>
+              <th>{t('Van')}</th>
+              <th>{t('Team')}</th>
+              <th>{t('Driver')}</th>
+              <th className="right">{t('Items on board')}</th>
             </tr>
           </thead>
           <tbody>
@@ -301,11 +304,11 @@ function Vans({ canManage }: { canManage: boolean }) {
                 <td>
                   {canManage ? (
                     <select
-                      aria-label={`Driver of ${v.plate}`}
+                      aria-label={t('Driver of {0}', { 0: v.plate })}
                       value={v.assignedTo?.id ?? ''}
                       onChange={(e) => assign.mutate({ id: v.id, userId: e.target.value || null })}
                     >
-                      <option value="">Nobody</option>
+                      <option value="">{t('Nobody')}</option>
                       {((staff.data?.[v.teamId] as StaffMember[] | undefined) ?? []).map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.fullName}
@@ -313,7 +316,7 @@ function Vans({ canManage }: { canManage: boolean }) {
                       ))}
                     </select>
                   ) : (
-                    (v.assignedTo?.fullName ?? <span className="meta">Nobody</span>)
+                    (v.assignedTo?.fullName ?? <span className="meta">{t('Nobody')}</span>)
                   )}
                 </td>
                 <td className="right">{v.itemsOnBoard}</td>
@@ -328,7 +331,7 @@ function Vans({ canManage }: { canManage: boolean }) {
 
 /** W14: the stock ledger — catalogue, depots and vans, and every movement. */
 export function StockPage() {
-  useCrumbs([{ label: 'Field' }, { label: 'Stock' }]);
+  useCrumbs([{ label: t('Field') }, { label: t('Stock') }]);
   const me = useMe();
   const queryClient = useQueryClient();
   const canManage = hasRole(me.data, 'admin', 'technical_manager', 'team_manager');
@@ -366,21 +369,21 @@ export function StockPage() {
     <div className="content">
       <div className="page-head">
         <div>
-          <h1>Stock</h1>
+          <h1>{t('Stock')}</h1>
           <div className="subtitle">
-            Depots and staff vans. Materials used on a ticket are deducted when it closes.
+            {t('Depots and staff vans. Materials used on a ticket are deducted when it closes.')}
           </div>
         </div>
         {canManage && (
           <div className="btn-row">
             <button type="button" className="btn btn-lg" onClick={() => setForm('receive')}>
-              Receive stock
+              {t('Receive stock')}
             </button>
             <button type="button" className="btn btn-lg" onClick={() => setForm('adjust')}>
-              Correct a count
+              {t('Correct a count')}
             </button>
             <button type="button" className="btn btn-primary btn-lg" onClick={() => setForm('transfer')}>
-              Give to a van
+              {t('Give to a van')}
             </button>
           </div>
         )}
@@ -400,10 +403,10 @@ export function StockPage() {
         <div className="tabs" role="tablist">
           {(
             [
-              ['catalog', 'All items'],
-              ['places', 'Depots & vans'],
-              ['vans', 'Vans'],
-              ['movements', 'Movements']
+              ['catalog', t('All items')],
+              ['places', t('Depots & vans')],
+              ['vans', t('Vans')],
+              ['movements', t('Movements')]
             ] as const
           ).map(([key, label]) => (
             <button
@@ -423,12 +426,12 @@ export function StockPage() {
             <table>
               <thead>
                 <tr>
-                  <th>Item</th>
-                  <th>Code</th>
-                  <th className="right">In depots</th>
-                  <th className="right">In vans</th>
-                  <th className="right">Reserved</th>
-                  <th>Level</th>
+                  <th>{t('Item')}</th>
+                  <th>{t('Code')}</th>
+                  <th className="right">{t('In depots')}</th>
+                  <th className="right">{t('In vans')}</th>
+                  <th className="right">{t('Reserved')}</th>
+                  <th>{t('Level')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -442,7 +445,7 @@ export function StockPage() {
                     <td className="right">{qty(i.inVans, i.unit)}</td>
                     <td className="right">{qty(i.reserved, i.unit)}</td>
                     <td>
-                      <span className={`badge ${LEVEL[i.level]!.className}`}>{LEVEL[i.level]!.label}</span>
+                      <span className={`badge ${LEVEL[i.level]!.className}`}>{t(LEVEL[i.level]!.label)}</span>
                     </td>
                   </tr>
                 ))}
@@ -454,7 +457,11 @@ export function StockPage() {
         {tab === 'places' && (
           <>
             <div className="filters">
-              <select aria-label="Place" value={currentPlace} onChange={(e) => setPlaceId(e.target.value)}>
+              <select
+                aria-label={t('Place')}
+                value={currentPlace}
+                onChange={(e) => setPlaceId(e.target.value)}
+              >
                 {(places.data ?? []).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -463,16 +470,16 @@ export function StockPage() {
                 ))}
               </select>
             </div>
-            {place.data?.length === 0 && <div className="empty">Nothing here.</div>}
+            {place.data?.length === 0 && <div className="empty">{t('Nothing here.')}</div>}
             {place.data && place.data.length > 0 && (
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Item</th>
-                      <th>Code</th>
-                      <th className="right">Quantity</th>
-                      <th className="right">Reserved</th>
+                      <th>{t('Item')}</th>
+                      <th>{t('Code')}</th>
+                      <th className="right">{t('Quantity')}</th>
+                      <th className="right">{t('Reserved')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -502,13 +509,13 @@ export function StockPage() {
             <table>
               <thead>
                 <tr>
-                  <th>When</th>
-                  <th>What</th>
-                  <th>Item</th>
-                  <th className="right">Quantity</th>
-                  <th>From → to</th>
-                  <th>Ticket / note</th>
-                  <th>By</th>
+                  <th>{t('When')}</th>
+                  <th>{t('What')}</th>
+                  <th>{t('Item')}</th>
+                  <th className="right">{t('Quantity')}</th>
+                  <th>{t('From → to')}</th>
+                  <th>{t('Ticket / note')}</th>
+                  <th>{t('By')}</th>
                 </tr>
               </thead>
               <tbody>

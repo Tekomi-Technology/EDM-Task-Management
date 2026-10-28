@@ -36,7 +36,8 @@ export const TICKET_TYPES = [
   'network_incident',
   'planned_work',
   'new_customer_survey',
-  'new_connection'
+  'new_connection',
+  'other'
 ] as const;
 export type TicketType = (typeof TICKET_TYPES)[number];
 
@@ -614,51 +615,49 @@ export interface Report {
   materials: ReportMaterialRow[];
 }
 
-// ---- Connected systems (phase 5) ----
+// ---- API documentation ----
 
-export type IntegrationStatus = 'connected' | 'slow' | 'problem' | 'quiet' | 'not_set';
+/** One input of an integration API, flattened: "customer.fullName", "alarms[].severity". */
+export interface IntegrationDocField {
+  name: string;
+  in: 'path' | 'query' | 'body';
+  type: string;
+  format: string | null;
+  required: boolean;
+  description: string | null;
+  values: string[] | null;
+  /** Length for text, value for numbers, number of items for lists. */
+  min: number | null;
+  max: number | null;
+  /** The value must be above min, not equal to it. */
+  minExclusive: boolean;
+}
 
-export interface IntegrationView {
+export interface IntegrationDocOperation {
+  method: string;
+  path: string;
+  summary: string;
+  description: string | null;
+  fields: IntegrationDocField[];
+  example: unknown;
+}
+
+export interface IntegrationDocWebhook {
+  event: string;
+  description: string;
+  example: unknown;
+}
+
+export interface IntegrationDocSystem {
   system: IntegrationSystem;
-  status: IntegrationStatus;
-  /** Last request or delivery that went through. */
-  lastOkAt: string | null;
-  lastAt: string | null;
-  /** What came in or went out today, in the system's own terms ("412 tickets received"). */
-  today: string;
-  /** Short reason when the status is not "connected". */
-  note: string | null;
+  clientId: string;
+  operations: IntegrationDocOperation[];
+  webhooks: IntegrationDocWebhook[];
 }
 
-export interface IntegrationProblem {
-  system: IntegrationSystem;
-  firstAt: string;
-  lastAt: string;
-  count: number;
-  message: string;
-  solved: boolean;
-}
-
-export interface IntegrationsOverview {
-  systems: IntegrationView[];
-  problems: IntegrationProblem[];
-}
-
-export interface IntegrationCallView {
-  id: string;
-  direction: 'in' | 'out';
-  operation: string;
-  statusCode: number | null;
-  ok: boolean;
-  durationMs: number;
-  error: string | null;
-  createdAt: string;
-}
-
-export interface IntegrationTestResult {
-  ok: boolean;
-  message: string;
-  durationMs: number | null;
+export interface IntegrationDocs {
+  tokenUrl: string;
+  systems: IntegrationDocSystem[];
 }
 
 // ---- New ticket screen ----
@@ -733,10 +732,10 @@ export interface CreateUser {
   teamId?: string | null;
 }
 
-/** POST /tickets (New ticket screen): an EDM customer, or a member of the public reporting the network. */
+/** POST /tickets (New ticket screen): an EDM customer, a member of the public reporting the network, or other work. */
 export type OfficeTicket =
   | {
-      caller: 'customer';
+      type: 'customer_complaint';
       customerId: string;
       problemType: ProblemType;
       /** Only for "other", which has no set priority (1 to 3). */
@@ -747,16 +746,48 @@ export type OfficeTicket =
       joinIncident?: boolean;
     }
   | {
-      caller: 'public';
+      type: 'network_incident';
       reportType: NetworkReportType;
       address: string;
       location?: { lat: number; lng: number };
       description: string;
       callerName?: string;
       callerPhone?: string;
+    }
+  | {
+      type: 'other';
+      title: string;
+      description: string;
+      /** 1 to 3; the time limit follows it. */
+      priority: number;
+      customerId?: string;
+      address?: string;
+      location?: { lat: number; lng: number };
+      callerPhone?: string;
     };
+
+/** POST /new-customers/surveys: a survey without the Sales system. */
+export interface OfficeSurvey {
+  customer: { fullName: string; phone?: string; address: string; location?: { lat: number; lng: number } };
+  premises: PremisesType;
+  supply: SupplyType;
+  requestedLoadKw?: number;
+  notes?: string;
+}
+
+/** POST /new-customers/connections: a connection without the Sales system (checked by the Call Center). */
+export interface OfficeConnection {
+  contractNo: string;
+  surveyTicketId?: string;
+  customerId?: string;
+  customer?: OfficeSurvey['customer'];
+  premises?: PremisesType;
+  supply: SupplyType;
+  notes?: string;
+}
 
 /** POST /tickets/preview */
 export type TicketPreviewInput =
-  | { caller: 'customer'; customerId: string; problemType: ProblemType; priority?: number }
-  | { caller: 'public'; reportType: NetworkReportType; location?: { lat: number; lng: number } };
+  | { type: 'customer_complaint'; customerId: string; problemType: ProblemType; priority?: number }
+  | { type: 'network_incident'; reportType: NetworkReportType; location?: { lat: number; lng: number } }
+  | { type: 'other'; priority: number; customerId?: string; location?: { lat: number; lng: number } };

@@ -2,7 +2,8 @@ import type { LiveMap, MapTicket, StaffLive } from '../types';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef } from 'react';
-import { ago, initials, STAFF_STATE_LABEL, STATUS_LABEL } from '../format';
+import { ago, initials, STAFF_STATE_LABEL, STATUS_LABEL, ticketTitle } from '../format';
+import { t, t as translate } from '../i18n';
 
 /** Map tiles; set VITE_MAP_TILE_URL to EDM's own tile server in production (OpenStreetMap asks heavy users to). */
 const TILE_URL = import.meta.env.VITE_MAP_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -40,7 +41,7 @@ function staffIcon(s: StaffLive, selected: boolean): L.DivIcon {
     'display:flex',
     'align-items:center',
     'justify-content:center',
-    'font:700 11px Roboto, sans-serif',
+    'font:700 11px Inter, sans-serif',
     `box-shadow:0 1px 4px rgb(0 0 0 / 35%)${selected ? ', 0 0 0 4px rgb(243 155 58 / 35%)' : ''}`
   ].join(';');
   return L.divIcon({
@@ -133,7 +134,7 @@ export function TicketMap({
       const network = t.type === 'network_incident';
       const size = t.late || network ? 16 : 13;
       const marker = L.marker([t.lat, t.lng], {
-        title: `${t.code} · ${t.title}`,
+        title: `${t.code} · ${ticketTitle(t.title)}`,
         icon: L.divIcon({
           className: '',
           html: `<div class="map-dot" style="width:${size}px;height:${size}px;background:${markerColor(t)};${network ? 'border-radius:3px' : ''}"></div>`,
@@ -141,7 +142,9 @@ export function TicketMap({
           iconAnchor: [size / 2, size / 2]
         })
       });
-      marker.bindTooltip(`${t.code} · ${t.title} · ${t.late ? 'late' : STATUS_LABEL[t.status]}`);
+      marker.bindTooltip(
+        `${t.code} · ${ticketTitle(t.title)} · ${t.late ? translate('late') : STATUS_LABEL[t.status]}`
+      );
       marker.on('click', () => openRef.current?.(t.id));
       marker.addTo(group);
     }
@@ -152,7 +155,9 @@ export function TicketMap({
         icon: staffIcon(s, s.id === selected),
         zIndexOffset: 1000
       })
-        .bindTooltip(`${s.fullName} · ${STAFF_STATE_LABEL[s.state]} · seen ${ago(s.location.at)}`)
+        .bindTooltip(
+          `${s.fullName} · ${STAFF_STATE_LABEL[s.state]} · ${translate('seen {0}', { 0: ago(s.location.at) })}`
+        )
         .on('click', () => staffRef.current?.(s.id))
         .addTo(group);
     }
@@ -183,7 +188,7 @@ export function TicketMap({
       className="ticket-map"
       style={{ height }}
       role="img"
-      aria-label="Map of tickets and field staff"
+      aria-label={t('Map of tickets and field staff')}
     />
   );
 }

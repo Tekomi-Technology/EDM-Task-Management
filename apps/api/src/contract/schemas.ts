@@ -19,18 +19,40 @@ import {
 
 /** Sent by the Call Center system when a customer reports a technical problem. */
 export const callCenterComplaintSchema = z.object({
-  externalRef: z.string().trim().min(1).max(64),
-  contractNo: z.string().trim().min(1).max(32),
-  problemType: z.enum(PROBLEM_TYPE_KEYS),
-  description: z.string().trim().min(1).max(2000),
-  callerPhone: z.string().trim().max(32).optional()
+  externalRef: z.string().trim().min(1).max(64).meta({
+    description: 'Your own reference for the call; sending it again does not create a second ticket.',
+    example: 'CC-2026-000123'
+  }),
+  contractNo: z
+    .string()
+    .trim()
+    .min(1)
+    .max(32)
+    .meta({ description: 'Contract number of the EDM customer who called.', example: '40217735' }),
+  problemType: z.enum(PROBLEM_TYPE_KEYS).meta({
+    description: 'What the customer reports; it sets the priority and the time limit.',
+    example: 'no_power_single'
+  }),
+  description: z.string().trim().min(1).max(2000).meta({
+    description: 'What the caller said, for the field staff.',
+    example: 'No power since 7 am; the neighbours have power.'
+  }),
+  callerPhone: z.string().trim().max(32).optional().meta({
+    description: 'Phone to call back and to send SMS to, when not the one on the contract.',
+    example: '+258841110002'
+  })
 });
 export type CallCenterComplaint = z.infer<typeof callCenterComplaintSchema>;
 
 /** Sent by the Call Center system after calling the customer back. */
 export const callCenterCheckResultSchema = z.object({
-  result: z.enum(['fixed', 'not_fixed']),
-  note: z.string().trim().max(1000).optional()
+  result: z
+    .enum(['fixed', 'not_fixed'])
+    .meta({ description: 'What the customer said when called back.', example: 'fixed' }),
+  note: z.string().trim().max(1000).optional().meta({
+    description: 'What the customer said, kept in the ticket history.',
+    example: 'Power is back since 10:40.'
+  })
 });
 export type CallCenterCheckResult = z.infer<typeof callCenterCheckResultSchema>;
 
@@ -130,7 +152,12 @@ export type TicketListQuery = z.infer<typeof ticketListQuerySchema>;
 
 /** Declining, pausing and cancelling must say why; the reason is kept in the ticket history. */
 export const reasonSchema = z.object({
-  reason: z.string().trim().min(3).max(500)
+  reason: z
+    .string()
+    .trim()
+    .min(3)
+    .max(500)
+    .meta({ description: 'Why, kept in the ticket history.', example: 'Duplicate of CC-2026-000120.' })
 });
 export type Reason = z.infer<typeof reasonSchema>;
 
@@ -198,8 +225,8 @@ export type UserListQuery = z.infer<typeof userListQuerySchema>;
 // ---- Network (phase 3) ----
 
 export const pointSchema = z.object({
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180)
+  lat: z.number().min(-90).max(90).meta({ description: 'Latitude (WGS 84).', example: -25.915 }),
+  lng: z.number().min(-180).max(180).meta({ description: 'Longitude (WGS 84).', example: 32.455 })
 });
 
 /**
@@ -208,40 +235,110 @@ export const pointSchema = z.object({
  * grouped into one network incident ticket.
  */
 export const nmsAlarmEventSchema = z.object({
-  /** The NMS's own id for the alarm; raise and clear of the same alarm share it. */
-  alarmId: z.string().trim().min(1).max(100),
-  event: z.enum(['raise', 'clear']),
-  /** Network element: feeder, breaker, transformer, substation… e.g. "F-12", "PT-4471". */
-  elementCode: z.string().trim().min(1).max(64),
-  elementName: z.string().trim().max(200).optional(),
-  elementType: z.string().trim().max(40).optional(),
-  /** Element that feeds this one (e.g. the feeder of a transformer); used to group alarms with the same cause. */
-  parentElementCode: z.string().trim().max(64).optional(),
-  /** Root-cause id when the NMS already knows which alarms belong together. */
-  correlationId: z.string().trim().max(100).optional(),
-  alarmType: z.string().trim().min(1).max(200),
-  severity: z.enum(ALARM_SEVERITIES),
-  occurredAt: z.string().datetime({ offset: true }),
-  location: pointSchema.optional(),
-  /** NMS estimate of customers without power. */
-  customersAffected: z.number().int().min(0).optional(),
-  details: z.string().trim().max(2000).optional()
+  alarmId: z.string().trim().min(1).max(100).meta({
+    description: "The NMS's own id for the alarm; raise and clear of the same alarm share it.",
+    example: 'NMS-889120'
+  }),
+  event: z
+    .enum(['raise', 'clear'])
+    .meta({ description: '"raise" opens or updates the alarm, "clear" ends it.', example: 'raise' }),
+  elementCode: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .meta({ description: 'Network element: feeder, breaker, transformer, substation…', example: 'PT-4471' }),
+  elementName: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .meta({ description: 'Name of the element, shown to the staff.', example: 'PT Matola Gare 3' }),
+  elementType: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .meta({ description: 'Kind of element.', example: 'transformer' }),
+  parentElementCode: z.string().trim().max(64).optional().meta({
+    description:
+      'Element that feeds this one (e.g. the feeder of a transformer); used to group alarms with the same cause.',
+    example: 'F-12'
+  }),
+  correlationId: z.string().trim().max(100).optional().meta({
+    description: 'Root-cause id when the NMS already knows which alarms belong together.',
+    example: 'RC-5531'
+  }),
+  alarmType: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .meta({ description: 'What the NMS detected.', example: 'Transformer overload trip' }),
+  severity: z.enum(ALARM_SEVERITIES).meta({
+    description: 'Sets the priority and the time limit; "warning" is recorded but opens no incident.',
+    example: 'major'
+  }),
+  occurredAt: z
+    .string()
+    .datetime({ offset: true })
+    .meta({ description: 'When it happened, with the time zone.', example: '2026-10-28T08:15:00+02:00' }),
+  location: pointSchema.optional().meta({
+    description: 'Where the element is, to send the nearest team.',
+    example: { lat: -25.951, lng: 32.462 }
+  }),
+  customersAffected: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .meta({ description: 'NMS estimate of customers without power.', example: 320 }),
+  details: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .meta({ description: 'Anything else the staff should know.', example: 'Breaker B2 open.' })
 });
 export type NmsAlarmEvent = z.infer<typeof nmsAlarmEventSchema>;
 
 export const nmsAlarmBatchSchema = z.object({
-  alarms: z.array(nmsAlarmEventSchema).min(1).max(500)
+  alarms: z
+    .array(nmsAlarmEventSchema)
+    .min(1)
+    .max(500)
+    .meta({ description: 'Alarm events, handled in the order sent (a clear may follow its raise).' })
 });
 export type NmsAlarmBatch = z.infer<typeof nmsAlarmBatchSchema>;
 
 /** A member of the public reports a network problem to the Call Center (800 145 145). */
 export const networkReportSchema = z.object({
-  externalRef: z.string().trim().min(1).max(64),
-  reportType: z.enum(NETWORK_REPORT_TYPE_KEYS),
-  description: z.string().trim().min(1).max(2000),
-  address: z.string().trim().min(1).max(300),
-  location: pointSchema.optional(),
-  callerPhone: z.string().trim().max(32).optional()
+  externalRef: z.string().trim().min(1).max(64).meta({
+    description: 'Your own reference for the call; sending it again does not create a second ticket.',
+    example: 'CC-2026-000124'
+  }),
+  reportType: z.enum(NETWORK_REPORT_TYPE_KEYS).meta({
+    description: 'What the caller saw; it sets the priority and the time limit.',
+    example: 'cable_down'
+  }),
+  description: z.string().trim().min(1).max(2000).meta({
+    description: 'What the caller said, for the field staff.',
+    example: 'Cable on the ground next to the school.'
+  }),
+  address: z.string().trim().min(1).max(300).meta({
+    description: 'Street, landmark, neighbourhood.',
+    example: 'Av. de Moçambique, near Escola 3 de Fevereiro'
+  }),
+  location: pointSchema.optional().meta({
+    description: 'The place, to send the nearest team. Without it NOC routes the ticket.',
+    example: { lat: -25.962, lng: 32.57 }
+  }),
+  callerPhone: z
+    .string()
+    .trim()
+    .max(32)
+    .optional()
+    .meta({ description: 'Caller’s phone, for the SMS updates.', example: '+258849000002' })
 });
 export type NetworkReport = z.infer<typeof networkReportSchema>;
 
@@ -302,34 +399,75 @@ export type FieldStaffQuery = z.infer<typeof fieldStaffQuerySchema>;
 // ---- New customers from the Sales system (phase 4) ----
 
 export const prospectSchema = z.object({
-  fullName: z.string().trim().min(2).max(200),
-  phone: z.string().trim().max(32).optional(),
-  address: z.string().trim().min(3).max(300),
-  location: pointSchema.optional()
+  fullName: z
+    .string()
+    .trim()
+    .min(2)
+    .max(200)
+    .meta({ description: 'Customer or company name.', example: 'Loja Esperança' }),
+  phone: z.string().trim().max(32).optional().meta({
+    description: 'Customer phone, for the SMS updates and the handover code.',
+    example: '+258849000001'
+  }),
+  address: z
+    .string()
+    .trim()
+    .min(3)
+    .max(300)
+    .meta({ description: 'Address of the premises.', example: 'Matola Gare, Rua 4' }),
+  location: pointSchema.optional().meta({
+    description: 'The premises, to send the team of that area.',
+    example: { lat: -25.915, lng: 32.455 }
+  })
 });
 
 /** Sales asks for a technical survey before selling a connection. */
 export const surveyRequestSchema = z.object({
-  externalRef: z.string().trim().min(1).max(64),
-  customer: prospectSchema,
-  premises: z.enum(PREMISES_TYPES),
-  supply: z.enum(SUPPLY_TYPES),
-  requestedLoadKw: z.number().positive().max(10_000).optional(),
-  notes: z.string().trim().max(2000).optional()
+  externalRef: z.string().trim().min(1).max(64).meta({
+    description: 'Your reference for the request; results and status use it.',
+    example: 'KS-2026-0001'
+  }),
+  customer: prospectSchema.meta({ description: 'The future customer.' }),
+  premises: z.enum(PREMISES_TYPES).meta({ description: 'Kind of premises.', example: 'shop' }),
+  supply: z.enum(SUPPLY_TYPES).meta({ description: 'Supply asked for.', example: 'single_phase' }),
+  requestedLoadKw: z
+    .number()
+    .positive()
+    .max(10_000)
+    .optional()
+    .meta({ description: 'Power asked for, in kW.', example: 6 }),
+  notes: z.string().trim().max(2000).optional().meta({
+    description: 'Anything the surveyor should know.',
+    example: 'Customer is there on weekdays after 14:00.'
+  })
 });
 export type SurveyRequest = z.infer<typeof surveyRequestSchema>;
 
 /** The contract is signed: Sales asks for the connection to be built. */
 export const connectionRequestSchema = z
   .object({
-    externalRef: z.string().trim().min(1).max(64),
-    contractNo: z.string().trim().min(1).max(32),
-    /** The survey request this follows, if any (customer and place are taken from it). */
-    surveyRef: z.string().trim().max(64).optional(),
-    customer: prospectSchema.optional(),
-    premises: z.enum(PREMISES_TYPES).optional(),
-    supply: z.enum(SUPPLY_TYPES),
-    notes: z.string().trim().max(2000).optional()
+    externalRef: z.string().trim().min(1).max(64).meta({
+      description: 'Your reference for the request; activation and status use it.',
+      example: 'DN-2026-0001'
+    }),
+    contractNo: z
+      .string()
+      .trim()
+      .min(1)
+      .max(32)
+      .meta({ description: 'The signed contract.', example: 'HD-2026-0001' }),
+    surveyRef: z.string().trim().max(64).optional().meta({
+      description:
+        'The survey request this follows, if any: customer, place and material estimate are taken from it.',
+      example: 'KS-2026-0001'
+    }),
+    customer: prospectSchema.optional().meta({ description: 'The customer, when there was no survey.' }),
+    premises: z
+      .enum(PREMISES_TYPES)
+      .optional()
+      .meta({ description: 'Kind of premises, when there was no survey.' }),
+    supply: z.enum(SUPPLY_TYPES).meta({ description: 'Supply to connect.', example: 'single_phase' }),
+    notes: z.string().trim().max(2000).optional().meta({ description: 'Anything the team should know.' })
   })
   .refine((v) => !!v.surveyRef || !!v.customer, {
     message: 'Give the survey reference or the customer',
@@ -338,20 +476,70 @@ export const connectionRequestSchema = z
 export type ConnectionRequest = z.infer<typeof connectionRequestSchema>;
 
 export const activationResultSchema = z.object({
-  activated: z.boolean(),
-  note: z.string().trim().max(1000).optional()
+  activated: z.boolean().meta({
+    description: 'true: the service works and the connection closes; false: it goes back to the team.',
+    example: true
+  }),
+  note: z.string().trim().max(1000).optional().meta({
+    description: 'Why it could not be activated, for the team.',
+    example: 'Meter not seen by the billing system.'
+  })
 });
 export type ActivationResult = z.infer<typeof activationResultSchema>;
+
+/** A survey typed in by the office, without the Sales system: nothing is sent back to Sales. */
+export const officeSurveySchema = surveyRequestSchema.omit({ externalRef: true });
+export type OfficeSurvey = z.infer<typeof officeSurveySchema>;
+
+/**
+ * A connection typed in by the office, without the Sales system. Once built, the Call Center checks it with the
+ * customer and the office closes it (there is no Sales activation).
+ */
+export const officeConnectionSchema = z
+  .object({
+    contractNo: z.string().trim().min(1).max(32),
+    /** The survey ticket this follows, if any: customer, place and material estimate are taken from it. */
+    surveyTicketId: z.string().uuid().optional(),
+    /** An existing customer (found with the lookup), when there was no survey. */
+    customerId: z.string().uuid().optional(),
+    /** A new customer, when there was no survey and they are not known yet. */
+    customer: prospectSchema.optional(),
+    premises: z.enum(PREMISES_TYPES).optional(),
+    supply: z.enum(SUPPLY_TYPES),
+    notes: z.string().trim().max(2000).optional()
+  })
+  .refine((v) => !!v.surveyTicketId || !!v.customerId || !!v.customer, {
+    message: 'Give the survey, or the customer',
+    path: ['customer']
+  });
+export type OfficeConnection = z.infer<typeof officeConnectionSchema>;
 
 // ---- Stock (phase 4) ----
 
 export const stockItemSchema = z.object({
-  code: z.string().trim().min(2).max(40),
-  name: z.string().trim().min(2).max(200),
-  unit: z.enum(STOCK_UNITS),
-  /** Below this in the depots the item is "low"; below watchLevel it is "watch". */
-  lowLevel: z.number().min(0).default(0),
-  watchLevel: z.number().min(0).default(0)
+  code: z
+    .string()
+    .trim()
+    .min(2)
+    .max(40)
+    .meta({ description: 'Item code, the same as in the stock management system.', example: 'CAB-ABC-16' }),
+  name: z
+    .string()
+    .trim()
+    .min(2)
+    .max(200)
+    .meta({ description: 'Item name shown to the staff.', example: 'ABC cable 2x16 mm²' }),
+  unit: z.enum(STOCK_UNITS).meta({ description: 'Unit of the quantities.', example: 'm' }),
+  lowLevel: z
+    .number()
+    .min(0)
+    .default(0)
+    .meta({ description: 'Below this in the depots the item is shown as low.', example: 100 }),
+  watchLevel: z
+    .number()
+    .min(0)
+    .default(0)
+    .meta({ description: 'Below this in the depots the item is shown as "watch".', example: 300 })
 });
 export type StockItemInput = z.infer<typeof stockItemSchema>;
 
@@ -401,20 +589,52 @@ export type MovementQuery = z.infer<typeof movementQuerySchema>;
 
 /** From EDM's stock management system: goods received at a depot, by depot and item code. */
 export const stockReceiptSyncSchema = z.object({
-  externalRef: z.string().trim().min(1).max(100),
-  depotCode: z.string().trim().min(1).max(40),
+  externalRef: z.string().trim().min(1).max(100).meta({
+    description: 'Your delivery reference; sending it again does nothing.',
+    example: 'GR-2026-0457'
+  }),
+  depotCode: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .meta({ description: 'Code of the depot that received the goods.', example: 'DEP-MAT' }),
   lines: z
-    .array(z.object({ itemCode: z.string().trim().min(1).max(40), quantity: z.number().positive() }))
+    .array(
+      z.object({
+        itemCode: z.string().trim().min(1).max(40).meta({ description: 'Item code.', example: 'CAB-ABC-16' }),
+        quantity: z
+          .number()
+          .positive()
+          .meta({ description: 'Quantity received, in the item unit.', example: 500 })
+      })
+    )
     .min(1)
     .max(500)
+    .meta({ description: 'What arrived.' })
 });
 export type StockReceiptSync = z.infer<typeof stockReceiptSyncSchema>;
 
-export const stockItemsSyncSchema = z.object({ items: z.array(stockItemSchema).min(1).max(1000) });
+export const stockItemsSyncSchema = z.object({
+  items: z
+    .array(stockItemSchema)
+    .min(1)
+    .max(1000)
+    .meta({ description: 'Items to add, or to update when the code exists.' })
+});
 
 export const consumptionQuerySchema = z.object({
-  since: z.string().datetime({ offset: true }),
-  limit: z.coerce.number().int().min(1).max(1000).default(500)
+  since: z.string().datetime({ offset: true }).meta({
+    description: 'Return what was used after this time; send the last time you received.',
+    example: '2026-10-27T00:00:00+02:00'
+  }),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
+    .default(500)
+    .meta({ description: 'At most this many lines.', example: 500 })
 });
 
 // ---- Vehicles ----
@@ -471,10 +691,14 @@ export type ReportQuery = z.infer<typeof reportQuerySchema>;
 
 const callerPhone = z.string().trim().max(32).optional();
 
-/** A customer of EDM calling about their supply (like a Call Center complaint), or someone reporting the network. */
-export const officeTicketSchema = z.discriminatedUnion('caller', [
+/**
+ * Tickets typed in on the New ticket screen: a customer of EDM calling about their supply (like a Call Center
+ * complaint), someone reporting the network, or anything else that comes up. Planned work, surveys and connections
+ * have their own forms (/network/planned-work, /new-customers/surveys, /new-customers/connections).
+ */
+export const officeTicketSchema = z.discriminatedUnion('type', [
   z.object({
-    caller: z.literal('customer'),
+    type: z.literal('customer_complaint'),
     customerId: z.string().uuid(),
     problemType: z.enum(PROBLEM_TYPE_KEYS),
     /** Only for "Something else", which has no set priority. */
@@ -485,28 +709,45 @@ export const officeTicketSchema = z.discriminatedUnion('caller', [
     joinIncident: z.boolean().default(true)
   }),
   z.object({
-    caller: z.literal('public'),
+    type: z.literal('network_incident'),
     reportType: z.enum(NETWORK_REPORT_TYPE_KEYS),
     address: z.string().trim().min(3).max(300),
     location: pointSchema.optional(),
     description: z.string().trim().min(3).max(2000),
     callerName: z.string().trim().max(200).optional(),
     callerPhone
+  }),
+  z.object({
+    type: z.literal('other'),
+    title: z.string().trim().min(3).max(200),
+    description: z.string().trim().min(3).max(2000),
+    priority: z.number().int().min(1).max(3),
+    /** The customer it is about, if any; their place is used when no other place is given. */
+    customerId: z.string().uuid().optional(),
+    address: z.string().trim().min(3).max(300).optional(),
+    location: pointSchema.optional(),
+    callerPhone
   })
 ]);
 export type OfficeTicket = z.infer<typeof officeTicketSchema>;
 
 /** What would happen if the ticket were created now (the "What happens next" panel). */
-export const ticketPreviewSchema = z.discriminatedUnion('caller', [
+export const ticketPreviewSchema = z.discriminatedUnion('type', [
   z.object({
-    caller: z.literal('customer'),
+    type: z.literal('customer_complaint'),
     customerId: z.string().uuid(),
     problemType: z.enum(PROBLEM_TYPE_KEYS),
     priority: z.number().int().min(1).max(3).optional()
   }),
   z.object({
-    caller: z.literal('public'),
+    type: z.literal('network_incident'),
     reportType: z.enum(NETWORK_REPORT_TYPE_KEYS),
+    location: pointSchema.optional()
+  }),
+  z.object({
+    type: z.literal('other'),
+    priority: z.number().int().min(1).max(3),
+    customerId: z.string().uuid().optional(),
     location: pointSchema.optional()
   })
 ]);

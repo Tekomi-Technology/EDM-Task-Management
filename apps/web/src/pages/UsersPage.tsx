@@ -6,17 +6,18 @@ import { api, ApiRequestError } from '../api';
 import { useCrumbs } from '../components/ui';
 import { UserEditor } from '../components/UserEditor';
 import { ROLE_LABEL } from '../format';
+import { t } from '../i18n';
 
 function UserStatus({ user }: { user: AdminUser }) {
-  if (user.status === 'cancelled') return <span className="badge badge-cancelled">Removed</span>;
-  if (user.status === 'blocked') return <span className="badge badge-blocked">Blocked</span>;
-  if (!user.lastSeenAt) return <span className="badge">Not signed in yet</span>;
-  return <span className="badge badge-active">Active</span>;
+  if (user.status === 'cancelled') return <span className="badge badge-cancelled">{t('Removed')}</span>;
+  if (user.status === 'blocked') return <span className="badge badge-blocked">{t('Blocked')}</span>;
+  if (!user.lastSeenAt) return <span className="badge">{t('Not signed in yet')}</span>;
+  return <span className="badge badge-active">{t('Active')}</span>;
 }
 
 /** Users & roles (admin): create accounts, change roles and teams, block, reset passwords. */
 export function UsersPage() {
-  useCrumbs([{ label: 'Settings' }, { label: 'Users and roles' }]);
+  useCrumbs([{ label: t('Settings') }, { label: t('Users and roles') }]);
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [role, setRole] = useState<UserRole | ''>('');
@@ -92,10 +93,10 @@ export function UsersPage() {
     <div className="content">
       <div className="page-head">
         <div>
-          <h1>Users and roles</h1>
+          <h1>{t('Users and roles')}</h1>
           <div className="subtitle">
-            {canSignIn !== undefined ? `${canSignIn} people can sign in. ` : ''}Each role only sees what it
-            needs.
+            {canSignIn !== undefined ? t('{0} people can sign in. ', { 0: canSignIn }) : ''}
+            {t('Each role only sees what it needs.')}
           </div>
         </div>
         <button
@@ -106,19 +107,20 @@ export function UsersPage() {
             setCreating(true);
           }}
         >
-          <Plus size={18} /> Add user
+          <Plus size={18} /> {t('Add user')}
         </button>
       </div>
 
       {secret && (
         <div className="notice" role="status">
           <div>
-            Temporary password for <strong>{secret.fullName}</strong>:{' '}
+            {t('Temporary password for')} <strong>{secret.fullName}</strong>:{' '}
             <span className="secret">{secret.password}</span>
           </div>
           <div style={{ marginTop: 4 }}>
-            Give it to the person directly. They choose a new password at first sign-in. It is not shown
-            again.
+            {t(
+              'Give it to the person directly. They choose a new password at first sign-in. It is not shown again.'
+            )}
           </div>
           <button
             type="button"
@@ -126,27 +128,31 @@ export function UsersPage() {
             style={{ marginTop: 10 }}
             onClick={() => setSecret(null)}
           >
-            Done
+            {t('Done')}
           </button>
         </div>
       )}
       {error && <div className="error">{error.message}</div>}
 
       <div className="two-col" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 420px)' }}>
-        <section className="card" aria-label="Accounts">
+        <section className="card" aria-label={t('Accounts')}>
           <div className="filters">
             <div className="search-field">
               <Search size={18} />
               <input
                 type="search"
-                aria-label="Search"
-                placeholder="Name, username or phone"
+                aria-label={t('Search')}
+                placeholder={t('Name, username or phone')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as UserRole | '')}>
-              <option value="">All roles</option>
+            <select
+              aria-label={t('Role')}
+              value={role}
+              onChange={(e) => setRole(e.target.value as UserRole | '')}
+            >
+              <option value="">{t('All roles')}</option>
               {Object.entries(ROLE_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -154,17 +160,17 @@ export function UsersPage() {
               ))}
             </select>
           </div>
-          {users.isLoading && <div className="empty">Loading…</div>}
-          {users.data && list.length === 0 && <div className="empty">Nobody matches.</div>}
+          {users.isLoading && <div className="empty">{t('Loading…')}</div>}
+          {users.data && list.length === 0 && <div className="empty">{t('Nobody matches.')}</div>}
           {list.length > 0 && (
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>Area</th>
-                    <th>Status</th>
+                    <th>{t('Name')}</th>
+                    <th>{t('Role')}</th>
+                    <th>{t('Area')}</th>
+                    <th>{t('Status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -186,7 +192,7 @@ export function UsersPage() {
                         {u.roles.map((r) => ROLE_LABEL[r] ?? r).join(', ')}
                       </td>
                       <td>
-                        {u.areaName ? `${u.areaName}${u.teamName ? ` · ${u.teamName}` : ''}` : 'All areas'}
+                        {u.areaName ? `${u.areaName}${u.teamName ? ` · ${u.teamName}` : ''}` : t('All areas')}
                       </td>
                       <td>
                         <UserStatus user={u} />
@@ -205,7 +211,7 @@ export function UsersPage() {
               <section className="card card-pad">
                 <h2>{selected.fullName}</h2>
                 <span className="meta" style={{ fontSize: 14 }}>
-                  This account was removed. It is kept so the ticket history still shows the name.
+                  {t('This account was removed. It is kept so the ticket history still shows the name.')}
                 </span>
               </section>
             ) : (
@@ -224,12 +230,12 @@ export function UsersPage() {
                         className="btn"
                         disabled={account.isPending}
                         onClick={() =>
-                          confirmThen(`Give ${selected.fullName} a new temporary password?`, () =>
+                          confirmThen(t('Give {0} a new temporary password?', { 0: selected.fullName }), () =>
                             account.mutate({ user: selected, action: 'reset-password' })
                           )
                         }
                       >
-                        Reset password
+                        {t('Reset password')}
                       </button>
                       {selected.status === 'active' ? (
                         <button
@@ -237,12 +243,13 @@ export function UsersPage() {
                           className="btn"
                           disabled={account.isPending}
                           onClick={() =>
-                            confirmThen(`Block ${selected.fullName}? They are signed out at once.`, () =>
-                              account.mutate({ user: selected, action: 'block' })
+                            confirmThen(
+                              t('Block {0}? They are signed out at once.', { 0: selected.fullName }),
+                              () => account.mutate({ user: selected, action: 'block' })
                             )
                           }
                         >
-                          Block
+                          {t('Block')}
                         </button>
                       ) : (
                         <button
@@ -251,7 +258,7 @@ export function UsersPage() {
                           disabled={account.isPending}
                           onClick={() => account.mutate({ user: selected, action: 'unblock' })}
                         >
-                          Unblock
+                          {t('Unblock')}
                         </button>
                       )}
                       <button
@@ -260,12 +267,14 @@ export function UsersPage() {
                         disabled={account.isPending}
                         onClick={() =>
                           confirmThen(
-                            `Remove ${selected.fullName} for good? Their name stays in ticket history.`,
+                            t('Remove {0} for good? Their name stays in ticket history.', {
+                              0: selected.fullName
+                            }),
                             () => account.mutate({ user: selected, action: 'cancel' })
                           )
                         }
                       >
-                        Remove user
+                        {t('Remove user')}
                       </button>
                     </>
                   )

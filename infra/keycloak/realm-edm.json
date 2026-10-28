@@ -7,7 +7,7 @@
   "ssoSessionIdleTimeout": 28800,
   "loginWithEmailAllowed": true,
   "internationalizationEnabled": true,
-  "supportedLocales": ["en", "pt"],
+  "supportedLocales": ["en", "pt", "vi"],
   "defaultLocale": "en",
   "roles": {
     "realm": [

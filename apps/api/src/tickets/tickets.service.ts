@@ -1,5 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
+  mayCheck,
   nextStatus,
   OPEN_JOB_STATUSES,
   OUTAGE_PROBLEM_TYPES,
@@ -221,6 +222,17 @@ export class TicketsService {
           }
         }
       }
+      // An "other" ticket with no place, or outside every team area: NOC puts it in the right team.
+      if (input.type === 'other' && !route?.teamId) {
+        messages.push(
+          ...toOffice(
+            await this.users.withRole('noc', tx),
+            sms.managerNewTicket(code, input.title),
+            inbox.newTicket(code, input.title),
+            ticket.id
+          )
+        );
+      }
       if (input.type === 'network_incident') {
         messages.push(
           ...toOffice(
@@ -321,10 +333,22 @@ export class TicketsService {
         );
       }
 
-      // A team manager may only assign or cancel their own team's tickets.
+      // Team and technical managers check "other" tickets; the rest is checked by the Call Center, NOC or Sales.
+      const checks = action === 'close' || action === 'reopen';
+      if (checks && !mayCheck(ticket.type, actor.roles)) {
+        throw new AppError(
+          HttpStatus.FORBIDDEN,
+          'FORBIDDEN_ROLE',
+          'Only the Call Center, NOC or an administrator can check this ticket'
+        );
+      }
+
+      // A team manager may only assign, cancel or check their own team's tickets.
       const isManagerOnly = actor.roles.includes('team_manager') && !actor.roles.includes('admin');
       if (
-        (action === 'assign' || (action === 'cancel' && !this.canCancelAnyTeam(actor))) &&
+        (action === 'assign' ||
+          (checks && ticket.type === 'other') ||
+          (action === 'cancel' && !this.canCancelAnyTeam(actor))) &&
         isManagerOnly &&
         (!ticket.teamId || ticket.teamId !== actor.teamId)
       ) {

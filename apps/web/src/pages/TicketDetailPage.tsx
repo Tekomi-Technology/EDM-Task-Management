@@ -19,8 +19,10 @@ import {
   SURVEY_RESULT_LABEL,
   SOURCE_LABEL,
   timeLeft,
-  TYPE_LABEL
+  TYPE_LABEL,
+  ticketTitle
 } from '../format';
+import { t as tr, dateLocale } from '../i18n';
 
 type Action = 'close' | 'reopen' | 'cancel';
 
@@ -33,26 +35,36 @@ function steps(t: TicketDetail) {
   const last = (type: string) => [...t.events].reverse().find((e) => e.type === type);
   const at = (e?: TicketEventView) => (e ? formatTime(e.createdAt) : undefined);
   const r = rank(t.status);
+  // Who checks the work, by type: the same split as the Closing checks queues.
   const checker =
-    t.source === 'call_center'
-      ? 'by Call Center'
-      : t.source === 'sales'
-        ? t.type === 'new_connection'
-          ? 'activated by Sales'
-          : 'by itself'
-        : 'by NOC';
+    t.type === 'network_incident' || t.type === 'planned_work'
+      ? tr('by NOC')
+      : t.type === 'new_customer_survey'
+        ? tr('by itself')
+        : t.type === 'new_connection' && t.source === 'sales'
+          ? tr('activated by Sales')
+          : t.type === 'other'
+            ? tr('by the office')
+            : tr('by Call Center');
   const doneLabel =
-    t.type === 'new_customer_survey' ? 'Surveyed' : t.type === 'new_connection' ? 'Connected' : 'Fixed';
-  const closeLabel = t.type === 'new_connection' ? 'Activated and closed' : 'Checked and closed';
+    t.type === 'new_customer_survey'
+      ? tr('Surveyed')
+      : t.type === 'new_connection'
+        ? tr('Connected')
+        : tr('Fixed');
+  const closeLabel =
+    t.type === 'new_connection' && t.source === 'sales'
+      ? tr('Activated and closed')
+      : tr('Checked and closed');
   return [
-    { label: 'Created', done: r >= 0 || t.status === 'reopened', note: at(last('created')) },
-    { label: 'Assigned', done: r >= 1, note: r >= 1 ? at(last('assign')) : undefined },
-    { label: 'Accepted', done: r >= 2, note: r >= 2 ? at(last('accept')) : undefined },
-    { label: 'On site', done: r >= 3, note: r >= 3 ? at(last('start')) : undefined },
+    { label: tr('Created'), done: r >= 0 || t.status === 'reopened', note: at(last('created')) },
+    { label: tr('Assigned'), done: r >= 1, note: r >= 1 ? at(last('assign')) : undefined },
+    { label: tr('Accepted'), done: r >= 2, note: r >= 2 ? at(last('accept')) : undefined },
+    { label: tr('On site'), done: r >= 3, note: r >= 3 ? at(last('start')) : undefined },
     {
-      label: t.status === 'on_hold' ? `${doneLabel} (paused)` : doneLabel,
+      label: t.status === 'on_hold' ? tr('{0} (paused)', { 0: doneLabel }) : doneLabel,
       done: r >= 4,
-      note: r >= 4 ? at(last('resolve')) : r === 3 ? 'in progress' : undefined
+      note: r >= 4 ? at(last('resolve')) : r === 3 ? tr('in progress') : undefined
     },
     { label: closeLabel, done: r >= 5, note: r >= 5 ? at(last('close')) : checker }
   ];
@@ -61,13 +73,15 @@ function steps(t: TicketDetail) {
 function describe(e: TicketEventView): string {
   const base = EVENT_LABEL[e.type] ?? e.type;
   if (e.type === 'assign' && typeof e.data.assigneeName === 'string') {
-    return `${e.data.auto ? 'gave the job automatically to' : 'assigned the ticket to'} ${e.data.assigneeName}`;
+    return `${e.data.auto ? tr('gave the job automatically to') : tr('assigned the ticket to')} ${e.data.assigneeName}`;
   }
   if (e.type === 'resolve' && Array.isArray(e.data.attachmentIds) && e.data.attachmentIds.length) {
     const n = e.data.attachmentIds.length;
-    return `reported the job done with ${n} ${n === 1 ? 'photo' : 'photos'}`;
+    return tr(n === 1 ? 'reported the job done with {0} photo' : 'reported the job done with {0} photos', {
+      0: n
+    });
   }
-  if (e.type === 'note' && e.data.notified) return 'added a note, also sent to the staff member';
+  if (e.type === 'note' && e.data.notified) return tr('added a note, also sent to the staff member');
   if (e.type === 'linked' || e.type === 'unlinked' || e.type === 'closed_with_incident') {
     return `${base} ${String(e.data.incidentCode ?? '')}`.trim();
   }
@@ -75,12 +89,18 @@ function describe(e: TicketEventView): string {
     return `${base}: ${String(e.data.alarmType ?? '')} (${String(e.data.elementCode ?? '')})`;
   }
   if (e.type === 'team_changed' && typeof e.data.teamName === 'string')
-    return `moved it to team ${e.data.teamName}`;
+    return tr('moved it to team {0}', { 0: e.data.teamName });
   if (e.type === 'escalate') {
     const told =
-      Array.isArray(e.data.notified) && e.data.notified.length ? `: told ${e.data.notified.join(', ')}` : '';
+      Array.isArray(e.data.notified) && e.data.notified.length
+        ? tr(': told {0}', { 0: e.data.notified.join(', ') })
+        : '';
     const what =
-      e.data.level === 1 ? 'time is running out' : e.data.level === 2 ? 'past the time limit' : 'badly late';
+      e.data.level === 1
+        ? tr('time is running out')
+        : e.data.level === 2
+          ? tr('past the time limit')
+          : tr('badly late');
     return `${what}${told}`;
   }
   return base;
@@ -97,16 +117,21 @@ function Timeline({ events }: { events: TicketEventView[] }) {
             <div className="what">
               <div>
                 <span className="meta when">{formatWhen(e.createdAt)}</span>
-                <strong>{e.actorName ?? 'System'}</strong>{' '}
+                <strong>{e.actorName ?? tr('System')}</strong>{' '}
                 <span style={{ color: 'var(--text-2)' }}>{describe(e)}</span>
               </div>
               {typeof e.data.occurredAt === 'string' && (
                 <div className="meta">
-                  Done at {formatWhen(e.data.occurredAt)} without signal, sent when back online
+                  {tr('Done at')} {formatWhen(e.data.occurredAt)}{' '}
+                  {tr('without signal, sent when back online')}
                 </div>
               )}
               {typeof e.data.note === 'string' && <div className="note">{e.data.note}</div>}
-              {typeof e.data.reason === 'string' && <div className="note">Reason: {e.data.reason}</div>}
+              {typeof e.data.reason === 'string' && (
+                <div className="note">
+                  {tr('Reason:')} {e.data.reason}
+                </div>
+              )}
             </div>
           </li>
         );
@@ -139,8 +164,8 @@ export function TicketDetailPage() {
     enabled: office
   });
   useCrumbs([
-    { label: 'All tickets', to: '/tickets' },
-    { label: ticket.data ? `${ticket.data.code} · ${ticket.data.title}` : 'Ticket' }
+    { label: tr('All tickets'), to: '/tickets' },
+    { label: ticket.data ? `${ticket.data.code} · ${ticketTitle(ticket.data.title)}` : tr('Ticket') }
   ]);
 
   const done = (updated: TicketDetail) => {
@@ -171,15 +196,17 @@ export function TicketDetailPage() {
     }
   });
 
-  if (ticket.isLoading) return <div className="content empty">Loading…</div>;
+  if (ticket.isLoading) return <div className="content empty">{tr('Loading…')}</div>;
   if (ticket.error) {
     const err = ticket.error as ApiRequestError;
     return (
       <div className="content">
         <div className="error">
-          {err.error?.statusCode === 404 ? 'This ticket does not exist or is not in your team.' : err.message}
+          {err.error?.statusCode === 404
+            ? tr('This ticket does not exist or is not in your team.')
+            : err.message}
         </div>
-        <Link to="/tickets">Back to tickets</Link>
+        <Link to="/tickets">{tr('Back to tickets')}</Link>
       </div>
     );
   }
@@ -206,16 +233,18 @@ export function TicketDetailPage() {
             <div className="btn-row" style={{ gap: 8 }}>
               <StatusBadge status={t.status} />
               <span className="badge">
-                {TYPE_LABEL[t.type] === 'Customer' ? 'Customer complaint' : TYPE_LABEL[t.type]}
+                {t.type === 'customer_complaint' ? tr('Customer complaint') : TYPE_LABEL[t.type]}
               </span>
-              <span className="badge">Priority {t.priority}</span>
+              <span className="badge">
+                {tr('Priority')} {t.priority}
+              </span>
             </div>
-            <h1>{t.title}</h1>
+            <h1>{ticketTitle(t.title)}</h1>
             <div className="subtitle">
-              {t.code} · Opened {created ? formatWhen(created.createdAt) : formatWhen(t.createdAt)} by{' '}
-              {SOURCE_LABEL[t.source]}
-              {t.externalRef ? ` (ref ${t.externalRef})` : ''} ·{' '}
-              {t.teamName ? `Team ${t.teamName}` : 'not in any team area'}
+              {t.code} {tr('· Opened')} {created ? formatWhen(created.createdAt) : formatWhen(t.createdAt)}{' '}
+              {tr('by')} {SOURCE_LABEL[t.source]}
+              {t.externalRef ? tr(' (ref {0})', { 0: t.externalRef }) : ''} ·{' '}
+              {t.teamName ? tr('Team {0}', { 0: t.teamName }) : tr('not in any team area')}
             </div>
           </div>
           <div className="btn-row">
@@ -225,12 +254,12 @@ export function TicketDetailPage() {
                 className="btn btn-lg"
                 onClick={() => navigate(`/tickets/${t.id}/assign`)}
               >
-                <UserPlus size={18} /> {t.assignee ? 'Reassign' : 'Assign'}
+                <UserPlus size={18} /> {t.assignee ? tr('Reassign') : tr('Assign')}
               </button>
             )}
             {t.allowedActions.includes('cancel') && !cancelling && (
               <button type="button" className="btn btn-lg btn-danger" onClick={() => setCancelling(true)}>
-                <XCircle size={18} /> Cancel ticket
+                <XCircle size={18} /> {tr('Cancel ticket')}
               </button>
             )}
           </div>
@@ -238,7 +267,7 @@ export function TicketDetailPage() {
         {cancelling && (
           <div className="box" style={{ gap: 10 }}>
             <label htmlFor="cancel-reason" style={{ fontWeight: 700 }}>
-              Why cancel? For example a duplicate, or the customer withdrew the request.
+              {tr('Why cancel? For example a duplicate, or the customer withdrew the request.')}
             </label>
             <textarea
               id="cancel-reason"
@@ -253,38 +282,38 @@ export function TicketDetailPage() {
                 disabled={act.isPending || cancelReason.trim().length < 3}
                 onClick={() => act.mutate({ action: 'cancel', body: { reason: cancelReason } })}
               >
-                Cancel ticket
+                {tr('Cancel ticket')}
               </button>
               <button type="button" className="btn" onClick={() => setCancelling(false)}>
-                Keep it
+                {tr('Keep it')}
               </button>
             </div>
           </div>
         )}
         {cancelEvent && (
           <div className="note">
-            Cancelled by {cancelEvent.actorName ?? 'System'} on {formatWhen(cancelEvent.createdAt)}:{' '}
-            {String(cancelEvent.data.reason ?? '')}
+            {tr('Cancelled by')} {cancelEvent.actorName ?? tr('System')} {tr('on')}{' '}
+            {formatWhen(cancelEvent.createdAt)}: {String(cancelEvent.data.reason ?? '')}
           </div>
         )}
         {t.incident && (
           <div className="notice">
-            Caused by network incident{' '}
+            {tr('Caused by network incident')}{' '}
             <Link to={`/tickets/${t.incident.id}`} style={{ fontWeight: 700 }}>
-              {t.incident.code} · {t.incident.title}
+              {t.incident.code} · {ticketTitle(t.incident.title)}
             </Link>
-            . Nobody else is sent; this ticket closes when the incident is closed.
+            {tr('. Nobody else is sent; this ticket closes when the incident is closed.')}
           </div>
         )}
         {t.escalationLevel >= 2 && !['closed', 'cancelled', 'resolved'].includes(t.status) && (
           <div className="error">
             {t.escalationLevel === 3
-              ? 'Badly late: technical managers, team manager and NOC have been told.'
-              : 'Past the time limit: the team manager and NOC have been told.'}
+              ? tr('Badly late: technical managers, team manager and NOC have been told.')
+              : tr('Past the time limit: the team manager and NOC have been told.')}
           </div>
         )}
         {t.status !== 'cancelled' && (
-          <ol className="steps" aria-label="Progress">
+          <ol className="steps" aria-label={tr('Progress')}>
             {steps(t).map((s, i, all) => {
               const now = !s.done && (i === 0 || all[i - 1]!.done);
               return (
@@ -303,14 +332,14 @@ export function TicketDetailPage() {
 
       <div className="two-col">
         <section className="card">
-          <div className="tabs" role="tablist" aria-label="Ticket information">
+          <div className="tabs" role="tablist" aria-label={tr('Ticket information')}>
             <button
               type="button"
               role="tab"
               aria-selected={tab === 'activity'}
               onClick={() => setTab('activity')}
             >
-              Activity
+              {tr('Activity')}
             </button>
             <button
               type="button"
@@ -318,7 +347,7 @@ export function TicketDetailPage() {
               aria-selected={tab === 'photos'}
               onClick={() => setTab('photos')}
             >
-              Photos · {photos.length}
+              {tr('Photos ·')} {photos.length}
             </button>
             {office && (
               <button
@@ -327,7 +356,7 @@ export function TicketDetailPage() {
                 aria-selected={tab === 'messages'}
                 onClick={() => setTab('messages')}
               >
-                SMS &amp; notifications · {messages.data?.length ?? 0}
+                {tr('SMS & notifications ·')} {messages.data?.length ?? 0}
               </button>
             )}
           </div>
@@ -346,11 +375,11 @@ export function TicketDetailPage() {
                   <div className="box-input">
                     <textarea
                       rows={2}
-                      aria-label="Note"
+                      aria-label={tr('Note')}
                       placeholder={
                         t.assignee
-                          ? `Write a note for ${firstName(t.assignee.fullName)} or the team…`
-                          : 'Write a note for the team…'
+                          ? tr('Write a note for {0} or the team…', { 0: firstName(t.assignee.fullName) })
+                          : tr('Write a note for the team…')
                       }
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
@@ -363,13 +392,13 @@ export function TicketDetailPage() {
                             checked={notify}
                             onChange={(e) => setNotify(e.target.checked)}
                           />
-                          Also send to {firstName(t.assignee!.fullName)} (app or SMS)
+                          {tr('Also send to')} {firstName(t.assignee!.fullName)} {tr('(app or SMS)')}
                         </label>
                       ) : (
-                        <span className="meta">Only the office sees notes.</span>
+                        <span className="meta">{tr('Only the office sees notes.')}</span>
                       )}
                       <button type="submit" className="btn" disabled={!note.trim() || post.isPending}>
-                        Post note
+                        {tr('Post note')}
                       </button>
                     </div>
                   </div>
@@ -381,7 +410,9 @@ export function TicketDetailPage() {
 
           {tab === 'photos' &&
             (photos.length === 0 ? (
-              <div className="empty">No photos yet. Field staff add them when they finish the job.</div>
+              <div className="empty">
+                {tr('No photos yet. Field staff add them when they finish the job.')}
+              </div>
             ) : (
               <div className="photos">
                 {photos.map((a) => (
@@ -399,12 +430,16 @@ export function TicketDetailPage() {
                   <li key={m.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                       <strong>
-                        {m.channel === 'push' ? 'App notification' : 'SMS'} to {m.to}
+                        {m.channel === 'push' ? tr('App notification') : tr('SMS')} {tr('to')} {m.to}
                       </strong>
                       <span className="meta">
                         {formatWhen(m.createdAt)} ·{' '}
                         <span className={m.status === 'failed' ? 'late' : undefined}>
-                          {m.status === 'sent' ? 'sent' : m.status === 'failed' ? 'not delivered' : 'sending'}
+                          {m.status === 'sent'
+                            ? 'sent'
+                            : m.status === 'failed'
+                              ? tr('not delivered')
+                              : 'sending'}
                         </span>
                       </span>
                     </div>
@@ -413,7 +448,7 @@ export function TicketDetailPage() {
                 ))}
               </ul>
             ) : (
-              <div className="empty">No messages sent yet.</div>
+              <div className="empty">{tr('No messages sent yet.')}</div>
             ))}
         </section>
 
@@ -424,7 +459,9 @@ export function TicketDetailPage() {
           {t.planned && (
             <section className="card card-pad">
               <span className="label" style={{ fontSize: 15 }}>
-                {t.planned.kind === 'network_change' ? 'Planned network change' : 'Planned maintenance'}
+                {t.planned.kind === 'network_change'
+                  ? tr('Planned network change')
+                  : tr('Planned maintenance')}
               </span>
               <strong style={{ fontSize: 17 }}>
                 {formatWhen(t.planned.scheduledStart)} – {formatTime(t.planned.scheduledEnd)}
@@ -432,8 +469,10 @@ export function TicketDetailPage() {
               {t.planned.element && <span>{t.planned.element}</span>}
               <span className={t.planned.outage ? 'late' : 'meta'}>
                 {t.planned.outage
-                  ? `Power cut${t.planned.customersAffected !== null ? ` for about ${t.planned.customersAffected} customers` : ''}`
-                  : 'No power cut'}
+                  ? t.planned.customersAffected !== null
+                    ? tr('Power cut for about {0} customers', { 0: t.planned.customersAffected })
+                    : tr('Power cut')
+                  : tr('No power cut')}
               </span>
             </section>
           )}
@@ -443,7 +482,7 @@ export function TicketDetailPage() {
           {left ? (
             <section className="card card-pad">
               <span className="label" style={{ fontSize: 15 }}>
-                Time left to fix
+                {tr('Time left to fix')}
               </span>
               <div>
                 <span style={{ fontSize: 32, fontWeight: 700, color: left.late ? 'var(--late)' : undefined }}>
@@ -452,10 +491,10 @@ export function TicketDetailPage() {
                 {totalMinutes > 0 && (
                   <span className="meta" style={{ fontSize: 15 }}>
                     {' '}
-                    of{' '}
+                    {tr('of')}{' '}
                     {totalMinutes >= 120
                       ? `${Math.round(totalMinutes / 60)} h`
-                      : `${Math.round(totalMinutes)} min`}
+                      : tr('{0} min', { 0: Math.round(totalMinutes) })}
                   </span>
                 )}
               </div>
@@ -465,22 +504,23 @@ export function TicketDetailPage() {
                 />
               </div>
               <span className="meta" style={{ fontSize: 14 }}>
-                Due at {formatWhen(t.dueAt!)}.{left.late ? ' It is shown as late to the team manager.' : ''}
+                {tr('Due at')} {formatWhen(t.dueAt!)}.
+                {left.late ? tr(' It is shown as late to the team manager.') : ''}
               </span>
             </section>
           ) : null}
 
           {canCheck && (
-            <section className="card card-pad" aria-label="Check the work">
-              <h2>Check the work</h2>
+            <section className="card card-pad" aria-label={tr('Check the work')}>
+              <h2>{tr('Check the work')}</h2>
               <span className="meta" style={{ fontSize: 14 }}>
                 {t.source === 'call_center'
-                  ? 'Normally the Call Center system records this after calling the customer.'
-                  : 'Confirm with the network that the fault is cleared.'}
+                  ? tr('Normally the Call Center system records this after calling the customer.')
+                  : tr('Confirm with the network that the fault is cleared.')}
               </span>
               <textarea
                 rows={2}
-                placeholder="Note (optional)"
+                placeholder={tr('Note (optional)')}
                 value={checkNote}
                 onChange={(e) => setCheckNote(e.target.value)}
               />
@@ -491,7 +531,7 @@ export function TicketDetailPage() {
                   disabled={act.isPending}
                   onClick={() => act.mutate({ action: 'close', body: { note: checkNote } })}
                 >
-                  Close ticket
+                  {tr('Close ticket')}
                 </button>
                 <button
                   type="button"
@@ -499,7 +539,7 @@ export function TicketDetailPage() {
                   disabled={act.isPending}
                   onClick={() => act.mutate({ action: 'reopen', body: { note: checkNote } })}
                 >
-                  Not fixed, send back
+                  {tr('Not fixed, send back')}
                 </button>
               </div>
             </section>
@@ -508,13 +548,15 @@ export function TicketDetailPage() {
           {t.customer && (
             <section className="card card-pad">
               <span className="label" style={{ fontSize: 15 }}>
-                Customer
+                {tr('Customer')}
               </span>
               <div>
                 <strong style={{ fontSize: 17 }}>{t.customer.fullName}</strong>
                 <div className="meta" style={{ fontSize: 14 }}>
-                  {t.customer.contractNo ? `Contract ${t.customer.contractNo}` : 'No contract yet'}
-                  {t.customer.meterNumber ? ` · meter ${t.customer.meterNumber}` : ''}
+                  {t.customer.contractNo
+                    ? tr('Contract {0}', { 0: t.customer.contractNo })
+                    : tr('No contract yet')}
+                  {t.customer.meterNumber ? tr(' · meter {0}', { 0: t.customer.meterNumber }) : ''}
                 </div>
               </div>
               <span>{t.customer.address}</span>
@@ -528,7 +570,7 @@ export function TicketDetailPage() {
                   to={`/tickets?view=all&q=${encodeURIComponent(t.customer.contractNo)}`}
                   style={{ fontWeight: 700, textDecoration: 'none' }}
                 >
-                  All tickets of this customer
+                  {tr('All tickets of this customer')}
                 </Link>
               )}
             </section>
@@ -536,7 +578,7 @@ export function TicketDetailPage() {
 
           <section className="card card-pad">
             <span className="label" style={{ fontSize: 15 }}>
-              Assigned to
+              {tr('Assigned to')}
             </span>
             {t.assignee ? (
               <div className="person">
@@ -544,13 +586,13 @@ export function TicketDetailPage() {
                 <div>
                   <strong>{t.assignee.fullName}</strong>
                   <div className="meta" style={{ fontSize: 14 }}>
-                    {t.teamName ? `Team ${t.teamName}` : ''}
+                    {t.teamName ? tr('Team {0}', { 0: t.teamName }) : ''}
                   </div>
                 </div>
               </div>
             ) : (
               <span className="meta" style={{ fontSize: 14 }}>
-                Nobody yet
+                {tr('Nobody yet')}
               </span>
             )}
           </section>
@@ -558,13 +600,13 @@ export function TicketDetailPage() {
           {t.location && (
             <section className="card" style={{ overflow: 'hidden' }}>
               <div className="card-head">
-                <h2>Where</h2>
+                <h2>{tr('Where')}</h2>
                 <a
                   href={`https://www.openstreetmap.org/?mlat=${t.location.lat}&mlon=${t.location.lng}#map=17/${t.location.lat}/${t.location.lng}`}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <MapPin size={14} /> Open map
+                  <MapPin size={14} /> {tr('Open map')}
                 </a>
               </div>
               <TicketMap
@@ -601,14 +643,20 @@ function NetworkCard({ t, onChange }: { t: TicketDetail; onChange: (updated: Tic
   return (
     <section className="card card-pad">
       <span className="label" style={{ fontSize: 15 }}>
-        Network
+        {tr('Network')}
       </span>
-      <strong style={{ fontSize: 17 }}>{net.elementName ?? net.elementCode ?? 'Reported by phone'}</strong>
+      <strong style={{ fontSize: 17 }}>
+        {net.elementName ?? net.elementCode ?? tr('Reported by phone')}
+      </strong>
       <span className="meta" style={{ fontSize: 14 }}>
         {[
-          net.severity ? `${SEVERITY_LABEL[net.severity]} severity` : null,
-          net.alarms.length ? `${net.activeAlarms} of ${net.alarms.length} alarms active` : null,
-          net.customersAffected !== null ? `≈ ${net.customersAffected.toLocaleString('en')} customers` : null
+          net.severity ? tr('{0} severity', { 0: SEVERITY_LABEL[net.severity] }) : null,
+          net.alarms.length
+            ? tr('{0} of {1} alarms active', { 0: net.activeAlarms, 1: net.alarms.length })
+            : null,
+          net.customersAffected !== null
+            ? tr('≈ {0} customers', { 0: net.customersAffected.toLocaleString(dateLocale()) })
+            : null
         ]
           .filter(Boolean)
           .join(' · ')}
@@ -616,25 +664,28 @@ function NetworkCard({ t, onChange }: { t: TicketDetail; onChange: (updated: Tic
       {net.alarms.map((a) => (
         <span key={a.id} style={{ fontSize: 14, color: a.clearedAt ? 'var(--muted)' : undefined }}>
           {formatTime(a.raisedAt)} {a.alarmType} · {a.elementCode}
-          {a.clearedAt ? ' (cleared)' : ''}
+          {a.clearedAt ? tr(' (cleared)') : ''}
         </span>
       ))}
       <span>
-        {net.linkedTickets.length} customer {net.linkedTickets.length === 1 ? 'ticket' : 'tickets'} linked
+        {tr(net.linkedTickets.length === 1 ? '{0} customer ticket linked' : '{0} customer tickets linked', {
+          0: net.linkedTickets.length
+        })}
       </span>
       {net.acknowledgedAt ? (
         <span className="meta">
-          Acknowledged by {net.acknowledgedBy ?? 'NOC'} at {formatTime(net.acknowledgedAt)}
+          {tr('Acknowledged by')} {net.acknowledgedBy ?? tr('NOC')} {tr('at')}{' '}
+          {formatTime(net.acknowledgedAt)}
         </span>
       ) : (
         hasRole(me.data, 'noc', 'admin', 'technical_manager') && (
           <button type="button" className="btn" disabled={ack.isPending} onClick={() => ack.mutate()}>
-            <Eye size={16} /> Acknowledge (NOC)
+            <Eye size={16} /> {tr('Acknowledge (NOC)')}
           </button>
         )
       )}
       <Link to="/incidents" style={{ fontWeight: 700, textDecoration: 'none' }}>
-        Network incidents
+        {tr('Network incidents')}
       </Link>
     </section>
   );
@@ -649,13 +700,13 @@ function TeamPanel({ ticketId, onChange }: { ticketId: string; onChange: (update
     onSuccess: onChange
   });
   return (
-    <section className="card card-pad" aria-label="Choose a team">
-      <h2>No team yet</h2>
+    <section className="card card-pad" aria-label={tr('Choose a team')}>
+      <h2>{tr('No team yet')}</h2>
       <span className="meta" style={{ fontSize: 14 }}>
-        The place is outside every team area. Choose the team that should go.
+        {tr('The place is outside every team area. Choose the team that should go.')}
       </span>
-      <select aria-label="Team" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-        <option value="">Choose a team…</option>
+      <select aria-label={tr('Team')} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+        <option value="">{tr('Choose a team…')}</option>
         {lookups.data?.teams.map((x) => (
           <option key={x.id} value={x.id}>
             {x.name} · {x.areaName}
@@ -669,7 +720,7 @@ function TeamPanel({ ticketId, onChange }: { ticketId: string; onChange: (update
         disabled={!teamId || move.isPending}
         onClick={() => move.mutate()}
       >
-        Send to this team
+        {tr('Send to this team')}
       </button>
     </section>
   );
@@ -681,18 +732,22 @@ function NewCustomerCard({ t }: { t: TicketDetail }) {
   return (
     <section className="card card-pad">
       <span className="label" style={{ fontSize: 15 }}>
-        {n.kind === 'survey' ? 'New customer survey' : 'New connection'}
+        {n.kind === 'survey' ? tr('New customer survey') : tr('New connection')}
       </span>
       <strong style={{ fontSize: 17 }}>
         {[n.premises ? PREMISES_LABEL[n.premises] : null, n.supply ? SUPPLY_LABEL[n.supply] : null]
           .filter(Boolean)
           .join(' · ')}
-        {n.requestedLoadKw ? ` · ${n.requestedLoadKw} kW` : ''}
+        {n.requestedLoadKw ? tr(' · {0} kW', { 0: n.requestedLoadKw }) : ''}
       </strong>
-      {n.contractNo && <span>Contract {n.contractNo}</span>}
+      {n.contractNo && (
+        <span>
+          {tr('Contract')} {n.contractNo}
+        </span>
+      )}
       {n.surveyTicket && (
         <Link to={`/tickets/${n.surveyTicket.id}`} style={{ textDecoration: 'none' }}>
-          Survey {n.surveyTicket.code}
+          {tr('Survey')} {n.surveyTicket.code}
         </Link>
       )}
       {n.survey && (
@@ -702,14 +757,18 @@ function NewCustomerCard({ t }: { t: TicketDetail }) {
           </strong>
           {n.survey.distanceToNetworkM !== null && (
             <span>
-              {n.survey.distanceToNetworkM} m to the network
+              {n.survey.distanceToNetworkM} {tr('m to the network')}
               {n.survey.nearestElement ? ` (${n.survey.nearestElement})` : ''}
             </span>
           )}
-          {n.survey.worksNeeded && <span>Works: {n.survey.worksNeeded}</span>}
+          {n.survey.worksNeeded && (
+            <span>
+              {tr('Works:')} {n.survey.worksNeeded}
+            </span>
+          )}
           {n.survey.estimatedMaterials.length > 0 && (
             <span className="meta">
-              Estimate:{' '}
+              {tr('Estimate:')}{' '}
               {n.survey.estimatedMaterials.map((m) => `${m.name} ${qty(m.quantity, m.unit)}`).join(', ')}
             </span>
           )}
@@ -718,23 +777,23 @@ function NewCustomerCard({ t }: { t: TicketDetail }) {
       {n.installation && (
         <div className="box" style={{ gap: 4 }}>
           <span>
-            Meter <strong>{n.installation.meterNumber}</strong>
-            {n.installation.sealNumber ? ` · seal ${n.installation.sealNumber}` : ''}
+            {tr('Meter')} <strong>{n.installation.meterNumber}</strong>
+            {n.installation.sealNumber ? tr(' · seal {0}', { 0: n.installation.sealNumber }) : ''}
           </span>
           <span className="meta">
-            Customer confirmed {formatWhen(n.installation.confirmedAt)} by{' '}
-            {n.installation.confirmedBy === 'sms_code' ? 'the SMS code' : 'signing the handover form'}
+            {tr('Customer confirmed')} {formatWhen(n.installation.confirmedAt)} {tr('by')}{' '}
+            {n.installation.confirmedBy === 'sms_code' ? tr('the SMS code') : tr('signing the handover form')}
           </span>
         </div>
       )}
       {n.kind === 'connection' &&
         (n.activatedAt ? (
           <span className="badge badge-active" style={{ alignSelf: 'flex-start' }}>
-            Active since {formatWhen(n.activatedAt)}
+            {tr('Active since')} {formatWhen(n.activatedAt)}
           </span>
         ) : (
           t.status === 'resolved' && (
-            <span className="meta">Waiting for the Sales system to activate the service.</span>
+            <span className="meta">{tr('Waiting for the Sales system to activate the service.')}</span>
           )
         ))}
     </section>
@@ -746,7 +805,7 @@ function MaterialsCard({ t }: { t: TicketDetail }) {
   return (
     <section className="card card-pad">
       <span className="label" style={{ fontSize: 15 }}>
-        Materials
+        {tr('Materials')}
       </span>
       {t.materials.map((m) => (
         <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
@@ -754,13 +813,14 @@ function MaterialsCard({ t }: { t: TicketDetail }) {
             {m.name} <span className="meta">{m.fromLocation ? `· ${m.fromLocation}` : ''}</span>
           </span>
           <span>
-            {qty(m.quantity, m.unit)} <span className="meta">{m.posted ? 'deducted' : 'when closed'}</span>
+            {qty(m.quantity, m.unit)}{' '}
+            <span className="meta">{m.posted ? tr('deducted') : tr('when closed')}</span>
           </span>
         </div>
       ))}
       {t.reservations.length > 0 && (
         <>
-          <span className="label">Set aside</span>
+          <span className="label">{tr('Set aside')}</span>
           {t.reservations.map((r) => (
             <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
               <span>

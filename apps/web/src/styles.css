@@ -27,7 +27,14 @@
   --purple-soft: #f4f3ff;
   --gray-soft: #f2f4f7;
   --radius: 14px;
-  font-family: 'Roboto', system-ui, sans-serif;
+  /* Sidebar: soft peach with dark brown text; EDM orange only marks where you are (contrast at least 4.5:1). */
+  --nav-bg: #fdebd8;
+  --nav-border: #f6d9bb;
+  --nav-text: #3a2208;
+  --nav-strong: #2b1a07;
+  --nav-muted: #7a4510;
+  --nav-hover: rgb(243 155 58 / 18%);
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
@@ -65,8 +72,9 @@ button {
 .nav {
   width: 240px;
   flex: none;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: var(--nav-bg);
+  border-right: 1px solid var(--nav-border);
+  color: var(--nav-text);
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
@@ -86,22 +94,27 @@ button {
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  box-shadow: 0 0 0 1px #f2e3d3;
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--surface);
 }
 .brand strong {
   display: block;
   font-size: 16px;
+  color: var(--nav-strong);
 }
 .brand small {
   display: block;
-  color: var(--muted);
+  color: var(--nav-muted);
   font-size: 12px;
   line-height: 1.3;
 }
 .nav-group {
-  margin: 14px 12px 4px;
-  font-size: 12px;
-  color: var(--muted);
+  margin: 16px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nav-muted);
 }
 .nav a {
   display: flex;
@@ -110,35 +123,40 @@ button {
   min-height: 38px;
   padding: 0 12px;
   border-radius: 8px;
-  color: var(--text-2);
+  color: var(--nav-text);
   text-decoration: none;
   font-weight: 500;
 }
 .nav a:hover {
-  background: var(--surface-2);
+  background: var(--nav-hover);
+}
+.nav a:focus-visible {
+  outline: 2px solid var(--nav-strong);
+  outline-offset: 2px;
 }
 .nav a.active {
-  background: var(--brand-soft);
-  color: var(--brand-text);
+  background: var(--brand);
+  color: var(--brand-ink);
   font-weight: 700;
 }
 .nav a .count {
   margin-left: auto;
-  background: var(--gray-soft);
-  color: var(--text-2);
+  background: rgb(143 76 11 / 14%);
+  color: var(--nav-strong);
   border-radius: 10px;
   padding: 0 8px;
   font-size: 12px;
   font-weight: 700;
 }
 .nav a.active .count {
-  background: var(--surface);
+  background: rgb(43 26 7 / 16%);
+  color: var(--brand-ink);
 }
 .nav .version {
   margin-top: auto;
   padding: 16px 12px 0;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--nav-muted);
 }
 .main {
   flex: 1;
@@ -1318,4 +1336,122 @@ tr.selected:hover td {
   .region-picker select {
     max-width: 140px;
   }
+}
+
+/* Figures line up in columns (times left, counts, quantities); codes like TK-26-00013 keep normal spacing. */
+td.right,
+.kpi .value,
+.count,
+.pill-count,
+.bell-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Language choice in the user menu */
+.menu-language {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+.menu .menu-language button {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+.menu .menu-language button[aria-checked='true'] {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-weight: 700;
+}
+
+/* API documentation */
+.method {
+  display: inline-block;
+  min-width: 52px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font:
+    700 12px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-align: center;
+  background: var(--gray-soft);
+  color: #344054;
+}
+.method-get {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.method-post {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+}
+.method-put,
+.method-patch {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.api-path,
+.field-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+.api-path {
+  font-size: 15px;
+  font-weight: 600;
+}
+.field-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+.api-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.api-values code {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--gray-soft);
+}
+.api-example {
+  margin: 0 24px 20px;
+}
+.api-example summary {
+  cursor: pointer;
+  color: var(--link);
+  font-weight: 600;
+  padding: 6px 0;
+}
+.code-block {
+  position: relative;
+  margin-top: 8px;
+}
+.code-block pre {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #1d2433;
+  color: #f2f4f7;
+  font:
+    13px/1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  overflow-x: auto;
+}
+.code-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }

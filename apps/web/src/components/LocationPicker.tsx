@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef } from 'react';
+import { t } from '../i18n';
 
 const TILE_URL = import.meta.env.VITE_MAP_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const MAPUTO: L.LatLngTuple = [-25.95, 32.55];
@@ -70,7 +71,7 @@ export function LocationPicker({
     <div
       ref={el}
       role="application"
-      aria-label="Map: click where the problem is"
+      aria-label={t('Map: click where the problem is')}
       style={{ height, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)' }}
     />
   );

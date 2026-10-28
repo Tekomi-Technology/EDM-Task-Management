@@ -47,7 +47,7 @@ describe('tickets entered by EDM staff', () => {
   it('shows what will happen before creating: team, who goes, time limit and the SMS', async () => {
     const customerId = (await rosa()).id;
     const res = await t.as('paulo.bo').post('/api/tickets/preview', {
-      caller: 'customer',
+      type: 'customer_complaint',
       customerId,
       problemType: 'no_power_single'
     });
@@ -65,7 +65,7 @@ describe('tickets entered by EDM staff', () => {
     expect(await t.db.select().from(tickets)).toEqual([]); // nothing created
 
     const other = await t.as('paulo.bo').post('/api/tickets/preview', {
-      caller: 'customer',
+      type: 'customer_complaint',
       customerId,
       problemType: 'other',
       priority: 1
@@ -75,7 +75,7 @@ describe('tickets entered by EDM staff', () => {
 
   it('creates the ticket, assigns it and texts the caller', async () => {
     const res = await t.as('paulo.bo').post('/api/tickets', {
-      caller: 'customer',
+      type: 'customer_complaint',
       customerId: (await rosa()).id,
       problemType: 'no_power_single',
       description: 'Whole house without power since 07:15. Neighbours have power.'
@@ -113,15 +113,17 @@ describe('tickets entered by EDM staff', () => {
     });
     const customerId = (await rosa()).id;
     const preview = (
-      await t
-        .as('paulo.bo')
-        .post('/api/tickets/preview', { caller: 'customer', customerId, problemType: 'no_power_single' })
+      await t.as('paulo.bo').post('/api/tickets/preview', {
+        type: 'customer_complaint',
+        customerId,
+        problemType: 'no_power_single'
+      })
     ).body;
     expect(preview.incident).toMatchObject({ elementName: 'Transformer PT-4471', linkedCustomers: 0 });
     expect(preview.sms.knownOutage).toContain('Já sabemos da avaria');
 
     const joined = await t.as('paulo.bo').post('/api/tickets', {
-      caller: 'customer',
+      type: 'customer_complaint',
       customerId,
       problemType: 'no_power_single',
       description: 'No power'
@@ -129,7 +131,7 @@ describe('tickets entered by EDM staff', () => {
     expect(joined.body).toMatchObject({ status: 'new', incident: { id: preview.incident.id } });
 
     const separate = await t.as('paulo.bo').post('/api/tickets', {
-      caller: 'customer',
+      type: 'customer_complaint',
       customerId,
       problemType: 'no_power_single',
       description: 'No power, but only in the kitchen',
@@ -142,7 +144,7 @@ describe('tickets entered by EDM staff', () => {
 
   it('takes a report from a member of the public as a network ticket for the place', async () => {
     const res = await t.as('nadia.mussa').post('/api/tickets', {
-      caller: 'public',
+      type: 'network_incident',
       reportType: 'cable_down',
       address: 'Rua 4, near the market, Matola Gare',
       location: MATOLA,
@@ -166,7 +168,7 @@ describe('tickets entered by EDM staff', () => {
   it('is for office staff who take calls, and checks what is entered', async () => {
     const customerId = (await rosa()).id;
     const body = {
-      caller: 'customer',
+      type: 'customer_complaint',
       customerId,
       problemType: 'low_voltage',
       description: 'Lights flicker'
@@ -182,5 +184,57 @@ describe('tickets entered by EDM staff', () => {
           .post('/api/tickets', { ...body, customerId: '00000000-0000-4000-8000-0000000000aa' })
       ).status
     ).toBe(404);
+  });
+
+  it('takes an "other" ticket with the priority chosen, and lets the team manager check it', async () => {
+    const res = await t.as('paulo.bo').post('/api/tickets', {
+      type: 'other',
+      title: 'Meter box door broken',
+      description: 'The box is open to the street.',
+      priority: 2,
+      location: MATOLA
+    });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ status: 'assigned', assigneeName: 'Armando Cossa' });
+    const detail = (await t.as('helena.mondlane').get(`/api/tickets/${res.body.id}`)).body;
+    expect(detail).toMatchObject({
+      type: 'other',
+      source: 'office',
+      title: 'Meter box door broken',
+      priority: 2
+    });
+    expect(Date.parse(detail.dueAt) - Date.now()).toBeGreaterThan(239 * 60_000);
+
+    for (const step of ['accept', 'start'])
+      await t.as('armando.cossa').post(`/api/tickets/${res.body.id}/${step}`);
+    await t.as('armando.cossa').post(`/api/tickets/${res.body.id}/resolve`, { note: 'New door fitted' });
+    // Another team's manager cannot check it; the team manager of the area can.
+    expect((await t.as('joao.matsinhe').post(`/api/tickets/${res.body.id}/close`, {})).status).toBe(403);
+    const closed = await t
+      .as('helena.mondlane')
+      .post(`/api/tickets/${res.body.id}/close`, { note: 'Checked' });
+    expect(closed.body.status).toBe('closed');
+  });
+
+  it('sends an "other" ticket with no place to NOC, and asks for a priority', async () => {
+    const body = { type: 'other', title: 'Wrong address on a bill', description: 'Customer asks to fix it.' };
+    expect((await t.as('paulo.bo').post('/api/tickets', body)).status).toBe(400);
+    const res = await t.as('paulo.bo').post('/api/tickets', { ...body, priority: 3 });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ status: 'new', assigneeName: null });
+    const inbox = (await t.as('nadia.mussa').get('/api/me/notifications')).body;
+    expect(inbox.items[0]).toMatchObject({ title: expect.stringContaining(res.body.code) });
+
+    // A team manager does not close customer complaints: the Call Center checks those.
+    const complaint = await t.as('paulo.bo').post('/api/tickets', {
+      type: 'customer_complaint',
+      customerId: (await rosa()).id,
+      problemType: 'low_voltage',
+      description: 'Lights flicker'
+    });
+    const id = complaint.body.id as string;
+    for (const step of ['accept', 'start']) await t.as('armando.cossa').post(`/api/tickets/${id}/${step}`);
+    await t.as('armando.cossa').post(`/api/tickets/${id}/resolve`, { note: 'Tightened the neutral' });
+    expect((await t.as('helena.mondlane').post(`/api/tickets/${id}/close`, {})).status).toBe(403);
   });
 });

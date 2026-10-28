@@ -1,0 +1,27 @@
+# The VPS's own nginx in front of the stack (docker-compose.vps.yml). Copy to /etc/nginx/sites-available/edm.tekomi.vn,
+# link it into sites-enabled, then `sudo certbot --nginx -d edm.tekomi.vn`: certbot adds HTTPS to this block and a
+# redirect from http. Keep 8090 the same as GATEWAY_PORT in infra/.env.prod.
+server {
+  listen 80;
+  server_name edm.tekomi.vn;
+
+  # Photo uploads from the app go through here.
+  client_max_body_size 50m;
+
+  location / {
+    proxy_pass http://127.0.0.1:8090;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    # Keycloak's sign-in answers carry large cookies; uploads stream straight through.
+    proxy_buffer_size 128k;
+    proxy_buffers 8 128k;
+    proxy_busy_buffers_size 256k;
+    proxy_request_buffering off;
+    proxy_read_timeout 120s;
+  }
+}

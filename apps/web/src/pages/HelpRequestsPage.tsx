@@ -5,8 +5,9 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, ApiRequestError } from '../api';
 import { useCrumbs } from '../components/ui';
-import { ago, formatTime, HELP_KIND_LABEL } from '../format';
+import { ago, formatTime, HELP_KIND_LABEL, ticketTitle } from '../format';
 import { useRegion } from '../components/topbar';
+import { t } from '../i18n';
 
 const STATUS: Record<HelpStatus, { label: string; className: string }> = {
   new: { label: 'New', className: 'badge-late' },
@@ -39,12 +40,12 @@ function Conversation({ request }: { request: HelpRequestView }) {
           <h2 style={{ fontSize: 20 }}>{HELP_KIND_LABEL[request.kind]}</h2>
           <span className="meta" style={{ fontSize: 14 }}>
             {request.requestedBy.fullName}
-            {request.teamName ? ` · Team ${request.teamName}` : ''}
+            {request.teamName ? t(' · Team {0}', { 0: request.teamName }) : ''}
             {request.ticket && (
               <>
                 {' · '}
                 <Link to={`/tickets/${request.ticket.id}`} style={{ fontWeight: 700 }}>
-                  {request.ticket.code} · {request.ticket.title}
+                  {request.ticket.code} · {ticketTitle(request.ticket.title)}
                 </Link>
               </>
             )}
@@ -52,7 +53,7 @@ function Conversation({ request }: { request: HelpRequestView }) {
         </div>
         {request.requestedBy.phone && (
           <a className="btn" href={`tel:${request.requestedBy.phone}`}>
-            <Phone size={16} /> Call
+            <Phone size={16} /> {t('Call')}
           </a>
         )}
       </div>
@@ -86,7 +87,7 @@ function Conversation({ request }: { request: HelpRequestView }) {
       {request.status !== 'solved' ? (
         <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="btn-row" style={{ gap: 8 }}>
-            {QUICK.map((q) => (
+            {QUICK.map((q) => t(q)).map((q) => (
               <button key={q} type="button" className="btn btn-sm" onClick={() => setText(q)}>
                 {q.split(' ').slice(0, 4).join(' ')}…
               </button>
@@ -101,14 +102,14 @@ function Conversation({ request }: { request: HelpRequestView }) {
             }}
           >
             <input
-              aria-label="Reply"
+              aria-label={t('Reply')}
               style={{ flex: 1 }}
-              placeholder="Write a reply…"
+              placeholder={t('Write a reply…')}
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
             <button type="submit" className="btn btn-primary" disabled={!text.trim() || send.isPending}>
-              Send
+              {t('Send')}
             </button>
             <button
               type="button"
@@ -116,13 +117,13 @@ function Conversation({ request }: { request: HelpRequestView }) {
               disabled={send.isPending}
               onClick={() => send.mutate({ body: text.trim() || 'Solved.', status: 'solved' })}
             >
-              Mark solved
+              {t('Mark solved')}
             </button>
           </form>
         </div>
       ) : (
         <div className="empty" style={{ padding: 18 }}>
-          Solved {ago(request.updatedAt)}.
+          {t('Solved')} {ago(request.updatedAt)}.
         </div>
       )}
     </section>
@@ -132,7 +133,7 @@ function Conversation({ request }: { request: HelpRequestView }) {
 /** W13: field staff ask the back office (BO) for help from the app; answer here. */
 export function HelpRequestsPage() {
   const { areaId, withArea } = useRegion();
-  useCrumbs([{ label: 'Field' }, { label: 'Help requests' }]);
+  useCrumbs([{ label: t('Field') }, { label: t('Help requests') }]);
   const [selected, setSelected] = useState<string | null>(null);
   const list = useQuery({
     queryKey: ['help', areaId],
@@ -145,13 +146,13 @@ export function HelpRequestsPage() {
   return (
     <div className="content">
       <div>
-        <h1>Help requests</h1>
+        <h1>{t('Help requests')}</h1>
         <div className="subtitle">
-          Field staff ask the back-office (BO) team for help from the app. Answer here.
+          {t('Field staff ask the back-office (BO) team for help from the app. Answer here.')}
         </div>
       </div>
       {list.data && items.length === 0 ? (
-        <section className="card empty">No help requests.</section>
+        <section className="card empty">{t('No help requests.')}</section>
       ) : (
         <div className="two-col" style={{ gridTemplateColumns: 'minmax(280px, 420px) minmax(0, 1fr)' }}>
           <section className="card queue">
@@ -163,7 +164,7 @@ export function HelpRequestsPage() {
                 onClick={() => setSelected(r.id)}
               >
                 <span className="row">
-                  <span className={`badge ${STATUS[r.status].className}`}>{STATUS[r.status].label}</span>
+                  <span className={`badge ${STATUS[r.status].className}`}>{t(STATUS[r.status].label)}</span>
                   <span className="meta">{ago(r.createdAt)}</span>
                 </span>
                 <strong style={{ fontSize: 15 }}>{r.message}</strong>

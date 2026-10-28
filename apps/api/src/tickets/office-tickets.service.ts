@@ -18,7 +18,7 @@ import { sms } from '../notifications/messages';
 import { normalizePhone } from '../notifications/phone';
 import { TicketsService } from './tickets.service';
 
-/** "Something else" has no set priority; the person taking the call picks one, and the time limit follows it. */
+/** "Something else" and "Other" have no set priority; the person taking the call picks one, and the time limit follows it. */
 const SLA_BY_PRIORITY: Record<number, number> = { 1: 120, 2: 240, 3: 1440 };
 /** Shown in the SMS preview where the ticket code will be. */
 const CODE_PLACEHOLDER = 'TK-…';
@@ -153,7 +153,7 @@ export class OfficeTicketsService {
   async create(input: OfficeTicket, actor: AuthUser): Promise<CreatedTicketView> {
     const what = await this.what(input);
     const created =
-      input.caller === 'customer'
+      input.type === 'customer_complaint'
         ? await this.tickets.create(
             {
               type: 'customer_complaint',
@@ -171,31 +171,50 @@ export class OfficeTicketsService {
             },
             actor
           )
-        : await this.tickets.create(
-            {
-              type: 'network_incident',
-              source: 'office',
-              externalRef: null,
-              problemType: input.reportType,
-              priority: what.priority,
-              slaMinutes: what.slaMinutes,
-              title: what.title,
-              description: [
-                input.description,
-                `Place: ${input.address}`,
-                input.callerName || input.callerPhone
-                  ? `Reported by: ${[input.callerName, input.callerPhone].filter(Boolean).join(', ')}`
-                  : null
-              ]
-                .filter(Boolean)
-                .join('\n'),
-              customerId: null,
-              customerPhone: (input.callerPhone && normalizePhone(input.callerPhone)) || null,
-              location: what.location,
-              elementName: input.address
-            },
-            actor
-          );
+        : input.type === 'other'
+          ? await this.tickets.create(
+              {
+                type: 'other',
+                source: 'office',
+                externalRef: null,
+                problemType: null,
+                priority: what.priority,
+                slaMinutes: what.slaMinutes,
+                title: what.title,
+                description: [input.description, input.address ? `Place: ${input.address}` : null]
+                  .filter(Boolean)
+                  .join('\n'),
+                customerId: input.customerId ?? null,
+                customerPhone: (input.callerPhone && normalizePhone(input.callerPhone)) || what.customerPhone,
+                location: what.location
+              },
+              actor
+            )
+          : await this.tickets.create(
+              {
+                type: 'network_incident',
+                source: 'office',
+                externalRef: null,
+                problemType: input.reportType,
+                priority: what.priority,
+                slaMinutes: what.slaMinutes,
+                title: what.title,
+                description: [
+                  input.description,
+                  `Place: ${input.address}`,
+                  input.callerName || input.callerPhone
+                    ? `Reported by: ${[input.callerName, input.callerPhone].filter(Boolean).join(', ')}`
+                    : null
+                ]
+                  .filter(Boolean)
+                  .join('\n'),
+                customerId: null,
+                customerPhone: (input.callerPhone && normalizePhone(input.callerPhone)) || null,
+                location: what.location,
+                elementName: input.address
+              },
+              actor
+            );
     const [row] = await this.db
       .select({ status: tickets.status, assigneeName: users.fullName })
       .from(tickets)
@@ -220,7 +239,21 @@ export class OfficeTicketsService {
 
   /** Priority, time limit, title and place of what the caller reports. */
   private async what(input: TicketPreviewInput | OfficeTicket) {
-    if (input.caller === 'customer') {
+    if (input.type === 'other') {
+      const customer = input.customerId
+        ? (await this.db.select().from(customers).where(eq(customers.id, input.customerId)))[0]
+        : undefined;
+      if (input.customerId && !customer) throw notFound('Customer');
+      return {
+        priority: input.priority,
+        slaMinutes: SLA_BY_PRIORITY[input.priority]!,
+        title: 'title' in input ? input.title : '',
+        location: input.location ?? customer?.location ?? null,
+        customerPhone: customer?.phone ?? null,
+        outage: false
+      };
+    }
+    if (input.type === 'customer_complaint') {
       const [customer] = await this.db.select().from(customers).where(eq(customers.id, input.customerId));
       if (!customer) throw notFound('Customer');
       const problem = PROBLEM_TYPES[input.problemType];

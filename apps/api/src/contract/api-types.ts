@@ -571,6 +571,54 @@ export interface IntegrationTestResult {
   durationMs: number | null;
 }
 
+/** One input of an integration API, flattened: "customer.fullName", "alarms[].severity". */
+export interface IntegrationDocField {
+  name: string;
+  in: 'path' | 'query' | 'body';
+  type: string;
+  format: string | null;
+  required: boolean;
+  description: string | null;
+  /** Allowed values. */
+  values: string[] | null;
+  /** Length for text, value for numbers, number of items for lists. */
+  min: number | null;
+  max: number | null;
+  /** The value must be above min, not equal to it. */
+  minExclusive: boolean;
+}
+
+export interface IntegrationDocOperation {
+  method: string;
+  path: string;
+  summary: string;
+  description: string | null;
+  fields: IntegrationDocField[];
+  /** A request body that is accepted as it is. */
+  example: unknown;
+}
+
+/** An event EDM Tasks posts to the other system. */
+export interface IntegrationDocWebhook {
+  event: string;
+  description: string;
+  example: unknown;
+}
+
+export interface IntegrationDocSystem {
+  system: IntegrationSystem;
+  /** Keycloak client the system signs in with (client credentials). */
+  clientId: string;
+  operations: IntegrationDocOperation[];
+  webhooks: IntegrationDocWebhook[];
+}
+
+/** The "API documentation" screen: what the other EDM systems can call, built from the API description. */
+export interface IntegrationDocs {
+  tokenUrl: string;
+  systems: IntegrationDocSystem[];
+}
+
 // ---- New ticket screen ----
 
 export interface CustomerMatch {

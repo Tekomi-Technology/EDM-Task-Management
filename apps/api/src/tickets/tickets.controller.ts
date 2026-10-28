@@ -194,10 +194,13 @@ export class TicketsController {
     return this.tickets.sendHandoverCode(id, user);
   }
 
-  /** NOC closes network tickets; customer tickets are closed by the Call Center system through /intake. */
+  /**
+   * NOC closes network tickets; customer tickets are closed by the Call Center system through /intake. Team and
+   * technical managers close "other" tickets (checked in the service).
+   */
   @Post('tickets/:id/close')
   @HttpCode(200)
-  @Roles('noc', 'admin')
+  @Roles('noc', 'admin', 'team_manager', 'technical_manager')
   @ApiZodBody(noteSchema)
   async close(
     @Param('id', ParseUUIDPipe) id: string,
@@ -210,7 +213,7 @@ export class TicketsController {
 
   @Post('tickets/:id/reopen')
   @HttpCode(200)
-  @Roles('noc', 'admin')
+  @Roles('noc', 'admin', 'team_manager', 'technical_manager')
   @ApiZodBody(noteSchema)
   async reopen(
     @Param('id', ParseUUIDPipe) id: string,

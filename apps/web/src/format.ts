@@ -1,6 +1,7 @@
+import { dateLocale, t, translated } from './i18n';
 import type { TicketSource, TicketStatus, TicketSummary, TicketType } from './types';
 
-export const STATUS_LABEL: Record<TicketStatus, string> = {
+export const STATUS_LABEL: Record<TicketStatus, string> = translated({
   new: 'Open',
   assigned: 'Assigned',
   accepted: 'Accepted',
@@ -10,25 +11,26 @@ export const STATUS_LABEL: Record<TicketStatus, string> = {
   closed: 'Closed',
   reopened: 'Reopened',
   cancelled: 'Cancelled'
-};
+});
 
-export const TYPE_LABEL: Record<TicketType, string> = {
+export const TYPE_LABEL: Record<TicketType, string> = translated({
   customer_complaint: 'Customer',
   network_incident: 'Network incident',
   planned_work: 'Planned work',
   new_customer_survey: 'New customer survey',
-  new_connection: 'New connection'
-};
+  new_connection: 'New connection',
+  other: 'Other'
+});
 
-export const SOURCE_LABEL: Record<TicketSource, string> = {
+export const SOURCE_LABEL: Record<TicketSource, string> = translated({
   call_center: 'Call Center',
   sales: 'Sales',
   nms: 'NMS',
   network_team: 'Network team',
   office: 'EDM office'
-};
+});
 
-export const ROLE_LABEL: Record<string, string> = {
+export const ROLE_LABEL: Record<string, string> = translated({
   admin: 'Administrator',
   technical_manager: 'Technical manager',
   team_manager: 'Team manager',
@@ -36,10 +38,10 @@ export const ROLE_LABEL: Record<string, string> = {
   network_team: 'Network team',
   bo_support: 'BO support',
   field_staff: 'Field staff'
-};
+});
 
 /** Shown on the Users & roles screen so admins know what they are giving. */
-export const ROLE_HELP: Record<string, string> = {
+export const ROLE_HELP: Record<string, string> = translated({
   field_staff: 'Sees and updates own jobs in the EDM Field app: accept, pause, finish with notes and photos.',
   team_manager: 'Sees the tickets of their team, assigns them to field staff and cancels duplicates.',
   noc: 'Sees every ticket, checks network jobs and closes or reopens them, cancels tickets.',
@@ -48,9 +50,9 @@ export const ROLE_HELP: Record<string, string> = {
   technical_manager:
     'Sees every ticket, team and field staff member, assigns in any team, and is told when tickets are badly late.',
   admin: 'Everything above, plus accounts, roles and teams.'
-};
+});
 
-export const EVENT_LABEL: Record<string, string> = {
+export const EVENT_LABEL: Record<string, string> = translated({
   created: 'created the ticket',
   assign: 'assigned the ticket',
   accept: 'accepted the job',
@@ -77,65 +79,65 @@ export const EVENT_LABEL: Record<string, string> = {
   stock_short: 'found the van short of material',
   help_requested: 'asked the back office for help',
   handover_code_sent: 'sent the customer a handover code'
-};
+});
 
-export const PREMISES_LABEL: Record<string, string> = {
+export const PREMISES_LABEL: Record<string, string> = translated({
   home: 'Home',
   shop: 'Shop',
   school: 'School',
   business: 'Business',
   farm: 'Farm',
   other: 'Other'
-};
+});
 
-export const SUPPLY_LABEL: Record<string, string> = {
+export const SUPPLY_LABEL: Record<string, string> = translated({
   single_phase: 'single-phase',
   three_phase: '3-phase'
-};
+});
 
-export const SURVEY_RESULT_LABEL: Record<string, string> = {
+export const SURVEY_RESULT_LABEL: Record<string, string> = translated({
   feasible: 'Feasible',
   feasible_with_works: 'Feasible with works',
   not_feasible: 'Not feasible'
-};
+});
 
-export const HELP_KIND_LABEL: Record<string, string> = {
+export const HELP_KIND_LABEL: Record<string, string> = translated({
   second_person: 'Second person',
   truck: 'Truck',
   material: 'Material',
   switch_off: 'Switch a line off',
   advice: 'Advice',
   other: 'Other'
-};
+});
 
-export const MOVEMENT_LABEL: Record<string, string> = {
+export const MOVEMENT_LABEL: Record<string, string> = translated({
   receive: 'Received',
   transfer: 'Moved',
   consume: 'Used on a job',
   adjust: 'Count corrected'
-};
+});
 
 /** "1,240 m", "86", "2 sets". */
 export function qty(n: number, unit: string): string {
   const v = Number.isInteger(n)
-    ? n.toLocaleString('en')
-    : n.toLocaleString('en', { maximumFractionDigits: 2 });
+    ? n.toLocaleString(dateLocale())
+    : n.toLocaleString(dateLocale(), { maximumFractionDigits: 2 });
   return unit === 'pcs' ? v : `${v} ${unit}`;
 }
 
-export const SEVERITY_LABEL: Record<string, string> = {
+export const SEVERITY_LABEL: Record<string, string> = translated({
   critical: 'High',
   major: 'Medium',
   minor: 'Low',
   warning: 'Warning'
-};
+});
 
-export const STAFF_STATE_LABEL: Record<string, string> = {
+export const STAFF_STATE_LABEL: Record<string, string> = translated({
   on_job: 'On a job',
   free: 'Free',
   offline: 'Offline',
   off_duty: 'Off duty'
-};
+});
 
 /** "1.2 km", "350 m". */
 export function distance(m: number | null): string | null {
@@ -151,10 +153,10 @@ export function driveMinutes(m: number | null): number | null {
 /** "2 min ago", "45 min ago", "3 h ago". */
 export function ago(iso: string, now = Date.now()): string {
   const min = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
-  if (min < 1) return 'just now';
-  if (min < 60) return `${min} min ago`;
-  if (min < 2880) return `${Math.floor(min / 60)} h ago`;
-  return `${Math.floor(min / 1440)} days ago`;
+  if (min < 1) return t('just now');
+  if (min < 60) return t('{n} min ago', { n: min });
+  if (min < 2880) return t('{n} h ago', { n: Math.floor(min / 60) });
+  return t('{n} days ago', { n: Math.floor(min / 1440) });
 }
 
 const UNFINISHED: TicketStatus[] = ['new', 'assigned', 'accepted', 'in_progress', 'on_hold', 'reopened'];
@@ -171,24 +173,26 @@ export function timeLeft(
   const days = Math.floor(abs / 1440);
   const text =
     days >= 2
-      ? `${days} days`
+      ? t('{n} days', { n: days })
       : abs >= 60
-        ? `${Math.floor(abs / 60)} h${abs % 60 ? ` ${abs % 60} min` : ''}`
-        : `${abs} min`;
+        ? abs % 60
+          ? t('{h} h {m} min', { h: Math.floor(abs / 60), m: abs % 60 })
+          : t('{h} h', { h: Math.floor(abs / 60) })
+        : t('{m} min', { m: abs });
   return minutes < 0
-    ? { text: `${text} late`, late: true, soon: false }
+    ? { text: t('{time} late', { time: text }), late: true, soon: false }
     : { text, late: false, soon: minutes <= 30 };
 }
 
 /** What to show in the "Time left" column for any ticket. */
-export function timeCell(t: Pick<TicketSummary, 'dueAt' | 'status' | 'source'>): {
+export function timeCell(ticket: Pick<TicketSummary, 'dueAt' | 'status' | 'source'>): {
   text: string;
   className?: string;
 } {
-  if (t.status === 'resolved') return { text: t.source === 'call_center' ? 'Call Center' : 'NOC' };
-  if (t.status === 'closed') return { text: 'Done' };
-  if (t.status === 'cancelled') return { text: '—' };
-  const left = timeLeft(t.dueAt, t.status);
+  if (ticket.status === 'resolved') return { text: ticket.source === 'call_center' ? 'Call Center' : 'NOC' };
+  if (ticket.status === 'closed') return { text: t('Done') };
+  if (ticket.status === 'cancelled') return { text: '—' };
+  const left = timeLeft(ticket.dueAt, ticket.status);
   if (!left) return { text: '—' };
   return { text: left.text, className: left.late ? 'late' : left.soon ? 'soon' : undefined };
 }
@@ -196,23 +200,23 @@ export function timeCell(t: Pick<TicketSummary, 'dueAt' | 'status' | 'source'>):
 /** "for 12 min", "for 3 h", "for 2 days": how long something has been waiting. */
 export function waitingFor(since: string, now = Date.now()): string {
   const minutes = Math.max(0, Math.round((now - new Date(since).getTime()) / 60_000));
-  if (minutes < 60) return `${minutes} min`;
-  if (minutes < 2880) return `${Math.floor(minutes / 60)} h`;
-  return `${Math.floor(minutes / 1440)} days`;
+  if (minutes < 60) return t('{m} min', { m: minutes });
+  if (minutes < 2880) return t('{h} h', { h: Math.floor(minutes / 60) });
+  return t('{n} days', { n: Math.floor(minutes / 1440) });
 }
 
 const TZ = 'Africa/Maputo';
 
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
+  return new Date(iso).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit', timeZone: TZ });
 }
 
 /** "09:24" today, "26 Oct, 09:24" on other days. */
 export function formatWhen(iso: string, now = new Date()): string {
   const d = new Date(iso);
-  const day = (x: Date) => x.toLocaleDateString('en-GB', { timeZone: TZ });
+  const day = (x: Date) => x.toLocaleDateString(dateLocale(), { timeZone: TZ });
   if (day(d) === day(now)) return formatTime(iso);
-  return d.toLocaleString('en-GB', {
+  return d.toLocaleString(dateLocale(), {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -223,11 +227,11 @@ export function formatWhen(iso: string, now = new Date()): string {
 
 export function greeting(now = new Date()): string {
   const hour = Number(now.toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: TZ }));
-  return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  return hour < 12 ? t('Good morning') : hour < 18 ? t('Good afternoon') : t('Good evening');
 }
 
 export function longDate(now = new Date()): string {
-  return now.toLocaleString('en-GB', {
+  return now.toLocaleString(dateLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -253,4 +257,22 @@ export function initials(name: string): string {
 
 export function firstName(name: string): string {
   return name.split(' ')[0] ?? name;
+}
+
+/**
+ * A ticket's title in the current language. The server writes titles in English from the problem type
+ * ("No power, one home", "Survey for new shop", "New connection, contract 88213"); other titles (typed by
+ * people, alarm names from the NMS) stay as they are.
+ */
+export function ticketTitle(title: string): string {
+  const survey = /^Survey for new (\w+)$/.exec(title);
+  if (survey)
+    return t('Survey for new {premises}', {
+      premises: (PREMISES_LABEL[survey[1]!] ?? survey[1]!).toLowerCase()
+    });
+  const contract = /^Contract (.+)$/.exec(title);
+  if (contract) return t('Contract {0}', { 0: contract[1] });
+  const connection = /^New connection, contract (.+)$/.exec(title);
+  if (connection) return t('New connection, contract {n}', { n: connection[1] });
+  return t(title);
 }

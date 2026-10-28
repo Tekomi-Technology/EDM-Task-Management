@@ -1,5 +1,6 @@
 import type { ApiError } from './types';
 import { accessToken } from './auth';
+import { t } from './i18n';
 
 const API_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/api`;
 
@@ -24,7 +25,7 @@ export async function api<T>(
       (data as ApiError | null) ?? {
         statusCode: res.status,
         code: 'NETWORK_ERROR',
-        message: 'The server did not answer'
+        message: t('The server did not answer')
       }
     );
   }
@@ -39,7 +40,7 @@ export async function download(path: string, fileName: string): Promise<void> {
   if (!res.ok) {
     const data = (await res.json().catch(() => null)) as ApiError | null;
     throw new ApiRequestError(
-      data ?? { statusCode: res.status, code: 'NETWORK_ERROR', message: 'The server did not answer' }
+      data ?? { statusCode: res.status, code: 'NETWORK_ERROR', message: t('The server did not answer') }
     );
   }
   const url = URL.createObjectURL(await res.blob());
