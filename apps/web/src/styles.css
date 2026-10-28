@@ -1284,6 +1284,18 @@ tr.selected:hover td {
   padding: 6px 10px 10px;
   border-bottom: 1px solid var(--border-soft);
 }
+.field .link-button {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
 .menu .link-button {
   padding: 4px 6px;
   color: var(--link);

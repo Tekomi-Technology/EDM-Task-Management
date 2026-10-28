@@ -37,6 +37,7 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../api';
 import { CustomerSearch } from '../components/CustomerSearch';
 import { LocationPicker } from '../components/LocationPicker';
+import { useMapAddress } from '../components/mapAddress';
 import { ConnectionForm, SurveyForm } from '../components/NewCustomerForms';
 import { creatableTypes, useCrumbs, useMe } from '../components/ui';
 import { formatTime, STATUS_LABEL, ticketTitle } from '../format';
@@ -248,6 +249,7 @@ export function NewTicketPage() {
   const [d, setD] = useState<Draft>(restored ?? EMPTY);
   const [draftNote, setDraftNote] = useState<string | null>(restored ? t('Draft restored.') : null);
   const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }));
+  const mapAddress = useMapAddress(d.address, (address) => set({ address }));
   // The first type this person may create, until they choose.
   const type: TicketType = allowed.includes(d.type) ? d.type : (allowed[0] ?? d.type);
   const call = isCallType(type) ? type : null;
@@ -414,13 +416,20 @@ export function NewTicketPage() {
           onChange={(e) => set({ address: e.target.value })}
           placeholder={t('Street, landmark, neighbourhood')}
         />
+        {mapAddress.hint}
       </div>
       <div className="field">
         <span className="label">
           {t('Mark the place on the map, so the nearest team is sent')}
           {d.location ? '' : t(' (optional)')}
         </span>
-        <LocationPicker value={d.location} onChange={(location) => set({ location })} />
+        <LocationPicker
+          value={d.location}
+          onChange={(location) => {
+            set({ location });
+            mapAddress.placed(location);
+          }}
+        />
       </div>
     </>
   );

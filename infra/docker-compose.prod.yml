@@ -90,6 +90,8 @@ services:
       EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
       STAFF_ALERTS: ${STAFF_ALERTS:-push_or_sms}
       SALES_WEBHOOK_URL: ${SALES_WEBHOOK_URL:-}
+      # Empty turns address lookup from the map off.
+      GEOCODER_URL: ${GEOCODER_URL-https://nominatim.openstreetmap.org}
       SALES_WEBHOOK_SECRET: ${SALES_WEBHOOK_SECRET:-}
     depends_on:
       postgres:

@@ -18,5 +18,7 @@ Object.assign(process.env, {
   STAFF_ALERTS: 'push_or_sms',
   // Webhooks to the Sales system go to a stand-in that test/sales.test.ts starts on this port.
   SALES_WEBHOOK_URL: 'http://localhost:59873/sales',
-  SALES_WEBHOOK_SECRET: 'test-webhook-secret'
+  SALES_WEBHOOK_SECRET: 'test-webhook-secret',
+  // Address lookups go to a stand-in for Nominatim that test/places.test.ts starts on this port.
+  GEOCODER_URL: 'http://localhost:59874'
 });

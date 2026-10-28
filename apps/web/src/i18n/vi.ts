@@ -1046,5 +1046,8 @@ export const vi: Record<string, string> = {
   'The Call Center checks with the customer, then it is closed in Closing checks.':
     'Call Center kiểm tra với khách, rồi phiếu được đóng ở mục Nghiệm thu.',
   'Maintenance / network change': 'Bảo dưỡng / thay đổi lưới',
-  'by the office': 'do văn phòng'
+  'by the office': 'do văn phòng',
+  'Finding the address of the point…': 'Đang tìm địa chỉ của điểm đã chọn…',
+  'Use the address of the map point: {0}': 'Dùng địa chỉ theo bản đồ: {0}',
+  'Filled in from the map. Add a landmark if there is one.': 'Điền theo bản đồ. Thêm điểm mốc nếu có.'
 };

@@ -14,6 +14,8 @@ map $http_x_forwarded_port $forwarded_port {
 server {
   listen 80;
   server_tokens off;
+  # Redirects keep the visitor's https address (this server only sees http from the nginx in front).
+  absolute_redirect off;
   # Docker's DNS, asked on each request (proxy_pass with a variable) so a recreated container is found at its new address.
   resolver 127.0.0.11 valid=10s ipv6=off;
 
@@ -39,6 +41,15 @@ server {
   location /auth/ {
     set $upstream http://keycloak:8080;
     proxy_pass $upstream;
+  }
+
+  # Short sign-in addresses, shown by the sign-in pages (template.ftl). Opening one starts the sign-in again:
+  # the web app sends people who are not signed in to it, and /auth/admin/ to the master realm's sign-in.
+  location = /login {
+    return 302 /;
+  }
+  location = /admin/login {
+    return 302 /auth/admin/;
   }
 
   # Photos: presigned S3 links in path style (https://<address>/<bucket>/<key>). The path and the Host header are

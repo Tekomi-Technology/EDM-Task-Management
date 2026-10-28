@@ -18,6 +18,15 @@
         import { startSessionPolling } from "${url.resourcesPath}/js/authChecker.js";
         startSessionPolling("${url.ssoLoginInOtherTabsUrl?no_esc}");
     </script>
+    <#-- On the single address (Keycloak under /auth, infra/docker-compose.vps.yml) show a short address instead of the
+         long sign-in link; the gateway sends /login and /admin/login back into the sign-in. Forms keep their own links.
+         Runs once the page is read, after the address clean-up Keycloak adds to the end of <head>. -->
+    <script>
+        if (location.pathname.startsWith("/auth/realms/")) {
+            document.addEventListener("DOMContentLoaded", () =>
+                history.replaceState(null, "", "${(realm.name == 'master')?then('/admin/login', '/login')}"));
+        }
+    </script>
 </head>
 <body class="<#if isApp>edm-app<#else>edm-web</#if>">
 <main class="edm-page">

@@ -755,6 +755,12 @@ export type TicketPreviewInput = z.infer<typeof ticketPreviewSchema>;
 
 export const customerLookupSchema = z.object({ q: z.string().trim().min(3).max(64) });
 
+/** A point marked on the map, to find its address. */
+export const reverseGeocodeSchema = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180)
+});
+
 /** Marks bell notifications as read: the ones given, or all of them. */
 export const inboxReadSchema = z.object({ ids: z.array(z.string().uuid()).max(100).optional() });
 export type InboxRead = z.infer<typeof inboxReadSchema>;

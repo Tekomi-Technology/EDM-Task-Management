@@ -68,6 +68,11 @@ const envSchema = z.object({
   /** Push notifications through Expo: "expo" sends them, "log" only writes them to the log. */
   PUSH_PROVIDER: z.enum(['expo', 'log']).default('expo'),
   EXPO_PUSH_URL: z.string().url().default('https://exp.host/--/api/v2/push/send'),
+  /**
+   * Finds the address of a point marked on the map (Nominatim API). The public OpenStreetMap server allows light use
+   * only (one request a second); point it at EDM's own Nominatim for heavy use. Empty turns the feature off.
+   */
+  GEOCODER_URL: z.union([z.string().url(), z.literal('')]).default('https://nominatim.openstreetmap.org'),
   /** Optional; required only if "enhanced push security" is switched on in the Expo account. */
   EXPO_ACCESS_TOKEN: z.string().optional(),
   /**

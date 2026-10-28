@@ -51,8 +51,17 @@ curl -s https://edm.tekomi.vn/api/health
 curl -s https://edm.tekomi.vn/auth/realms/edm/.well-known/openid-configuration | head -c 200
 ```
 
-Then open `https://edm.tekomi.vn/auth/admin`, sign in as `admin` with `KEYCLOAK_ADMIN_PASSWORD`, create the real staff
-accounts in realm `edm` and give each one its role (see "Deploy" in the README).
+Give the Keycloak admin sign-in the EDM look too, so it shows the short address `/admin/login` (once; it is kept in
+the database):
+
+```bash
+infra/scripts/deploy.sh exec keycloak sh -c '/opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080/auth --realm master --user admin --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" && /opt/keycloak/bin/kcadm.sh update realms/master -s loginTheme=edm'
+```
+
+Then open `https://edm.tekomi.vn/admin/login`, sign in as `admin` with `KEYCLOAK_ADMIN_PASSWORD`, create the real staff
+accounts in realm `edm` and give each one its role (see "Deploy" in the README). Staff sign in at
+`https://edm.tekomi.vn/login` (or just `https://edm.tekomi.vn`). The sign-in pages show these short addresses in place
+of Keycloak's long sign-in link (`infra/keycloak/themes/edm/login/template.ftl`).
 
 The EDM Field app needs the same addresses: API `https://edm.tekomi.vn`, Keycloak `https://edm.tekomi.vn/auth`.
 

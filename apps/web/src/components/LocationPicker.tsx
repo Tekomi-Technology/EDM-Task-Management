@@ -29,7 +29,11 @@ export function LocationPicker({
       maxZoom: 19,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(m);
-    m.on('click', (e: L.LeafletMouseEvent) => changeRef.current({ lat: e.latlng.lat, lng: e.latlng.lng }));
+    m.on('click', (e: L.LeafletMouseEvent) => {
+      changeRef.current({ lat: e.latlng.lat, lng: e.latlng.lng });
+      // A click on the whole city is rough: zoom in on it, so the point (and its address) can be put right.
+      if (m.getZoom() < 16) m.setView(e.latlng, 16);
+    });
     map.current = m;
     return () => {
       m.remove();

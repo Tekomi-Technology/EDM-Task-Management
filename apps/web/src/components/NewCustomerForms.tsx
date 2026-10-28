@@ -8,12 +8,13 @@ import type {
 } from '../types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { api, ApiRequestError } from '../api';
 import { PREMISES_LABEL, SUPPLY_LABEL } from '../format';
 import { t } from '../i18n';
 import { CustomerSearch } from './CustomerSearch';
 import { LocationPicker } from './LocationPicker';
+import { useMapAddress } from './mapAddress';
 
 type Created = { id: string; code: string };
 type Prospect = OfficeSurvey['customer'];
@@ -22,8 +23,16 @@ const PREMISES = Object.keys(PREMISES_LABEL) as PremisesType[];
 const SUPPLIES = Object.keys(SUPPLY_LABEL) as SupplyType[];
 
 /** Name, phone, address and place of a customer who is not known yet. */
-function ProspectFields({ value, onChange }: { value: Prospect; onChange: (p: Prospect) => void }) {
-  const set = (patch: Partial<Prospect>) => onChange({ ...value, ...patch });
+function ProspectFields({
+  value,
+  onChange
+}: {
+  value: Prospect;
+  onChange: Dispatch<SetStateAction<Prospect>>;
+}) {
+  // Updates from the latest state: the address from the map arrives after the point is set.
+  const set = (patch: Partial<Prospect>) => onChange((p) => ({ ...p, ...patch }));
+  const mapAddress = useMapAddress(value.address, (address) => set({ address }));
   return (
     <>
       <div className="form-grid">
@@ -57,10 +66,17 @@ function ProspectFields({ value, onChange }: { value: Prospect; onChange: (p: Pr
           placeholder={t('Street, landmark, neighbourhood')}
           onChange={(e) => set({ address: e.target.value })}
         />
+        {mapAddress.hint}
       </div>
       <div className="field">
         <span className="label">{t('Mark the premises on the map, so the team of the area is sent')}</span>
-        <LocationPicker value={value.location ?? null} onChange={(location) => set({ location })} />
+        <LocationPicker
+          value={value.location ?? null}
+          onChange={(location) => {
+            set({ location });
+            mapAddress.placed(location);
+          }}
+        />
       </div>
     </>
   );
