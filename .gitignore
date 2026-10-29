@@ -6,7 +6,6 @@ dist/
 coverage/
 .expo/
 .turbo/
-tools/callcenter-sim/.nms-last-scenario.json
 
 # Database and attachment backups (apps/api/scripts/backup.sh)
 backups/

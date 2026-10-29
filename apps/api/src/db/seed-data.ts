@@ -26,7 +26,7 @@ export const SEED_PASSWORD_HASH =
   '$argon2id$v=19$m=19456,t=2,p=1$tF89W+sGYNVNT0BkYTC+pQ$w7GDotpSWCtL1CTaXsh3NGAhcqvel/VneDGQc/YQCeU';
 
 /**
- * API keys of the other systems for development and tests (the simulators in tools/callcenter-sim use them).
+ * API keys of the other systems for development and tests.
  * On a server, administrators make real keys in the admin area (/admin → API keys).
  */
 export const SEED_API_KEYS = [

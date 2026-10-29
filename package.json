@@ -14,13 +14,6 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
-    "e2e": "pnpm --filter @edm/callcenter-sim run e2e",
-    "sms-gateway": "pnpm --filter @edm/callcenter-sim run sms-gateway",
-    "nms": "pnpm --filter @edm/callcenter-sim run nms",
-    "sales": "pnpm --filter @edm/callcenter-sim run sales",
-    "loadtest:prepare": "bash tools/loadtest/prepare.sh",
-    "loadtest:api": "API_PORT=3001 DATABASE_URL=postgres://edm:edm_dev_password@localhost:55432/edm_load REDIS_URL=redis://localhost:56379/2 node apps/api/dist/main.js",
-    "loadtest": "docker run --rm -i --add-host host.docker.internal:host-gateway -e API_URL=\"${API_URL:-http://host.docker.internal:3001/api}\" -e PEAK -e ALARM_BATCHES -e ALARMS -e OFFICE -e PHONES -e MINUTES -v \"$PWD/tools/loadtest:/scripts:ro\" grafana/k6:0.54.0 run /scripts/storm.js",
     "backup": "bash apps/api/scripts/backup.sh",
     "restore-check": "bash apps/api/scripts/restore-check.sh"
   },

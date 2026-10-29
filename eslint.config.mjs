@@ -16,10 +16,5 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': 'off'
     }
-  },
-  {
-    // k6 load test scripts run in k6, which provides these.
-    files: ['tools/loadtest/**/*.js'],
-    languageOptions: { globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly' } }
   }
 );

@@ -6,11 +6,10 @@ Phases 1 to 5 are done: tickets, network incidents, field staff, stock, new cust
 
 ## What is in the repo
 
-| Path                   | What it is                                                                                                                                     |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api`             | Backend: NestJS API (Drizzle ORM, BullMQ), its Docker Compose (with Postgres, Redis, photo storage) and backup scripts. Swagger at `/api/docs` |
-| `apps/web`             | React + Vite web app for team managers, NOC, BO and admins, and its Docker Compose                                                             |
-| `tools/callcenter-sim` | Command-line stand-in for the Call Center system, and the end-to-end check                                                                     |
+| Path       | What it is                                                                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api` | Backend: NestJS API (Drizzle ORM, BullMQ), its Docker Compose (with Postgres, Redis, photo storage) and backup scripts. Swagger at `/api/docs` |
+| `apps/web` | React + Vite web app for team managers, NOC, BO and admins, and its Docker Compose                                                             |
 
 ## Run it on your machine
 
@@ -45,17 +44,10 @@ The Call Center system signs in with the `call-center-system` client (client cre
 
 ### Try the sample flow
 
-```bash
-# 1. The Call Center sends a complaint (contract 40217735 is in Matola, team South 1)
-pnpm --filter @edm/callcenter-sim sim complaint --contract 40217735 --problem no_power_single --text "No power since 07:15" --ref CC-1
-# 2. Sign in to the web as helena.mondlane and assign the ticket to Armando
-# 3. Sign in to the app as armando.cossa: accept, start, take a photo, "Problem fixed"
-# 4. The Call Center checks with the customer:
-pnpm --filter @edm/callcenter-sim sim status CC-1
-pnpm --filter @edm/callcenter-sim sim check CC-1 fixed --note "Customer confirms"
-```
-
-Or run the whole flow automatically against the running stack: `pnpm e2e`.
+1. Sign in to the web as helena.mondlane and add a complaint on the New ticket screen (contract 40217735 is in
+   Matola, team South 1), then assign it to Armando.
+2. Sign in to the app as armando.cossa: accept, start, take a photo, "Problem fixed".
+3. Sign in to the web as nadia.mussa (NOC) and close the ticket on the Closing checks screen.
 
 ### The mobile app
 
@@ -75,7 +67,6 @@ mobile app in its `src/types.ts`: when the API changes a format, change those to
 pnpm lint
 pnpm typecheck
 pnpm test          # shared rules, API (against the local Postgres/Redis/storage, separate test database), web
-pnpm e2e           # the sample flow against the running stack; needs the API running
 ```
 
 CI (`.github/workflows/ci.yml`) runs lint, type check, tests and build on every push and pull request, then builds the API and web Docker images.
