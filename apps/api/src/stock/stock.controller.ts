@@ -1,17 +1,20 @@
-import { Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
+import { Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   adjustStockSchema,
   assignVehicleSchema,
   consumptionQuerySchema,
+  depotSchema,
   movementQuerySchema,
   receiveStockSchema,
   reserveStockSchema,
   stockItemsSyncSchema,
   stockReceiptSyncSchema,
   transferStockSchema,
+  updateDepotSchema,
   vehicleSchema,
   type AdjustStock,
+  type DepotInput,
   type MovementQuery,
   type MovementView,
   type MyVan,
@@ -22,6 +25,7 @@ import {
   type StockReceiptSync,
   type TicketDetail,
   type TransferStock,
+  type UpdateDepot,
   type VehicleInput,
   type VehicleView
 } from '../contract';
@@ -69,6 +73,24 @@ export class StockController {
   @Roles(...OFFICE)
   locations(): Promise<StockLocationView[]> {
     return this.stock.locations();
+  }
+
+  /** A depot for an area that has none: where its stock is received (also by EDM's stock system, by code). */
+  @Post('stock/depots')
+  @Roles('admin', 'technical_manager')
+  @ApiZodBody(depotSchema)
+  createDepot(@ZodBody(depotSchema) body: DepotInput): Promise<StockLocationView> {
+    return this.stock.createDepot(body);
+  }
+
+  @Patch('stock/depots/:id')
+  @Roles('admin', 'technical_manager')
+  @ApiZodBody(updateDepotSchema)
+  updateDepot(
+    @Param('id', ParseUUIDPipe) id: string,
+    @ZodBody(updateDepotSchema) body: UpdateDepot
+  ): Promise<StockLocationView> {
+    return this.stock.updateDepot(id, body);
   }
 
   @Get('stock/locations/:id')

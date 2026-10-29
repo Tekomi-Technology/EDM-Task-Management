@@ -275,4 +275,68 @@ describe('stock: a ledger of depots and vans, deducted when jobs close', () => {
       (await t.as('call-center').get('/api/intake/stock/consumption?since=2026-01-01T00:00:00Z')).status
     ).toBe(403);
   });
+
+  it('lets an administrator add the depot of a new area, which then receives stock', async () => {
+    const boundary = {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [35.3, -23.9],
+          [35.45, -23.9],
+          [35.45, -23.8],
+          [35.3, -23.8]
+        ]
+      ]
+    };
+    const area = (await t.as('admin.edm').post('/api/admin/areas', { name: 'Inhambane', boundary })).body;
+    const depot = { code: 'dep-inh', name: 'Armazém de Inhambane', areaId: area.id };
+
+    expect((await t.as('helena.mondlane').post('/api/stock/depots', depot)).status).toBe(403);
+    expect((await t.as('admin.edm').post('/api/stock/depots', { ...depot, code: 'VAN-1' })).status).toBe(400);
+    const taken = await t.as('admin.edm').post('/api/stock/depots', { ...depot, code: 'DEP-MATOLA' });
+    expect([taken.status, taken.body.code]).toEqual([409, 'DEPOT_CODE_TAKEN']);
+    const matola = (await t.as('admin.edm').get('/api/stock/locations')).body.find(
+      (l: { code: string }) => l.code === 'DEP-MATOLA'
+    );
+    const second = await t.as('admin.edm').post('/api/stock/depots', { ...depot, areaId: matola.areaId });
+    expect([second.status, second.body.code]).toEqual([409, 'AREA_HAS_DEPOT']);
+
+    const made = await t.as('admin.edm').post('/api/stock/depots', depot);
+    expect(made.status).toBe(201);
+    expect(made.body).toMatchObject({
+      kind: 'depot',
+      code: 'DEP-INH',
+      areaId: area.id,
+      areaName: 'Inhambane'
+    });
+    expect(
+      (await t.as('admin.edm').post('/api/stock/depots', { ...depot, code: 'DEP-INH2' })).body.code
+    ).toBe('AREA_HAS_DEPOT');
+
+    // Corrected to the code EDM's stock system uses, then goods arrive both ways.
+    const renamed = await t
+      .as('admin.edm')
+      .patch(`/api/stock/depots/${made.body.id}`, { code: 'DEP-INHAMBANE', name: 'Armazém Inhambane' });
+    expect(renamed.body).toMatchObject({ code: 'DEP-INHAMBANE', name: 'Armazém Inhambane' });
+    expect(
+      (await t.as('admin.edm').patch(`/api/stock/depots/${made.body.id}`, { code: 'DEP-MAPUTO' })).body.code
+    ).toBe('DEPOT_CODE_TAKEN');
+    expect(
+      (await t.as('admin.edm').patch(`/api/stock/depots/${locs['VAN-MPT-24-17']!.id}`, { name: 'Van' }))
+        .status
+    ).toBe(404);
+    const received = await t.as('admin.edm').post('/api/stock/receive', {
+      locationId: made.body.id,
+      lines: [{ itemId: items['POL-W9']!.id, quantity: 12 }]
+    });
+    expect(received.status).toBe(200);
+    const synced = await t.as('stock').post('/api/intake/stock/receipts', {
+      externalRef: 'SAP-GR-90',
+      depotCode: 'DEP-INHAMBANE',
+      lines: [{ itemCode: 'POL-W9', quantity: 3 }]
+    });
+    expect(synced.body.result).toBe('received');
+    locs['DEP-INHAMBANE'] = made.body;
+    expect((await stockAt('DEP-INHAMBANE'))['POL-W9'].quantity).toBe(15);
+  });
 });

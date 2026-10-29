@@ -1,6 +1,7 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type {
   AdjustStock,
+  DepotInput,
   MaterialLine,
   MovementQuery,
   MovementView,
@@ -12,6 +13,7 @@ import type {
   StockLine,
   StockLocationView,
   TransferStock,
+  UpdateDepot,
   VehicleInput,
   VehicleView
 } from '../contract';
@@ -134,6 +136,7 @@ export class StockService {
         kind: stockLocations.kind,
         code: stockLocations.code,
         name: stockLocations.name,
+        areaId: stockLocations.areaId,
         areaName: areas.name,
         teamId: stockLocations.teamId,
         teamName: teams.name
@@ -142,6 +145,58 @@ export class StockService {
       .leftJoin(areas, eq(areas.id, stockLocations.areaId))
       .leftJoin(teams, eq(teams.id, stockLocations.teamId))
       .orderBy(asc(stockLocations.kind), asc(stockLocations.name));
+  }
+
+  /** A new depot for an area that has none yet: one depot per area receives its stock and holds its reservations. */
+  async createDepot(input: DepotInput): Promise<StockLocationView> {
+    const id = await this.db.transaction(async (tx) => {
+      // One at a time, so two people adding a depot for the same area cannot both succeed.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('depots'))`);
+      const [area] = await tx.select({ id: areas.id }).from(areas).where(eq(areas.id, input.areaId));
+      if (!area) throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, 'AREA_NOT_FOUND', 'Area not found');
+      const [existing] = await tx
+        .select({ name: stockLocations.name })
+        .from(stockLocations)
+        .where(and(eq(stockLocations.kind, 'depot'), eq(stockLocations.areaId, input.areaId)));
+      if (existing) {
+        throw new AppError(
+          HttpStatus.CONFLICT,
+          'AREA_HAS_DEPOT',
+          `This area already has a depot: ${existing.name}`
+        );
+      }
+      await this.checkDepotCode(tx, input.code, null);
+      const [row] = await tx
+        .insert(stockLocations)
+        .values({ kind: 'depot', code: input.code, name: input.name, areaId: input.areaId })
+        .returning({ id: stockLocations.id });
+      return row!.id;
+    });
+    return (await this.locations()).find((l) => l.id === id)!;
+  }
+
+  /** Corrects a depot's name or code (the code must match EDM's stock system for its receipts to arrive). */
+  async updateDepot(id: string, input: UpdateDepot): Promise<StockLocationView> {
+    await this.db.transaction(async (tx) => {
+      const loc = await this.location(tx, id);
+      if (loc.kind !== 'depot') throw notFound('Depot');
+      if (input.code) await this.checkDepotCode(tx, input.code, id);
+      await tx
+        .update(stockLocations)
+        .set({ ...(input.code ? { code: input.code } : {}), ...(input.name ? { name: input.name } : {}) })
+        .where(eq(stockLocations.id, id));
+    });
+    return (await this.locations()).find((l) => l.id === id)!;
+  }
+
+  private async checkDepotCode(tx: Tx, code: string, ignoreId: string | null): Promise<void> {
+    const [taken] = await tx
+      .select({ id: stockLocations.id })
+      .from(stockLocations)
+      .where(eq(stockLocations.code, code));
+    if (taken && taken.id !== ignoreId) {
+      throw new AppError(HttpStatus.CONFLICT, 'DEPOT_CODE_TAKEN', `The code ${code} is already used`);
+    }
   }
 
   /** What is in one place, with what is reserved there. */

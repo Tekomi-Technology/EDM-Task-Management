@@ -648,6 +648,26 @@ export type VehicleInput = z.infer<typeof vehicleSchema>;
 
 export const assignVehicleSchema = z.object({ userId: z.string().uuid().nullable() });
 
+// ---- Depots ----
+
+/** A depot is where stock is received; each area has one, which also holds the reservations for its tickets. */
+export const depotSchema = z.object({
+  /** The depot's code in EDM's stock management system, which sends receipts by it (VAN- is kept for vans). */
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9][A-Z0-9_-]{1,39}$/, 'Use 2–40 letters, numbers, dashes or underscores')
+    .refine((v) => !v.startsWith('VAN-'), 'Codes starting with VAN- are kept for vans'),
+  name: z.string().trim().min(2).max(100),
+  areaId: z.string().uuid()
+});
+export type DepotInput = z.infer<typeof depotSchema>;
+
+/** Correcting a depot's name or code; it stays in its area, with its stock. */
+export const updateDepotSchema = depotSchema.omit({ areaId: true }).partial();
+export type UpdateDepot = z.infer<typeof updateDepotSchema>;
+
 // ---- Help requests ----
 
 export const helpRequestSchema = z.object({

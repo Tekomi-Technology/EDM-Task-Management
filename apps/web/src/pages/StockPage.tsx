@@ -1,4 +1,5 @@
 import type {
+  Lookups,
   MovementView,
   StaffMember,
   StockItemView,
@@ -23,6 +24,113 @@ const LEVEL: Record<string, { label: string; className: string }> = {
 
 type Tab = 'catalog' | 'places' | 'vans' | 'movements';
 type Form = 'receive' | 'transfer' | 'adjust' | null;
+
+/** The API's refusal in the person's words. */
+function problem(err: unknown): string {
+  if (!(err instanceof ApiRequestError)) return (err as Error).message;
+  if (err.error.code === 'AREA_HAS_DEPOT') return t('This area already has a depot.');
+  if (err.error.code === 'DEPOT_CODE_TAKEN') return t('This code is already used by another depot or van.');
+  return t(err.message);
+}
+
+/** Adds the depot of an area, or corrects the name and code of one. */
+function DepotForm({
+  depot,
+  places,
+  onDone,
+  onClose
+}: {
+  /** The depot to correct; without it, a new one. */
+  depot?: StockLocationView;
+  places: StockLocationView[];
+  onDone: (message: string) => void;
+  onClose: () => void;
+}) {
+  const lookups = useQuery({ queryKey: ['lookups'], queryFn: () => api<Lookups>('/lookups') });
+  const withDepot = new Set(places.filter((p) => p.kind === 'depot').map((p) => p.areaId));
+  const free = (lookups.data?.areas ?? []).filter((a) => !withDepot.has(a.id));
+  const [name, setName] = useState(depot?.name ?? '');
+  const [code, setCode] = useState(depot?.code ?? '');
+  const [areaId, setAreaId] = useState('');
+  const area = (depot ? depot.areaId : areaId || free[0]?.id) ?? '';
+  const save = useMutation({
+    mutationFn: async () => {
+      const body = { name: name.trim(), code: code.trim().toUpperCase() };
+      if (depot) {
+        await api(`/stock/depots/${depot.id}`, { method: 'PATCH', body });
+        return t('Depot saved.');
+      }
+      await api('/stock/depots', { method: 'POST', body: { ...body, areaId: area } });
+      return t('Depot added. Stock can now be received into it.');
+    },
+    onSuccess: onDone
+  });
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    save.mutate();
+  };
+  const ready = name.trim().length >= 2 && code.trim().length >= 2 && !!area;
+
+  return (
+    <form className="card card-pad" style={{ gap: 14 }} onSubmit={submit} aria-label={t('Depot')}>
+      <h2>{depot ? t('Change depot') : t('Add a depot')}</h2>
+      {!depot && lookups.data && free.length === 0 ? (
+        <div className="notice">{t('Every area already has its depot.')}</div>
+      ) : (
+        <div className="form-grid">
+          <div className="field">
+            <label htmlFor="d-name">{t('Name')}</label>
+            <input
+              id="d-name"
+              value={name}
+              placeholder={t('e.g. Matola depot')}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="d-code">{t('Code in the stock system')}</label>
+            <input
+              id="d-code"
+              value={code}
+              placeholder="DEP-MATOLA"
+              autoCapitalize="characters"
+              spellCheck={false}
+              onChange={(e) => setCode(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="d-area">{t('Area')}</label>
+            {depot ? (
+              <input id="d-area" value={depot.areaName ?? ''} disabled />
+            ) : (
+              <select id="d-area" value={area} onChange={(e) => setAreaId(e.target.value)}>
+                {free.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+      )}
+      <div className="meta">
+        {t(
+          'Each area has one depot: stock for the area is received there, and its tickets reserve material from it. EDM’s stock system sends deliveries by the code.'
+        )}
+      </div>
+      {save.error && <div className="error">{problem(save.error)}</div>}
+      <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
+        <button type="button" className="btn" onClick={onClose}>
+          {t('Close')}
+        </button>
+        <button type="submit" className="btn btn-primary" disabled={!ready || save.isPending}>
+          {save.isPending ? t('Saving…') : t('Save')}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 /** Item lines in the stock forms. */
 function Lines({
@@ -172,6 +280,11 @@ function StockForm({
             ? t('Give to a van, or move stock')
             : t('Correct a count')}
       </h2>
+      {form === 'receive' && depots.length === 0 && (
+        <div className="notice">
+          {t('There is no depot yet. An administrator or technical manager adds one with Add depot.')}
+        </div>
+      )}
       <div className="form-grid">
         {form === 'transfer' && (
           <div className="field">
@@ -335,8 +448,11 @@ export function StockPage() {
   const me = useMe();
   const queryClient = useQueryClient();
   const canManage = hasRole(me.data, 'admin', 'technical_manager', 'team_manager');
+  const canSetUp = hasRole(me.data, 'admin', 'technical_manager');
   const [tab, setTab] = useState<Tab>('catalog');
   const [form, setForm] = useState<Form>(null);
+  /** The depot form: 'new', or the depot being corrected. */
+  const [depotForm, setDepotForm] = useState<'new' | StockLocationView | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [placeId, setPlaceId] = useState('');
   const items = useQuery({ queryKey: ['stock-items'], queryFn: () => api<StockItemView[]>('/stock/items') });
@@ -359,6 +475,8 @@ export function StockPage() {
   const refresh = (message: string) => {
     setDone(message);
     setForm(null);
+    setDepotForm(null);
+    void queryClient.invalidateQueries({ queryKey: ['stock-places'] });
     void queryClient.invalidateQueries({ queryKey: ['stock-items'] });
     void queryClient.invalidateQueries({ queryKey: ['stock-place'] });
     void queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -376,6 +494,18 @@ export function StockPage() {
         </div>
         {canManage && (
           <div className="btn-row">
+            {canSetUp && (
+              <button
+                type="button"
+                className="btn btn-lg"
+                onClick={() => {
+                  setForm(null);
+                  setDepotForm('new');
+                }}
+              >
+                <Plus size={18} /> {t('Add depot')}
+              </button>
+            )}
             <button type="button" className="btn btn-lg" onClick={() => setForm('receive')}>
               {t('Receive stock')}
             </button>
@@ -389,6 +519,15 @@ export function StockPage() {
         )}
       </div>
       {done && <div className="notice">{done}</div>}
+      {depotForm && places.data && (
+        <DepotForm
+          key={depotForm === 'new' ? 'new' : depotForm.id}
+          depot={depotForm === 'new' ? undefined : depotForm}
+          places={places.data}
+          onDone={refresh}
+          onClose={() => setDepotForm(null)}
+        />
+      )}
       {form && items.data && places.data && (
         <StockForm
           form={form}
@@ -469,7 +608,22 @@ export function StockPage() {
                   </option>
                 ))}
               </select>
+              {canSetUp &&
+                places.data?.find((p) => p.id === currentPlace && p.kind === 'depot') !== undefined && (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setDepotForm(places.data!.find((p) => p.id === currentPlace)!)}
+                  >
+                    {t('Change depot')}
+                  </button>
+                )}
             </div>
+            {places.data?.length === 0 && (
+              <div className="empty">
+                {t('No depots or vans yet. Start with the depot of each area: Add depot.')}
+              </div>
+            )}
             {place.data?.length === 0 && <div className="empty">{t('Nothing here.')}</div>}
             {place.data && place.data.length > 0 && (
               <div className="table-wrap">

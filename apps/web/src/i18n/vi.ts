@@ -1,6 +1,6 @@
 /** Vietnamese for the English text of the web app. A text missing here is shown in English. */
 export const vi: Record<string, string> = {
-  ' · {0} free': ' · {0} người rảnh',
+  ' · {0} free': ' · còn {0}',
   ' · {0} kW': ' · {0} kW',
   ' · last seen {0}': ' · thấy lần cuối {0}',
   ' · meter {0}': ' · công tơ {0}',
@@ -1172,5 +1172,21 @@ export const vi: Record<string, string> = {
   '{0} open tickets': '{0} phiếu đang mở',
   '{0} people': '{0} người',
   '{0} person': '{0} người',
-  'You do not have access to this action': 'Bạn không có quyền thực hiện thao tác này'
+  'You do not have access to this action': 'Bạn không có quyền thực hiện thao tác này',
+  'Add depot': 'Thêm kho',
+  'Add a depot': 'Thêm kho',
+  'Change depot': 'Sửa kho',
+  'Code in the stock system': 'Mã trong hệ thống quản lý kho',
+  'e.g. Matola depot': 'vd: Kho Matola',
+  'Depot added. Stock can now be received into it.': 'Đã thêm kho. Giờ có thể nhập hàng vào kho này.',
+  'Depot saved.': 'Đã lưu kho.',
+  'Every area already has its depot.': 'Khu vực nào cũng đã có kho.',
+  'Each area has one depot: stock for the area is received there, and its tickets reserve material from it. EDM’s stock system sends deliveries by the code.':
+    'Mỗi khu vực có một kho: hàng của khu vực được nhập vào đó, và các phiếu của khu vực giữ vật tư từ kho này. Hệ thống quản lý kho của EDM gửi phiếu nhập theo mã kho.',
+  'There is no depot yet. An administrator or technical manager adds one with Add depot.':
+    'Chưa có kho nào. Quản trị viên hoặc quản lý kỹ thuật thêm kho bằng nút Thêm kho.',
+  'No depots or vans yet. Start with the depot of each area: Add depot.':
+    'Chưa có kho hay xe nào. Hãy bắt đầu bằng kho của từng khu vực: Thêm kho.',
+  'This area already has a depot.': 'Khu vực này đã có kho.',
+  'This code is already used by another depot or van.': 'Mã này đã được dùng cho một kho hoặc xe khác.'
 };

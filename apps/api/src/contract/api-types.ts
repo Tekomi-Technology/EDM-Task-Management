@@ -366,6 +366,7 @@ export interface StockLocationView {
   kind: 'depot' | 'van';
   code: string;
   name: string;
+  areaId: string | null;
   areaName: string | null;
   teamId: string | null;
   teamName: string | null;
