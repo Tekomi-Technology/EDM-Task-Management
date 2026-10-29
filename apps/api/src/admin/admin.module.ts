@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { AdminController } from './admin.controller';
 import { AdminUsersService } from './admin-users.service';
-import { IdentityAdmin, KeycloakAdmin } from './identity-admin';
+import { AreasService } from './areas.service';
 
 @Module({
+  imports: [AuthModule],
   controllers: [AdminController],
-  providers: [AdminUsersService, { provide: IdentityAdmin, useClass: KeycloakAdmin }]
+  providers: [AdminUsersService, AreasService]
 })
 export class AdminModule {}

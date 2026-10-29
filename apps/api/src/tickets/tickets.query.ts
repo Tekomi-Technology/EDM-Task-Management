@@ -440,8 +440,9 @@ export class TicketsQuery {
           scope,
           eq(tickets.type, 'planned_work'),
           ne(tickets.status, 'cancelled'),
-          sql`${tickets.scheduledStart} >= (${from}::date at time zone 'Africa/Maputo')`,
-          sql`${tickets.scheduledStart} < ((${to}::date + 1) at time zone 'Africa/Maputo')`
+          // Midnight in Maputo (without ::timestamp, a date is taken as midnight UTC).
+          sql`${tickets.scheduledStart} >= (${from}::date::timestamp at time zone 'Africa/Maputo')`,
+          sql`${tickets.scheduledStart} < ((${to}::date + 1)::timestamp at time zone 'Africa/Maputo')`
         )
       )
       .orderBy(asc(tickets.scheduledStart))

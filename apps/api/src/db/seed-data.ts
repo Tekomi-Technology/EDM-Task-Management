@@ -1,6 +1,6 @@
 /**
- * Sample data for development and tests, matching the Keycloak realm (infra/keycloak/realm-edm.json)
- * and the approved mockup. Areas are simplified rectangles around Maputo and Matola.
+ * Sample data for development and tests, matching the approved mockup. Areas are simplified rectangles around
+ * Maputo and Matola. Never loaded on a production server.
  */
 export const SEED_AREAS = [
   {
@@ -20,7 +20,22 @@ export const SEED_TEAMS = [
   { code: 'SOUTH_2', name: 'South 2', areaCode: 'MAPUTO_CENTRAL' }
 ] as const;
 
-/** Ids equal the Keycloak user ids, so tokens map straight to these rows. */
+/** Every sample person signs in with this password (argon2id hash below). */
+export const SEED_PASSWORD = 'Edm@2026';
+export const SEED_PASSWORD_HASH =
+  '$argon2id$v=19$m=19456,t=2,p=1$tF89W+sGYNVNT0BkYTC+pQ$w7GDotpSWCtL1CTaXsh3NGAhcqvel/VneDGQc/YQCeU';
+
+/**
+ * API keys of the other systems for development and tests (the simulators in tools/callcenter-sim use them).
+ * On a server, administrators make real keys in Settings → API keys.
+ */
+export const SEED_API_KEYS = [
+  { system: 'call_center', name: 'Call Center (development)', key: 'edm_dev-call-center-key-000000000000' },
+  { system: 'sales', name: 'Sales system (development)', key: 'edm_dev-sales-key-00000000000000000000' },
+  { system: 'nms', name: 'NMS (development)', key: 'edm_dev-nms-key-000000000000000000000000' },
+  { system: 'stock', name: 'Stock system (development)', key: 'edm_dev-stock-key-0000000000000000000000' }
+] as const;
+
 export const SEED_USERS = [
   {
     id: '00000000-0000-4000-8000-000000000001',

@@ -9,12 +9,15 @@ import {
   ChevronRight,
   LayoutGrid,
   LogOut,
+  Map as MapIcon,
   HelpCircle,
+  KeyRound,
   Home as HomeIcon,
   MapPin,
   Package,
   Phone,
   Search,
+  ShieldCheck,
   Ticket,
   UserCog,
   Users,
@@ -28,6 +31,8 @@ import { HelpButton, NotificationBell, RegionPicker, RegionProvider, useRegion }
 import { Avatar, CrumbContext, hasRole, OFFICE_ROLES, useMe, type Crumb } from './components/ui';
 import { ROLE_LABEL } from './format';
 import { ApiDocsPage } from './pages/ApiDocsPage';
+import { ApiKeysPage } from './pages/ApiKeysPage';
+import { AreasPage } from './pages/AreasPage';
 import { AssignPage } from './pages/AssignPage';
 import { ClosingChecksPage } from './pages/ClosingChecksPage';
 import { FieldStaffPage } from './pages/FieldStaffPage';
@@ -43,6 +48,7 @@ import { TicketDetailPage } from './pages/TicketDetailPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { UsersPage } from './pages/UsersPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { SignInSecurityPage } from './pages/SignInSecurityPage';
 import { LANGUAGES, setLanguage, t, useLanguage, type Language } from './i18n';
 
 function NavItem({ to, icon, label, count }: { to: string; icon: ReactNode; label: string; count?: number }) {
@@ -226,7 +232,12 @@ function ShellLayout() {
             <>
               <div className="nav-group">{t('Settings')}</div>
               {hasRole(me.data, 'admin') && (
-                <NavItem to="/users" icon={<UserCog size={20} />} label={t('Users & roles')} />
+                <>
+                  <NavItem to="/users" icon={<UserCog size={20} />} label={t('Users & roles')} />
+                  <NavItem to="/areas" icon={<MapIcon size={20} />} label={t('Areas and teams')} />
+                  <NavItem to="/api-keys" icon={<KeyRound size={20} />} label={t('API keys')} />
+                  <NavItem to="/security" icon={<ShieldCheck size={20} />} label={t('Sign-in security')} />
+                </>
               )}
               <NavItem to="/api-docs" icon={<BookOpen size={20} />} label={t('API documentation')} />
             </>
@@ -289,6 +300,9 @@ export function App() {
         <Route path="/users" element={<UsersPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />
+        <Route path="/api-keys" element={<ApiKeysPage />} />
+        <Route path="/areas" element={<AreasPage />} />
+        <Route path="/security" element={<SignInSecurityPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

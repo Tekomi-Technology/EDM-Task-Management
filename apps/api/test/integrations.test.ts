@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { apiKeys } from '../src/db/schema';
 import { createTestApp, resetData, waitFor, type TestContext } from './helpers';
 import {
   activationResultSchema,
@@ -31,7 +33,6 @@ describe('connected systems', () => {
   beforeEach(async () => {
     await resetData(t.db);
     salesAnswer = 200;
-    t.identity.clients.set('nms-system', true);
   });
 
   const overview = async () => (await t.as('admin.edm').get('/api/integrations')).body;
@@ -76,7 +77,7 @@ describe('connected systems', () => {
   });
 
   it('shows a refused sign-in or unreadable data as a problem, solved once requests go through again', async () => {
-    expect((await t.as('stranger').post('/api/intake/nms/alarms', { alarms: [alarm('A-1')] })).status).toBe(
+    expect((await t.as('paulo.bo').post('/api/intake/nms/alarms', { alarms: [alarm('A-1')] })).status).toBe(
       403
     );
     expect((await t.as('nms').post('/api/intake/nms/alarms', { alarms: [{ alarmId: 'A-2' }] })).status).toBe(
@@ -90,7 +91,7 @@ describe('connected systems', () => {
     );
     expect((await card('nms')).status).toBe('connected'); // bad data is their mistake, not a broken link
 
-    await t.as('stranger').post('/api/intake/nms/alarms', { alarms: [alarm('A-3')] });
+    await t.as('paulo.bo').post('/api/intake/nms/alarms', { alarms: [alarm('A-3')] });
     expect(
       await waitFor(
         () => card('nms'),
@@ -113,12 +114,12 @@ describe('connected systems', () => {
     expect(sms[0]).toMatchObject({ direction: 'out', operation: 'SMS', ok: true });
   });
 
-  it('tests the connection: the sign-in account of systems that call us, a ping to the ones we call', async () => {
+  it('tests the connection: the API keys of systems that call us, a ping to the ones we call', async () => {
     const test = async (system: string) =>
       (await t.as('carla.manhica').post(`/api/integrations/${system}/test`)).body;
-    expect(await test('nms')).toMatchObject({ ok: true, message: "The NMS's sign-in account is enabled." });
-    t.identity.clients.set('nms-system', false);
-    expect(await test('nms')).toMatchObject({ ok: false, message: expect.stringContaining('disabled') });
+    expect(await test('nms')).toMatchObject({ ok: true, message: 'The NMS has an API key.' });
+    await t.db.update(apiKeys).set({ revokedAt: new Date() }).where(eq(apiKeys.system, 'nms'));
+    expect(await test('nms')).toMatchObject({ ok: false, message: expect.stringContaining('no API key') });
 
     const sales_ = await test('sales');
     expect(sales_).toMatchObject({ ok: true, message: expect.stringContaining('accepted a test event') });
@@ -137,13 +138,7 @@ describe('connected systems', () => {
     const res = await t.as('admin.edm').get('/api/integrations/docs');
     expect(res.status).toBe(200);
     const docs = res.body as IntegrationDocs;
-    expect(docs.tokenUrl).toMatch(/\/realms\/edm\/protocol\/openid-connect\/token$/);
-    expect(docs.systems.map((s) => [s.system, s.clientId])).toEqual([
-      ['call_center', 'call-center-system'],
-      ['sales', 'sales-system'],
-      ['nms', 'nms-system'],
-      ['stock', 'stock-system']
-    ]);
+    expect(docs.systems.map((s) => s.system)).toEqual(['call_center', 'sales', 'nms', 'stock']);
 
     const sales = docs.systems.find((s) => s.system === 'sales')!;
     const survey = sales.operations.find((o) => o.path === '/api/intake/sales/survey-requests')!;

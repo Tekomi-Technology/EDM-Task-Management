@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
-import { users } from '../src/db/schema';
+import { SEED_PASSWORD } from '../src/db/seed-data';
 import { createTestApp, ids, resetData, type TestContext } from './helpers';
 
 const newStaff = (overrides: object = {}) => ({
@@ -21,11 +20,13 @@ describe('account management (Users & roles)', () => {
   afterAll(() => t.close());
   beforeEach(async () => {
     await resetData(t.db);
-    t.identity.reset();
     const teams = (await t.as('admin.edm').get('/api/admin/teams')).body as { id: string; code: string }[];
     south1 = teams.find((x) => x.code === 'SOUTH_1')!.id;
     south2 = teams.find((x) => x.code === 'SOUTH_2')!.id;
   });
+
+  const signIn = (username: string, password: string) =>
+    t.anonymous().post('/api/auth/sign-in').send({ username, password, client: 'app' });
 
   it('is only open to admins', async () => {
     expect((await t.as('helena.mondlane').get('/api/admin/users')).status).toBe(403);
@@ -67,15 +68,8 @@ describe('account management (Users & roles)', () => {
     });
     expect(res.body.temporaryPassword).toMatch(/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)[A-Za-z\d]{12}$/);
 
-    const account = [...t.identity.accounts.values()].find((a) => a.username === 'rui.langa')!;
-    expect(account).toMatchObject({
-      firstName: 'Rui',
-      lastName: 'Langa',
-      roles: ['field_staff'],
-      password: { value: res.body.temporaryPassword, temporary: true }
-    });
-    const [row] = await t.db.select().from(users).where(eq(users.username, 'rui.langa'));
-    expect(row.keycloakSub).toBe(account.id);
+    const first = await signIn('rui.langa', res.body.temporaryPassword);
+    expect(first.body).toMatchObject({ mustChangePassword: true });
 
     // The new person shows up for the manager to assign.
     const teamStaff = (await t.as('helena.mondlane').get(`/api/teams/${south1}/staff`)).body;
@@ -105,14 +99,6 @@ describe('account management (Users & roles)', () => {
     expect(systemRole.status).toBe(400);
   });
 
-  it('leaves nothing behind when the sign-in server fails half-way', async () => {
-    t.identity.failNext = 'setRoles';
-    const res = await t.as('admin.edm').post('/api/admin/users', newStaff({ teamId: south1 }));
-    expect(res.status).toBe(502);
-    expect([...t.identity.accounts.values()].some((a) => a.username === 'rui.langa')).toBe(false);
-    expect(await t.db.select().from(users).where(eq(users.username, 'rui.langa'))).toEqual([]);
-  });
-
   it('changes team and roles; someone who is no longer field staff goes off duty', async () => {
     await t.as('ana.sitoe').post('/api/me/duty', { onDuty: true });
     const moved = await t.as('admin.edm').patch(`/api/admin/users/${ids['ana.sitoe']}`, { teamId: south2 });
@@ -127,12 +113,8 @@ describe('account management (Users & roles)', () => {
       fullName: 'Ana Maria Sitoe',
       onDuty: false
     });
-    expect(t.identity.accounts.get(ids['ana.sitoe'])).toMatchObject({
-      roles: ['team_manager'],
-      logouts: 1,
-      firstName: 'Ana Maria',
-      lastName: 'Sitoe'
-    });
+    // Applies at once, without signing the person out.
+    expect((await t.as('ana.sitoe').get('/api/me')).body.roles).toEqual(['team_manager']);
 
     const noTeam = await t.as('admin.edm').patch(`/api/admin/users/${ids['ana.sitoe']}`, { teamId: null });
     expect(noTeam.body.code).toBe('TEAM_REQUIRED');
@@ -142,9 +124,14 @@ describe('account management (Users & roles)', () => {
 
   it('blocks a person at once, even with a token still valid, and unblocks them', async () => {
     await t.as('armando.cossa').post('/api/me/duty', { onDuty: true });
+    const phone = (await signIn('armando.cossa', SEED_PASSWORD)).body.refreshToken as string;
     const blocked = await t.as('admin.edm').post(`/api/admin/users/${ids['armando.cossa']}/block`);
     expect(blocked.body).toMatchObject({ status: 'blocked', onDuty: false });
-    expect(t.identity.accounts.get(ids['armando.cossa'])).toMatchObject({ enabled: false, logouts: 1 });
+    // Signed out everywhere, and cannot sign in again.
+    expect((await t.anonymous().post('/api/auth/refresh').send({ refreshToken: phone })).body.code).toBe(
+      'SESSION_ENDED'
+    );
+    expect((await signIn('armando.cossa', SEED_PASSWORD)).body.code).toBe('INVALID_CREDENTIALS');
 
     const me = await t.as('armando.cossa').get('/api/me');
     expect([me.status, me.body.code]).toEqual([403, 'ACCOUNT_DISABLED']);
@@ -158,14 +145,14 @@ describe('account management (Users & roles)', () => {
 
     const unblocked = await t.as('admin.edm').post(`/api/admin/users/${ids['armando.cossa']}/unblock`);
     expect(unblocked.body.status).toBe('active');
-    expect(t.identity.accounts.get(ids['armando.cossa'])!.enabled).toBe(true);
+    expect((await signIn('armando.cossa', SEED_PASSWORD)).status).toBe(200);
     expect((await t.as('armando.cossa').get('/api/me')).status).toBe(200);
   });
 
   it('cancels an account for good but keeps it for history', async () => {
     const res = await t.as('admin.edm').post(`/api/admin/users/${ids['ofelia.tembe']}/cancel`);
     expect(res.body.status).toBe('cancelled');
-    expect(t.identity.accounts.get(ids['ofelia.tembe'])!.enabled).toBe(false);
+    expect((await signIn('ofelia.tembe', SEED_PASSWORD)).status).toBe(401);
     expect((await t.as('admin.edm').post(`/api/admin/users/${ids['ofelia.tembe']}/unblock`)).status).toBe(
       409
     );
@@ -182,10 +169,8 @@ describe('account management (Users & roles)', () => {
   it('resets a password to a new temporary one', async () => {
     const res = await t.as('admin.edm').post(`/api/admin/users/${ids['helena.mondlane']}/reset-password`);
     expect(res.status).toBe(200);
-    expect(t.identity.accounts.get(ids['helena.mondlane'])!.password).toEqual({
-      value: res.body.temporaryPassword,
-      temporary: true
-    });
+    expect((await signIn('helena.mondlane', SEED_PASSWORD)).status).toBe(401);
+    expect((await signIn('helena.mondlane', res.body.temporaryPassword)).body.mustChangePassword).toBe(true);
     expect((await t.as('admin.edm').post('/api/admin/users/not-a-uuid/reset-password')).status).toBe(400);
     expect(
       (await t.as('admin.edm').post('/api/admin/users/22222222-2222-4222-8222-222222222222/reset-password'))

@@ -1,11 +1,9 @@
 // Test configuration: separate database, Redis db and bucket, so tests never touch development data.
-// Tokens are signed by a key generated in test/helpers.ts, so Keycloak does not need to be running.
+// Tokens are signed with the development AUTH_SECRET (test/helpers.ts signs them the same way).
 Object.assign(process.env, {
   NODE_ENV: 'test',
   DATABASE_URL: process.env.TEST_DATABASE_URL ?? 'postgres://edm:edm_dev_password@localhost:55432/edm_test',
   REDIS_URL: process.env.TEST_REDIS_URL ?? 'redis://localhost:56379/1',
-  KEYCLOAK_URL: 'http://keycloak.test',
-  KEYCLOAK_REALM: 'edm',
   S3_ENDPOINT: process.env.TEST_S3_ENDPOINT ?? 'http://localhost:59000',
   S3_ACCESS_KEY: 'edm',
   S3_SECRET_KEY: 'edm_dev_password',

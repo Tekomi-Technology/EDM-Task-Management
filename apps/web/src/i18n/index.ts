@@ -45,17 +45,6 @@ export function setLanguage(next: Language, remember = true): void {
   listeners.forEach((l) => l());
 }
 
-/** The language chosen on the sign-in page, used until the person picks one in the app. */
-export function applyAccountLanguage(locale: unknown): void {
-  let saved: string | null = null;
-  try {
-    saved = localStorage.getItem(STORAGE_KEY);
-  } catch {
-    // No stored choice.
-  }
-  if (!saved && isLanguage(locale)) setLanguage(locale, false);
-}
-
 /** Re-renders when the language changes. */
 export function useLanguage(): Language {
   return useSyncExternalStore(

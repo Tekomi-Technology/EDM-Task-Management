@@ -11,7 +11,10 @@ export interface AuthUser {
   teamId: string | null;
   /** Field staff only: whether they have switched on duty in the app. */
   onDuty: boolean;
+  /** Another EDM system calling with an API key. */
   isIntegration: boolean;
+  /** The browser or phone session the request comes from; null for API keys and the system itself. */
+  sessionId: string | null;
 }
 
 /** Actor recorded in ticket history when the system assigns a job by itself. */
@@ -23,7 +26,8 @@ export const SYSTEM_ACTOR: AuthUser = {
   userId: null,
   teamId: null,
   onDuty: false,
-  isIntegration: false
+  isIntegration: false,
+  sessionId: null
 };
 
 /** Label written into ticket history for an actor. */

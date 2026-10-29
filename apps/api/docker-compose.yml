@@ -1,0 +1,117 @@
+# The backend on a server: database, Redis, photo storage and the API. Settings in .env next to this file
+# (copy .env.example). Start or update:  docker compose up -d --build
+# The server's nginx sends /api to API_HOST_PORT and the photo addresses to STORAGE_HOST_PORT (see DEPLOY.md).
+# "edm-prod" keeps the data volumes made before the API and web were split (edm-prod_postgres-data, …).
+name: edm-prod
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: edm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: edm
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/prod-init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U edm -d edm']
+      interval: 10s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      retries: 10
+
+  # Photos (S3 protocol). The account is S3_ACCESS_KEY / S3_SECRET_KEY, written to the config file on each start;
+  # volumes are sized from the free disk space. The API creates the bucket on startup.
+  storage:
+    image: chrislusf/seaweedfs:3.80
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        printf '{"identities":[{"name":"edm","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json
+        exec weed server -dir=/data -ip.bind=0.0.0.0 -s3 -s3.config=/tmp/s3.json \
+          -volume.max=0 -master.volumeSizeLimitMB=1024 -master.volumePreallocate=false
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?set S3_SECRET_KEY}
+    volumes:
+      - storage-data:/data
+    # Phones and browsers fetch photos through the public address (presigned links), so nginx passes them here.
+    ports:
+      - '127.0.0.1:${STORAGE_HOST_PORT:-8093}:8333'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget -q -O /dev/null http://localhost:9333/cluster/status && wget -q -O /dev/null http://localhost:8333/status'
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    image: edm-api:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://edm:${POSTGRES_PASSWORD}@postgres:5432/edm
+      REDIS_URL: redis://redis:6379
+      # Signs the sign-in tokens; changing it signs everyone out. openssl rand -hex 32
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET}
+      S3_ENDPOINT: http://storage:8333
+      S3_PUBLIC_ENDPOINT: ${WEB_PUBLIC_URL:?set WEB_PUBLIC_URL}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-edm-attachments}
+      CORS_ORIGINS: ${WEB_PUBLIC_URL}
+      SMS_PROVIDER: ${SMS_PROVIDER:-log}
+      SMS_HTTP_URL: ${SMS_HTTP_URL:-}
+      SMS_HTTP_METHOD: ${SMS_HTTP_METHOD:-POST}
+      SMS_HTTP_CONTENT_TYPE: ${SMS_HTTP_CONTENT_TYPE:-json}
+      SMS_HTTP_BODY: ${SMS_HTTP_BODY:-}
+      SMS_HTTP_HEADERS: ${SMS_HTTP_HEADERS:-}
+      SMS_HTTP_SUCCESS_TEXT: ${SMS_HTTP_SUCCESS_TEXT:-}
+      SMS_SENDER_ID: ${SMS_SENDER_ID:-EDM}
+      PUSH_PROVIDER: ${PUSH_PROVIDER:-expo}
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+      STAFF_ALERTS: ${STAFF_ALERTS:-push_or_sms}
+      SALES_WEBHOOK_URL: ${SALES_WEBHOOK_URL:-}
+      SALES_WEBHOOK_SECRET: ${SALES_WEBHOOK_SECRET:-}
+      # Empty turns address lookup from the map off.
+      GEOCODER_URL: ${GEOCODER_URL-https://nominatim.openstreetmap.org}
+      API_DOCS: ${API_DOCS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:${API_HOST_PORT:-8091}:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://localhost:3000/api/health']
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  postgres-data:
+  redis-data:
+  storage-data:

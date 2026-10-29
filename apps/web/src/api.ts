@@ -1,5 +1,5 @@
 import type { ApiError } from './types';
-import { accessToken } from './auth';
+import { accessToken, onAuthProblem, renewAfterExpiry } from './auth';
 import { t } from './i18n';
 
 const API_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/api`;
@@ -12,7 +12,8 @@ export class ApiRequestError extends Error {
 
 export async function api<T>(
   path: string,
-  init: { method?: 'GET' | 'POST' | 'PATCH'; body?: unknown } = {}
+  init: { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: unknown } = {},
+  retried = false
 ): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: init.method ?? 'GET',
@@ -21,6 +22,10 @@ export async function api<T>(
   });
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
+    const code = (data as ApiError | null)?.code;
+    // The token ran out between the check and the answer: renew it and send the request once more.
+    if (code === 'TOKEN_EXPIRED' && !retried && (await renewAfterExpiry())) return api<T>(path, init, true);
+    if (code) onAuthProblem(code);
     throw new ApiRequestError(
       (data as ApiError | null) ?? {
         statusCode: res.status,

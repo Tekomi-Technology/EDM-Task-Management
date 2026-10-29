@@ -3,38 +3,31 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { App } from './App';
-import { initAuth, keycloak } from './auth';
-import { applyAccountLanguage, language, t, useLanguage } from './i18n';
+import { initAuth, useAuthState } from './auth';
+import { language, useLanguage } from './i18n';
+import { ChangePasswordPage, SignInPage } from './pages/SignInPage';
 import './styles.css';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 10_000 } } });
-const root = createRoot(document.getElementById('root')!);
 
-/** Draws the app again in the new language when it changes (screens keep their data in the query cache). */
-function Localised() {
-  const language = useLanguage();
-  return <App key={language} />;
+/** Sign-in page, the page to choose one's own password, or the app; drawn again when the language changes. */
+function Root() {
+  const auth = useAuthState();
+  const lang = useLanguage();
+  if (auth === 'loading') return null;
+  if (auth === 'signed-out') return <SignInPage key={lang} />;
+  if (auth === 'must-change-password') return <ChangePasswordPage key={lang} />;
+  return <App key={lang} />;
 }
 
-initAuth()
-  .then(() => {
-    // The language chosen on the sign-in page, until the person picks one in the app.
-    applyAccountLanguage(keycloak.tokenParsed?.locale);
-    document.documentElement.lang = language();
-    root.render(
-      <StrictMode>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <Localised />
-          </BrowserRouter>
-        </QueryClientProvider>
-      </StrictMode>
-    );
-  })
-  .catch(() =>
-    root.render(
-      <div className="error" style={{ margin: 32 }}>
-        {t('Cannot reach the sign-in service. Please try again later.')}
-      </div>
-    )
-  );
+document.documentElement.lang = language();
+void initAuth();
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Root />
+      </BrowserRouter>
+    </QueryClientProvider>
+  </StrictMode>
+);

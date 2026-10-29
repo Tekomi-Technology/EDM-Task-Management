@@ -650,13 +650,11 @@ export interface IntegrationDocWebhook {
 
 export interface IntegrationDocSystem {
   system: IntegrationSystem;
-  clientId: string;
   operations: IntegrationDocOperation[];
   webhooks: IntegrationDocWebhook[];
 }
 
 export interface IntegrationDocs {
-  tokenUrl: string;
   systems: IntegrationDocSystem[];
 }
 
@@ -791,3 +789,69 @@ export type TicketPreviewInput =
   | { type: 'customer_complaint'; customerId: string; problemType: ProblemType; priority?: number }
   | { type: 'network_incident'; reportType: NetworkReportType; location?: { lat: number; lng: number } }
   | { type: 'other'; priority: number; customerId?: string; location?: { lat: number; lng: number } };
+
+// ---- Signing in and settings ----
+
+/** POST /auth/sign-in and /auth/refresh (the session itself is an httpOnly cookie). */
+export interface SignInResult {
+  accessToken: string;
+  expiresIn: number;
+  mustChangePassword: boolean;
+}
+
+/** The other EDM systems that call this one with an API key. */
+export const API_KEY_SYSTEMS = ['call_center', 'sales', 'nms', 'stock'] as const;
+export type ApiKeySystem = (typeof API_KEY_SYSTEMS)[number];
+
+export interface ApiKeyView {
+  id: string;
+  system: ApiKeySystem;
+  name: string;
+  /** First characters, to recognise the key; the key itself is shown only once. */
+  prefix: string;
+  createdAt: string;
+  createdByName: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface CreatedApiKey {
+  apiKey: ApiKeyView;
+  key: string;
+}
+
+/** Settings → Sign-in security. */
+export interface SignInSettings {
+  minPasswordLength: number;
+  maxFailedSignIns: number;
+  lockMinutes: number;
+  webSessionDays: number;
+  appSessionDays: number;
+}
+
+// ---- Areas and teams (Settings) ----
+
+export interface AreaTeamView {
+  id: string;
+  code: string;
+  name: string;
+  people: number;
+  managers: string[];
+}
+
+export interface AreaView {
+  id: string;
+  code: string;
+  name: string;
+  /** GeoJSON MultiPolygon coordinates: polygons of rings of [lng, lat]. */
+  boundary: [number, number][][][];
+  sizeKm2: number;
+  /** In order: the first team gets the area's new tickets. */
+  teams: AreaTeamView[];
+  openTickets: number;
+}
+
+/** An area's boundary as GeoJSON. */
+export type Boundary =
+  | { type: 'Polygon'; coordinates: [number, number][][] }
+  | { type: 'MultiPolygon'; coordinates: [number, number][][][] };

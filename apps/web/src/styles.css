@@ -1467,3 +1467,259 @@ td.right,
   top: 8px;
   right: 8px;
 }
+
+/* Sign-in and choose-your-password pages (W01): EDM on the left, the form on the right. */
+.signin-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--surface);
+}
+.signin-brand {
+  background: var(--brand-soft);
+  padding: 64px 7vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #3a2208;
+}
+.signin-logo {
+  width: 210px;
+  margin-bottom: 40px;
+}
+.signin-brand h2 {
+  font-size: 34px;
+  line-height: 1.2;
+  margin: 0 0 12px;
+  color: var(--brand-ink);
+}
+.signin-brand p {
+  font-size: 18px;
+  margin: 0 0 28px;
+  max-width: 460px;
+}
+.signin-brand ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 16px;
+}
+.signin-brand li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.signin-brand li::before {
+  content: '✓';
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+.signin-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+.signin-card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.signin-card h1 {
+  font-size: 30px;
+  margin: 0;
+}
+.signin-intro {
+  color: var(--muted);
+  margin: -10px 0 4px;
+}
+.signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.signin-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.signin-group label {
+  font-weight: 500;
+}
+.signin-group input {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 0 14px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+}
+.signin-group input:focus {
+  outline: 2px solid var(--brand-line);
+  border-color: var(--brand);
+}
+.signin-group input[aria-invalid='true'] {
+  border-color: var(--late);
+}
+.signin-input-group {
+  position: relative;
+}
+.signin-input-group input {
+  padding-right: 76px;
+}
+.signin-show {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--brand-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.signin-forgot,
+.signin-hint {
+  color: var(--brand-text);
+  font-weight: 600;
+  font-size: 14px;
+}
+.signin-hint {
+  color: var(--muted);
+  font-weight: 500;
+}
+.signin-btn {
+  height: 50px;
+  border-radius: 12px;
+  border: 1px solid var(--brand);
+  background: var(--brand);
+  color: var(--brand-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.signin-btn:hover {
+  background: var(--brand-strong);
+}
+.signin-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.signin-link {
+  border: 0;
+  background: none;
+  color: var(--brand-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.signin-alert {
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--late-soft);
+  color: #912018;
+}
+.signin-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.signin-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.signin-language select {
+  height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 0 10px;
+  font: inherit;
+  background: var(--surface);
+  color: var(--text);
+}
+@media (max-width: 860px) {
+  .signin-page {
+    grid-template-columns: 1fr;
+  }
+  .signin-brand {
+    padding: 32px 24px;
+  }
+  .signin-logo {
+    width: 150px;
+    margin-bottom: 20px;
+  }
+  .signin-brand h2 {
+    font-size: 26px;
+  }
+  .signin-brand ul {
+    display: none;
+  }
+}
+
+/* Areas and teams */
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.area-card {
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.area-card.selected {
+  border-color: var(--brand-line);
+}
+.area-team {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-soft);
+}
+.area-team > div {
+  min-width: 170px;
+}
+.area-team select {
+  max-width: 150px;
+}
+.leaflet-tooltip.area-label {
+  background: rgb(255 255 255 / 85%);
+  border: none;
+  box-shadow: none;
+  font-weight: 700;
+  color: var(--text);
+}
+.leaflet-tooltip.area-label::before {
+  display: none;
+}

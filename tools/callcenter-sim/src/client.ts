@@ -5,58 +5,56 @@ const rootEnv = fileURLToPath(new URL('../../../.env', import.meta.url));
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 export const API_URL = `${process.env.API_URL ?? `http://localhost:${process.env.API_PORT ?? 3000}`}/api`;
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? 'http://localhost:58080';
-const REALM = process.env.KEYCLOAK_REALM ?? 'edm';
-const TOKEN_URL = `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`;
 
-async function token(form: Record<string, string>): Promise<string> {
-  const res = await fetch(TOKEN_URL, { method: 'POST', body: new URLSearchParams(form) });
-  if (!res.ok) throw new Error(`Keycloak refused the sign-in (${res.status}): ${await res.text()}`);
-  return ((await res.json()) as { access_token: string }).access_token;
+/** The sample API keys of the other systems (loaded with the sample data); a server uses keys made in Settings. */
+const DEV_KEYS = {
+  call_center: 'edm_dev-call-center-key-000000000000',
+  sales: 'edm_dev-sales-key-00000000000000000000',
+  nms: 'edm_dev-nms-key-000000000000000000000000',
+  stock: 'edm_dev-stock-key-0000000000000000000000'
+};
+
+/** The Call Center system's API key, as the real Call Center sends it. */
+export async function callCenterToken(): Promise<string> {
+  return process.env.CALL_CENTER_API_KEY ?? DEV_KEYS.call_center;
 }
 
-/** Token for the Call Center system (client credentials), as the real Call Center would get it. */
-export function callCenterToken(): Promise<string> {
-  return token({
-    grant_type: 'client_credentials',
-    client_id: process.env.CALLCENTER_CLIENT_ID ?? 'call-center-system',
-    client_secret: process.env.CALLCENTER_CLIENT_SECRET ?? 'call-center-dev-secret'
+/** The Sales system's API key. */
+export async function salesToken(): Promise<string> {
+  return process.env.SALES_API_KEY ?? DEV_KEYS.sales;
+}
+
+/** EDM's stock management system's API key. */
+export async function stockToken(): Promise<string> {
+  return process.env.STOCK_API_KEY ?? DEV_KEYS.stock;
+}
+
+/** The network management system's API key. */
+export async function nmsToken(): Promise<string> {
+  return process.env.NMS_API_KEY ?? DEV_KEYS.nms;
+}
+
+/** Signs in like the phone app does; the answer as it comes. */
+export async function signIn(
+  username: string,
+  password = 'Edm@2026'
+): Promise<{ status: number; body: { accessToken?: string; mustChangePassword?: boolean; code?: string } }> {
+  const res = await fetch(`${API_URL}/auth/sign-in`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, client: 'app' })
   });
+  return { status: res.status, body: (await res.json()) as { accessToken?: string; code?: string } };
 }
 
-/** Token for the Sales system (client credentials). */
-export function salesToken(): Promise<string> {
-  return token({
-    grant_type: 'client_credentials',
-    client_id: process.env.SALES_CLIENT_ID ?? 'sales-system',
-    client_secret: process.env.SALES_CLIENT_SECRET ?? 'sales-dev-secret'
-  });
+/** An access token for a sample person. */
+export async function userToken(username: string, password = 'Edm@2026'): Promise<string> {
+  const res = await signIn(username, password);
+  if (!res.body.accessToken) throw new Error(`Sign-in refused (${res.status}): ${res.body.code}`);
+  return res.body.accessToken;
 }
 
-/** Token for EDM's stock management system (client credentials). */
-export function stockToken(): Promise<string> {
-  return token({
-    grant_type: 'client_credentials',
-    client_id: process.env.STOCK_CLIENT_ID ?? 'stock-system',
-    client_secret: process.env.STOCK_CLIENT_SECRET ?? 'stock-dev-secret'
-  });
-}
-
-/** Token for the network management system (client credentials), as the real NMS would get it. */
-export function nmsToken(): Promise<string> {
-  return token({
-    grant_type: 'client_credentials',
-    client_id: process.env.NMS_CLIENT_ID ?? 'nms-system',
-    client_secret: process.env.NMS_CLIENT_SECRET ?? 'nms-dev-secret'
-  });
-}
-
-/** Token for a sample user through the dev-only client; used by the end-to-end script. */
-export function userToken(username: string, password = 'Edm@2026'): Promise<string> {
-  return token({ grant_type: 'password', client_id: 'edm-dev-cli', username, password });
-}
-
-/** Tries to sign in and returns Keycloak's refusal message, or null when the sign-in works. */
+/** Tries to sign in and returns the refusal message, or null when the sign-in works. */
 export async function signInError(username: string, password = 'Edm@2026'): Promise<string | null> {
   try {
     await userToken(username, password);

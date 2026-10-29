@@ -1,19 +1,18 @@
-import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type { AdminUser, CreateUser, Role, TeamView, UpdateUser, UserListQuery } from '../contract';
-import { and, arrayContains, asc, eq, ilike, or } from 'drizzle-orm';
-import { randomInt } from 'node:crypto';
+import { and, arrayContains, asc, eq, ilike, or, sql } from 'drizzle-orm';
 import type { AuthUser } from '../auth/auth-user';
+import { AuthService } from '../auth/auth.service';
+import { hashPassword, temporaryPassword } from '../auth/passwords';
 import { AppError, notFound } from '../common/errors';
 import { DB, type Db } from '../db/db.module';
 import { areas, teams, users } from '../db/schema';
-import { IdentityAdmin } from './identity-admin';
 
 /** Roles whose holders belong to a team. */
 const TEAM_ROLES: readonly Role[] = ['field_staff', 'team_manager'];
 
 const columns = {
   id: users.id,
-  keycloakSub: users.keycloakSub,
   username: users.username,
   fullName: users.fullName,
   email: users.email,
@@ -47,37 +46,12 @@ function toView(r: Row): AdminUser {
   };
 }
 
-/** "Ana Maria Cossa" → first "Ana Maria", last "Cossa", as Keycloak keeps them apart. */
-function splitName(fullName: string): { firstName: string; lastName: string } {
-  const parts = fullName.trim().split(/\s+/);
-  return parts.length > 1
-    ? { firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] }
-    : { firstName: parts[0], lastName: parts[0] };
-}
-
-/** 12 characters with upper and lower case letters and digits; avoids look-alike characters. */
-export function temporaryPassword(): string {
-  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const lower = 'abcdefghijkmnpqrstuvwxyz';
-  const digits = '23456789';
-  const all = upper + lower + digits;
-  const pick = (set: string) => set[randomInt(set.length)];
-  const chars = [pick(upper), pick(lower), pick(digits), ...Array.from({ length: 9 }, () => pick(all))];
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = randomInt(i + 1);
-    [chars[i], chars[j]] = [chars[j], chars[i]];
-  }
-  return chars.join('');
-}
-
-/** Account management for admins. Keycloak holds sign-in and roles; the users table mirrors them. */
+/** Account management for admins: accounts, roles, teams and passwords all live in the users table. */
 @Injectable()
 export class AdminUsersService {
-  private readonly logger = new Logger(AdminUsersService.name);
-
   constructor(
     @Inject(DB) private readonly db: Db,
-    private readonly identity: IdentityAdmin
+    private readonly auth: AuthService
   ) {}
 
   async list(q: UserListQuery): Promise<AdminUser[]> {
@@ -102,47 +76,31 @@ export class AdminUsersService {
       .orderBy(asc(teams.name));
   }
 
-  /** Creates the Keycloak account and the user row; returns a temporary password to give to the person once. */
+  /** Creates the account with a temporary password, given to the person once; they choose their own at first sign-in. */
   async create(input: CreateUser): Promise<{ user: AdminUser; temporaryPassword: string }> {
     const teamId = input.teamId ?? null;
     await this.checkTeam(input.roles, teamId);
     const [taken] = await this.db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.username, input.username));
+      .where(sql`lower(${users.username}) = ${input.username.toLowerCase()}`);
     if (taken) throw new AppError(HttpStatus.CONFLICT, 'USERNAME_TAKEN', 'This username is already used');
 
     const password = temporaryPassword();
-    const keycloakId = await this.identity.createUser({
-      username: input.username,
-      ...splitName(input.fullName),
-      email: input.email ?? null
-    });
-    try {
-      await this.identity.setRoles(keycloakId, input.roles);
-      await this.identity.setPassword(keycloakId, password, true);
-      const [row] = await this.db
-        .insert(users)
-        .values({
-          keycloakSub: keycloakId,
-          username: input.username,
-          fullName: input.fullName,
-          email: input.email ?? null,
-          phone: input.phone ?? null,
-          roles: input.roles,
-          teamId
-        })
-        .returning({ id: users.id });
-      return { user: await this.get(row.id), temporaryPassword: password };
-    } catch (err) {
-      // Do not leave a half-made account that can sign in without a matching row.
-      await this.identity.deleteUser(keycloakId).catch((e: Error) => {
-        this.logger.error(
-          `Could not remove Keycloak account ${keycloakId} after a failed create: ${e.message}`
-        );
-      });
-      throw err;
-    }
+    const [row] = await this.db
+      .insert(users)
+      .values({
+        username: input.username,
+        fullName: input.fullName,
+        email: input.email ?? null,
+        phone: input.phone ?? null,
+        roles: input.roles,
+        teamId,
+        passwordHash: await hashPassword(password),
+        mustChangePassword: true
+      })
+      .returning({ id: users.id });
+    return { user: await this.get(row!.id), temporaryPassword: password };
   }
 
   async update(id: string, input: UpdateUser, actor: AuthUser): Promise<AdminUser> {
@@ -161,19 +119,9 @@ export class AdminUsersService {
     }
     await this.checkTeam(roles, teamId);
 
-    const keycloakId = await this.keycloakId(row);
+    // Roles are read on every request, so the change applies at once without signing the person out.
     const fullName = input.fullName ?? row.fullName;
     const email = input.email === undefined ? row.email : input.email;
-    if (fullName !== row.fullName || email !== row.email) {
-      await this.identity.updateProfile(keycloakId, { ...splitName(fullName), email });
-    }
-    const rolesChanged = [...roles].sort().join(',') !== [...row.roles].sort().join(',');
-    if (rolesChanged) {
-      await this.identity.setRoles(keycloakId, roles);
-      // Sessions carry the old roles; signing the person out makes the new ones apply at the next sign-in.
-      await this.identity.logout(keycloakId);
-    }
-
     await this.db
       .update(users)
       .set({
@@ -195,7 +143,17 @@ export class AdminUsersService {
       throw new AppError(HttpStatus.CONFLICT, 'ACCOUNT_CANCELLED', 'A cancelled account cannot be changed');
     }
     const password = temporaryPassword();
-    await this.identity.setPassword(await this.keycloakId(row), password, true);
+    await this.db
+      .update(users)
+      .set({
+        passwordHash: await hashPassword(password),
+        mustChangePassword: true,
+        failedSignIns: 0,
+        lockedUntil: null,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, id));
+    await this.auth.endSessions(id);
     return { temporaryPassword: password };
   }
 
@@ -210,8 +168,8 @@ export class AdminUsersService {
         `The account is already ${row.status}`
       );
     }
-    await this.disable(row);
     await this.setStatus(id, 'blocked');
+    await this.auth.endSessions(id);
     return this.get(id);
   }
 
@@ -224,7 +182,6 @@ export class AdminUsersService {
         `Only blocked accounts can be unblocked`
       );
     }
-    await this.identity.setEnabled(await this.keycloakId(row), true);
     await this.setStatus(id, 'active');
     return this.get(id);
   }
@@ -236,15 +193,9 @@ export class AdminUsersService {
     if (row.status === 'cancelled') {
       throw new AppError(HttpStatus.CONFLICT, 'INVALID_ACCOUNT_STATUS', 'The account is already cancelled');
     }
-    if (row.status === 'active') await this.disable(row);
     await this.setStatus(id, 'cancelled');
+    await this.auth.endSessions(id);
     return this.get(id);
-  }
-
-  private async disable(row: Row): Promise<void> {
-    const keycloakId = await this.keycloakId(row);
-    await this.identity.setEnabled(keycloakId, false);
-    await this.identity.logout(keycloakId);
   }
 
   private async setStatus(id: string, status: 'active' | 'blocked' | 'cancelled'): Promise<void> {
@@ -277,16 +228,6 @@ export class AdminUsersService {
     }
     const [team] = await this.db.select({ id: teams.id }).from(teams).where(eq(teams.id, teamId));
     if (!team) throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, 'TEAM_NOT_FOUND', 'Team not found');
-  }
-
-  /** Accounts made in Keycloak before they ever signed in have no stored id yet; look them up by username. */
-  private async keycloakId(row: Row): Promise<string> {
-    if (row.keycloakSub) return row.keycloakSub;
-    const id = await this.identity.findIdByUsername(row.username);
-    if (!id)
-      throw new AppError(HttpStatus.CONFLICT, 'IDENTITY_NOT_FOUND', 'This person has no sign-in account');
-    await this.db.update(users).set({ keycloakSub: id }).where(eq(users.id, row.id));
-    return id;
   }
 
   private rows(where?: ReturnType<typeof and>) {

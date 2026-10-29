@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
+  API_KEY_SYSTEMS,
   INTEGRATION_SYSTEMS,
+  type ApiKeySystem,
   type IntegrationCallView,
   type IntegrationProblem,
   type IntegrationStatus,
@@ -9,11 +11,10 @@ import {
   type IntegrationTestResult,
   type IntegrationView
 } from '../contract';
-import { desc, eq, sql } from 'drizzle-orm';
-import { IdentityAdmin } from '../admin/identity-admin';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { ENV, type Env } from '../config/env';
 import { DB, type Db } from '../db/db.module';
-import { integrationCalls } from '../db/schema';
+import { apiKeys, integrationCalls } from '../db/schema';
 import { sendWebhook } from '../notifications/webhook-sender';
 
 /** Answers slower than this on average over the last hour make a system "slow". */
@@ -21,12 +22,8 @@ const SLOW_MS = 5_000;
 const TODAY = sql.raw(`(date_trunc('day', now() at time zone 'Africa/Maputo') at time zone 'Africa/Maputo')`);
 
 /** The sign-in client each system uses to call /intake. */
-const CLIENT_ID: Partial<Record<IntegrationSystem, string>> = {
-  call_center: 'call-center-system',
-  sales: 'sales-system',
-  nms: 'nms-system',
-  stock: 'stock-system'
-};
+/** The systems that call us, each with its own API keys (Settings → API keys). */
+const CALLS_US: readonly IntegrationSystem[] = API_KEY_SYSTEMS;
 const NAME: Record<IntegrationSystem, string> = {
   call_center: 'The Call Center',
   sales: 'The Sales system',
@@ -56,8 +53,7 @@ export class IntegrationsService {
 
   constructor(
     @Inject(DB) private readonly db: Db,
-    @Inject(ENV) private readonly env: Env,
-    private readonly identity: IdentityAdmin
+    @Inject(ENV) private readonly env: Env
   ) {}
 
   /** Never fails the request or delivery it describes. */
@@ -237,8 +233,7 @@ export class IntegrationsService {
    */
   async test(system: IntegrationSystem): Promise<IntegrationTestResult> {
     const results: IntegrationTestResult[] = [];
-    const clientId = CLIENT_ID[system];
-    if (clientId) results.push(await this.testClient(system, clientId));
+    if (CALLS_US.includes(system)) results.push(await this.testKeys(system));
     if (system === 'sales') results.push(await this.testWebhook());
     if (system === 'sms') results.push(await this.testSms());
     if (system === 'push') results.push(await this.reach(this.env.EXPO_PUSH_URL, NAME.push));
@@ -249,25 +244,23 @@ export class IntegrationsService {
     };
   }
 
-  private async testClient(system: IntegrationSystem, clientId: string): Promise<IntegrationTestResult> {
-    try {
-      const enabled = await this.identity.clientEnabled(clientId);
-      if (enabled === null)
-        return { ok: false, message: `No sign-in account ${clientId} in Keycloak.`, durationMs: null };
-      return enabled
-        ? { ok: true, message: `${NAME[system]}'s sign-in account is enabled.`, durationMs: null }
-        : {
-            ok: false,
-            message: `${NAME[system]}'s sign-in account ${clientId} is disabled.`,
-            durationMs: null
-          };
-    } catch (err) {
-      return {
-        ok: false,
-        message: `Could not check the sign-in account: ${(err as Error).message}`,
-        durationMs: null
-      };
-    }
+  /** Whether the system has a key it can call us with. */
+  private async testKeys(system: IntegrationSystem): Promise<IntegrationTestResult> {
+    const [{ active }] = await this.db
+      .select({ active: sql<number>`count(*)::int` })
+      .from(apiKeys)
+      .where(and(eq(apiKeys.system, system as ApiKeySystem), isNull(apiKeys.revokedAt)));
+    return active > 0
+      ? {
+          ok: true,
+          message: `${NAME[system]} has ${active === 1 ? 'an API key' : `${active} API keys`}.`,
+          durationMs: null
+        }
+      : {
+          ok: false,
+          message: `${NAME[system]} has no API key: make one in Settings → API keys.`,
+          durationMs: null
+        };
   }
 
   private async testWebhook(): Promise<IntegrationTestResult> {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { USER_ROLES } from './roles.js';
+import { API_KEY_SYSTEMS, USER_ROLES } from './roles.js';
 import {
   ALARM_SEVERITIES,
   HELP_KINDS,
@@ -768,3 +768,73 @@ export type InboxRead = z.infer<typeof inboxReadSchema>;
 /** The region picker at the top of the web app: lists and summaries for one area only. */
 export const areaFilterSchema = z.object({ areaId: z.string().uuid().optional() });
 export type AreaFilter = z.infer<typeof areaFilterSchema>;
+
+// ---- Signing in ----
+
+export const signInSchema = z.object({
+  username: z.string().trim().min(1).max(100),
+  password: z.string().min(1).max(200),
+  /** The web app keeps its renewal in a cookie; the phone app keeps it itself and gets it in the answer. */
+  client: z.enum(['web', 'app']).default('web')
+});
+export type SignIn = z.infer<typeof signInSchema>;
+
+/** The phone app sends its renewal token; the web app's is in the cookie. */
+export const refreshSchema = z.object({ refreshToken: z.string().max(200).optional() });
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(1).max(200)
+});
+export type ChangePassword = z.infer<typeof changePasswordSchema>;
+
+/** Settings → Sign-in security. */
+export const signInSettingsSchema = z.object({
+  minPasswordLength: z.number().int().min(8).max(64),
+  maxFailedSignIns: z.number().int().min(3).max(20),
+  lockMinutes: z.number().int().min(1).max(1440),
+  webSessionDays: z.number().int().min(1).max(90),
+  appSessionDays: z.number().int().min(1).max(365)
+});
+export type SignInSettings = z.infer<typeof signInSettingsSchema>;
+
+/** Settings → API keys: a key for one of the other EDM systems. */
+export const createApiKeySchema = z.object({
+  system: z.enum(API_KEY_SYSTEMS),
+  name: z.string().trim().min(2).max(100)
+});
+export type CreateApiKey = z.infer<typeof createApiKeySchema>;
+
+// ---- Areas and teams (Settings) ----
+
+const lngLat = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]);
+/** A ring: at least a triangle, closed or not (it is closed on saving). */
+const ring = z.array(lngLat).min(3).max(5000);
+
+/** An area's boundary as GeoJSON (drawn on the map, or a file from EDM's mapping system). */
+export const boundarySchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('Polygon'), coordinates: z.array(ring).min(1).max(50) }),
+  z.object({
+    type: z.literal('MultiPolygon'),
+    coordinates: z.array(z.array(ring).min(1).max(50)).min(1).max(200)
+  })
+]);
+export type Boundary = z.infer<typeof boundarySchema>;
+
+export const createAreaSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  boundary: boundarySchema
+});
+export type CreateArea = z.infer<typeof createAreaSchema>;
+
+export const updateAreaSchema = createAreaSchema.partial();
+export type UpdateArea = z.infer<typeof updateAreaSchema>;
+
+export const createTeamSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  areaId: z.string().uuid()
+});
+export type CreateTeam = z.infer<typeof createTeamSchema>;
+
+export const updateTeamSchema = createTeamSchema.partial();
+export type UpdateTeam = z.infer<typeof updateTeamSchema>;

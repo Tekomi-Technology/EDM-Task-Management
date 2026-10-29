@@ -1,7 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
 import request from 'supertest';
-import { users } from '../src/db/schema';
 import { createTestApp, resetData, tokenFor, type TestContext } from './helpers';
 
 describe('health and sign-in', () => {
@@ -48,13 +46,6 @@ describe('health and sign-in', () => {
       roles: ['team_manager']
     });
     expect(res.body.teamId).toBeTruthy();
-  });
-
-  it('creates a user row the first time a new Keycloak account signs in', async () => {
-    const res = await t.as('stranger').get('/api/me');
-    expect(res.status).toBe(200);
-    const [row] = await t.db.select().from(users).where(eq(users.username, 'new.person'));
-    expect(row).toMatchObject({ fullName: 'New Person', roles: ['bo_support'], teamId: null });
   });
 
   it('keeps people out of routes for other roles', async () => {

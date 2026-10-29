@@ -1,7 +1,9 @@
 import { eq, sql } from 'drizzle-orm';
+import { sha256 } from '../auth/tokens';
 import { loadEnv } from '../config/env';
 import { createDb, type Db } from './db.module';
 import {
+  apiKeys,
   areas,
   customers,
   stockItems,
@@ -12,10 +14,12 @@ import {
   vehicles
 } from './schema';
 import {
+  SEED_API_KEYS,
   SEED_AREAS,
   SEED_CUSTOMERS,
   SEED_DEPOTS,
   SEED_ITEMS,
+  SEED_PASSWORD_HASH,
   SEED_STOCK,
   SEED_TEAMS,
   SEED_USERS,
@@ -45,20 +49,34 @@ export async function seed(db: Db): Promise<void> {
   for (const u of SEED_USERS) {
     const values = {
       id: u.id,
-      keycloakSub: u.id,
       username: u.username,
       fullName: u.fullName,
       phone: u.phone,
       teamId: teamId(u.team),
-      roles: [...u.roles]
+      roles: [...u.roles],
+      passwordHash: SEED_PASSWORD_HASH
     };
     await db
       .insert(users)
       .values(values)
       .onConflictDoUpdate({
         target: users.id,
-        set: { fullName: values.fullName, phone: values.phone, teamId: values.teamId, roles: values.roles }
+        // Sample accounts always sign in with the sample password, also in a database made before passwords.
+        set: {
+          fullName: values.fullName,
+          phone: values.phone,
+          teamId: values.teamId,
+          roles: values.roles,
+          passwordHash: values.passwordHash
+        }
       });
+  }
+
+  for (const k of SEED_API_KEYS) {
+    await db
+      .insert(apiKeys)
+      .values({ system: k.system, name: k.name, prefix: k.key.slice(0, 12), keyHash: sha256(k.key) })
+      .onConflictDoNothing();
   }
 
   await seedStock(db, areaId, teamId);

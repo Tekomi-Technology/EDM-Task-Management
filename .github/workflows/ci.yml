@@ -32,7 +32,7 @@ jobs:
 
       - name: Start S3-compatible storage
         run: |
-          docker run -d --name storage -p 59000:8333 -v "$PWD/infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro" \
+          docker run -d --name storage -p 59000:8333 -v "$PWD/apps/api/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro" \
             chrislusf/seaweedfs:3.80 server -dir=/data -ip.bind=0.0.0.0 -s3 -s3.config=/etc/seaweedfs/s3.json \
             -volume.max=100 -master.volumeSizeLimitMB=128 -master.volumePreallocate=false
 

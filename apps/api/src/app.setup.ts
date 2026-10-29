@@ -10,19 +10,26 @@ import { IntegrationsService } from './integrations/integrations.service';
 /** Shared by main.ts and the tests so both run the same app configuration. */
 export function configureApp(app: INestApplication, env: Env): void {
   app.useLogger(app.get(Logger));
-  const http = app.getHttpAdapter().getInstance() as { disable: (setting: string) => void };
+  const http = app.getHttpAdapter().getInstance() as {
+    disable: (setting: string) => void;
+    set: (setting: string, value: unknown) => void;
+  };
   http.disable('x-powered-by');
+  // Behind nginx (and Docker's network): the visitor's own address comes from X-Forwarded-For, so limits on
+  // sign-in attempts count each visitor, not the proxy.
+  http.set('trust proxy', 'loopback, linklocal, uniquelocal');
   app.use(securityHeaders(env.NODE_ENV === 'production'));
   app.setGlobalPrefix('api');
   app.use('/api/intake', integrationLog(app.get(IntegrationsService)));
-  app.enableCors({ origin: env.CORS_ORIGINS.split(',').map((o) => o.trim()), credentials: false });
+  // Credentials: the web app's session cookie, when it runs on another address than the API (development).
+  app.enableCors({ origin: env.CORS_ORIGINS.split(',').map((o) => o.trim()), credentials: true });
   app.enableShutdownHooks();
 
   const config = new DocumentBuilder()
     .setTitle('EDM Task Management API')
     .setDescription(
-      'Technical ticket system for Electricidade de Moçambique. Users sign in with Keycloak; ' +
-        'the Call Center system uses the client-credentials grant with the `call-center-system` client.'
+      'Technical ticket system for Electricidade de Moçambique. People sign in at /api/auth/sign-in; ' +
+        'the other EDM systems send an API key made in Settings → API keys (Authorization: Bearer <key>).'
     )
     .setVersion('0.1.0')
     .addBearerAuth()

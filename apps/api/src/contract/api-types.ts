@@ -14,6 +14,7 @@ import type {
   TicketStatus,
   TicketType
 } from './ticket.js';
+import type { ApiKeySystem } from './roles.js';
 
 /** Shapes returned by the API. */
 export interface TicketSummary {
@@ -607,15 +608,12 @@ export interface IntegrationDocWebhook {
 
 export interface IntegrationDocSystem {
   system: IntegrationSystem;
-  /** Keycloak client the system signs in with (client credentials). */
-  clientId: string;
   operations: IntegrationDocOperation[];
   webhooks: IntegrationDocWebhook[];
 }
 
 /** The "API documentation" screen: what the other EDM systems can call, built from the API description. */
 export interface IntegrationDocs {
-  tokenUrl: string;
   systems: IntegrationDocSystem[];
 }
 
@@ -677,4 +675,58 @@ export interface InboxItem {
 export interface Inbox {
   unread: number;
   items: InboxItem[];
+}
+
+// ---- Signing in ----
+
+export interface SignInResult {
+  /** Sent as "Authorization: Bearer …"; short-lived, renewed with /auth/refresh. */
+  accessToken: string;
+  expiresIn: number;
+  /** Phone app only; the web app gets it in an httpOnly cookie. */
+  refreshToken?: string;
+  /** The person must choose their own password before using anything else. */
+  mustChangePassword: boolean;
+}
+
+export interface ApiKeyView {
+  id: string;
+  system: ApiKeySystem;
+  name: string;
+  /** First characters of the key, to recognise it; the key itself is shown only once. */
+  prefix: string;
+  createdAt: string;
+  createdByName: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface CreatedApiKey {
+  apiKey: ApiKeyView;
+  /** The whole key: shown once, give it to the team running that system. */
+  key: string;
+}
+
+// ---- Areas and teams (Settings) ----
+
+export interface AreaTeamView {
+  id: string;
+  code: string;
+  name: string;
+  /** Active people in the team (field staff and team managers). */
+  people: number;
+  managers: string[];
+}
+
+export interface AreaView {
+  id: string;
+  code: string;
+  name: string;
+  /** GeoJSON MultiPolygon coordinates: polygons of rings of [lng, lat]. */
+  boundary: [number, number][][][];
+  /** Square kilometres. */
+  sizeKm2: number;
+  /** In order: the first team gets the area's new tickets. */
+  teams: AreaTeamView[];
+  openTickets: number;
 }

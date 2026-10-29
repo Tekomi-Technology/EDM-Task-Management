@@ -1,5 +1,6 @@
 import {
   ALARM_SEVERITIES,
+  API_KEY_SYSTEMS,
   HELP_KINDS,
   HELP_STATUSES,
   INTEGRATION_SYSTEMS,
@@ -67,19 +68,25 @@ export const users = pgTable(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    keycloakSub: text('keycloak_sub').unique(),
     username: text('username').notNull().unique(),
     fullName: text('full_name').notNull(),
     email: text('email'),
     phone: text('phone'),
     teamId: uuid('team_id').references(() => teams.id),
-    /** Copy of the Keycloak realm roles, refreshed on every sign-in; used to find staff and managers. */
     roles: text('roles')
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
-    /** Blocked and cancelled accounts are also disabled in Keycloak; cancelled ones are kept for history. */
+    /** Blocked and cancelled accounts cannot sign in; cancelled ones are kept for history. */
     status: userStatus('status').notNull().default('active'),
+    /** argon2id; null until an administrator gives the person a password. */
+    passwordHash: text('password_hash'),
+    /** Set with a temporary password: the person chooses their own before doing anything else. */
+    mustChangePassword: boolean('must_change_password').notNull().default(false),
+    /** Wrong passwords in a row; reaching the limit locks signing in until lockedUntil. */
+    failedSignIns: integer('failed_sign_ins').notNull().default(0),
+    lockedUntil: timestamp('locked_until', { withTimezone: true }),
+    passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }),
     /** Field staff switch this on in the app when their shift starts; only staff on duty get jobs automatically. */
     onDuty: boolean('on_duty').notNull().default(false),
     lastAssignedAt: timestamp('last_assigned_at', { withTimezone: true }),
@@ -90,6 +97,44 @@ export const users = pgTable(
   },
   (t) => [index('users_team_idx').on(t.teamId)]
 );
+
+/** A signed-in browser or phone: its renewal token (stored hashed) keeps the person signed in until it expires. */
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    client: text('client', { enum: ['web', 'app'] }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: createdAt()
+  },
+  (t) => [index('sessions_user_idx').on(t.userId)]
+);
+
+/** Keys the other EDM systems call the API with (stored hashed; the key is shown once when made). */
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  system: text('system', { enum: API_KEY_SYSTEMS }).notNull(),
+  name: text('name').notNull(),
+  prefix: text('prefix').notNull(),
+  keyHash: text('key_hash').notNull().unique(),
+  createdBy: uuid('created_by').references(() => users.id),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdAt: createdAt()
+});
+
+/** Settings administrators change in the web app (Settings), one JSON value per key. */
+export const settings = pgTable('settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedAt: updatedAt()
+});
 
 export const customers = pgTable('customers', {
   id: uuid('id').primaryKey().defaultRandom(),

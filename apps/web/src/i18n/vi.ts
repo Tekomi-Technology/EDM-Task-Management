@@ -186,8 +186,6 @@ export const vi: Record<string, string> = {
   Cancelled: 'Đã hủy',
   'Cancelled by': 'Hủy bởi',
   'cancelled the ticket': 'đã hủy phiếu',
-  'Cannot reach the sign-in service. Please try again later.':
-    'Không kết nối được dịch vụ đăng nhập. Vui lòng thử lại sau.',
   'Caused by network incident': 'Do sự cố lưới điện',
   Change: 'Đổi',
   'Change crew': 'Đổi người',
@@ -807,9 +805,6 @@ export const vi: Record<string, string> = {
   'Yes, add caller to incident': 'Có, gộp người gọi vào sự cố',
   'You are here': 'Bạn đang ở đây',
   'Field name': 'Tên trường',
-  'A token lasts a few minutes; get a new one when it runs out.':
-    'Token chỉ dùng được vài phút; hết hạn thì lấy token mới.',
-  'Account (client id):': 'Tài khoản (client id):',
   'Answer 2xx when received. On 5xx or no answer it is sent again; on 4xx it is not.':
     'Nhận được thì trả mã 2xx. Nếu trả 5xx hoặc không trả lời, EDM Tasks sẽ gửi lại; nếu trả 4xx thì không gửi lại.',
   any: 'bất kỳ',
@@ -842,10 +837,6 @@ export const vi: Record<string, string> = {
   'The APIs the other EDM systems call to send work here, and what EDM Tasks sends back. Read from the running API, so it always matches it.':
     'Các API mà hệ thống khác của EDM gọi để gửi việc vào đây, và những gì EDM Tasks gửi ngược lại. Lấy trực tiếp từ API đang chạy nên luôn khớp với API.',
   'The header': 'Header',
-  'The secret is given by the Keycloak administrator and is never shown here.':
-    'Mật khẩu (secret) do quản trị Keycloak cấp, không bao giờ hiện ở đây.',
-  'The system first gets a token from Keycloak with its own account, then sends it with every request in the header':
-    'Hệ thống đó lấy token từ Keycloak bằng tài khoản riêng của mình, rồi gửi token kèm mọi yêu cầu trong header',
   'true / false': 'đúng / sai (true / false)',
   'What EDM Tasks sends back': 'EDM Tasks gửi ngược lại',
   'whole number': 'số nguyên',
@@ -1049,5 +1040,136 @@ export const vi: Record<string, string> = {
   'by the office': 'do văn phòng',
   'Finding the address of the point…': 'Đang tìm địa chỉ của điểm đã chọn…',
   'Use the address of the map point: {0}': 'Dùng địa chỉ theo bản đồ: {0}',
-  'Filled in from the map. Add a landmark if there is one.': 'Điền theo bản đồ. Thêm điểm mốc nếu có.'
+  'Filled in from the map. Add a landmark if there is one.': 'Điền theo bản đồ. Thêm điểm mốc nếu có.',
+  'A key is shown only once, when it is made.': 'Khóa chỉ hiện một lần, lúc vừa tạo.',
+  'API keys': 'Khóa API',
+  'An administrator makes and revokes the keys in': 'Quản trị viên tạo và thu hồi khóa ở',
+  'Cannot reach the server. Please try again later.': 'Không kết nối được máy chủ. Vui lòng thử lại sau.',
+  'Choose a password different from the current one.': 'Hãy chọn mật khẩu khác mật khẩu hiện tại.',
+  'Choose your own password': 'Đặt mật khẩu của riêng bạn',
+  'Copy it now and give it to the team running that system. It is not shown again.':
+    'Hãy chép ngay và gửi cho đội phụ trách hệ thống đó. Khóa sẽ không hiện lại.',
+  'Customers are kept informed at every step': 'Khách hàng được báo tin ở từng bước',
+  "Each system has its own keys; a key only opens that system's routes below.":
+    'Mỗi hệ thống có khóa riêng; một khóa chỉ mở được các API của hệ thống đó ở dưới.',
+  'Field staff get jobs on their phone and by SMS':
+    'Nhân viên hiện trường nhận việc trên điện thoại và qua SMS',
+  'Field staff: use the EDM Field app': 'Nhân viên hiện trường: dùng app EDM Field',
+  'Forgot password? Ask your administrator.': 'Quên mật khẩu? Hãy hỏi quản trị viên.',
+  'From {0} to {1}.': 'Từ {0} đến {1}.',
+  Hide: 'Ẩn',
+  'In use': 'Đang dùng',
+  'Last used': 'Dùng gần nhất',
+  Made: 'Ngày tạo',
+  'Make key': 'Tạo khóa',
+  'Name, to recognise it': 'Tên để dễ nhận biết',
+  Never: 'Chưa dùng',
+  'New key': 'Khóa mới',
+  'New key for': 'Khóa mới cho',
+  'New password': 'Mật khẩu mới',
+  'New password again': 'Nhập lại mật khẩu mới',
+  'No keys yet.': 'Chưa có khóa nào.',
+  'One place to receive, assign, follow and close every technical job across the network.':
+    'Một nơi duy nhất để nhận, giao, theo dõi và đóng mọi công việc kỹ thuật trên lưới điện.',
+  Password: 'Mật khẩu',
+  Revoke: 'Thu hồi',
+  'Revoke the key "{0}"? The system can no longer call with it.':
+    'Thu hồi khóa "{0}"? Hệ thống đó sẽ không gọi được bằng khóa này nữa.',
+  Revoked: 'Đã thu hồi',
+  'Rules for passwords and for how long people stay signed in.':
+    'Quy định về mật khẩu và thời gian giữ đăng nhập.',
+  'Save and continue': 'Lưu và tiếp tục',
+  'Saved. New sign-ins follow these rules.': 'Đã lưu. Các lần đăng nhập mới sẽ theo quy định này.',
+  'Settings → API keys': 'Cài đặt → Khóa API',
+  Show: 'Hiện',
+  'Sign in': 'Đăng nhập',
+  'Sign-in security': 'Bảo mật đăng nhập',
+  'Signing in…': 'Đang đăng nhập…',
+  'Starts with': 'Bắt đầu bằng',
+  'Technical task management': 'Quản lý công việc kỹ thuật',
+  'Temporary password': 'Mật khẩu tạm',
+  'The current password is wrong.': 'Mật khẩu hiện tại không đúng.',
+  'The other EDM systems call EDM Tasks with these keys.':
+    'Các hệ thống khác của EDM dùng những khóa này để gọi vào EDM Tasks.',
+  'The password must not contain your username.': 'Mật khẩu không được chứa tên đăng nhập.',
+  'The password needs at least {0} characters.': 'Mật khẩu cần ít nhất {0} ký tự.',
+  'The password needs letters and digits.': 'Mật khẩu cần có cả chữ và số.',
+  'The system sends its API key with every request, in the header':
+    'Hệ thống gửi khóa API kèm mọi yêu cầu, trong header',
+  'The two new passwords are not the same.': 'Hai lần nhập mật khẩu mới không giống nhau.',
+  'Tickets from Call Center, Sales and the network arrive in one list':
+    'Phiếu từ Call Center, Sales và lưới điện về chung một danh sách',
+  'Too many wrong passwords. Try again in {0} min.': 'Sai mật khẩu quá nhiều lần. Thử lại sau {0} phút.',
+  'Use letters and digits, and not your username.': 'Dùng cả chữ và số, không chứa tên đăng nhập.',
+  'Use the account given to you by your administrator.': 'Dùng tài khoản do quản trị viên cấp cho bạn.',
+  'What each system can call': 'Mỗi hệ thống gọi được những gì',
+  'Wrong username or password.': 'Sai tên đăng nhập hoặc mật khẩu.',
+  'You signed in with a temporary password. Choose your own before you continue.':
+    'Bạn đang đăng nhập bằng mật khẩu tạm. Hãy đặt mật khẩu của riêng mình trước khi tiếp tục.',
+  'e.g. Call Center production': 'VD: Call Center production',
+  'Shortest password (characters)': 'Độ dài mật khẩu tối thiểu (ký tự)',
+  'Passwords people choose; they must also have letters and digits.':
+    'Áp dụng cho mật khẩu người dùng tự đặt; mật khẩu cũng phải có cả chữ và số.',
+  'Wrong passwords before the account is locked': 'Số lần sai mật khẩu trước khi khóa tài khoản',
+  'In a row; a correct password starts the count again.':
+    'Tính liên tiếp; nhập đúng một lần thì đếm lại từ đầu.',
+  'Locked for (minutes)': 'Thời gian khóa (phút)',
+  'An administrator can unlock sooner by giving a new temporary password.':
+    'Quản trị viên có thể mở sớm hơn bằng cách cấp mật khẩu tạm mới.',
+  'Web: stay signed in for (days)': 'Web: giữ đăng nhập trong (ngày)',
+  'Counted from the last use; after that the person signs in again.':
+    'Tính từ lần dùng gần nhất; quá thời gian này phải đăng nhập lại.',
+  'EDM Field app: stay signed in for (days)': 'App EDM Field: giữ đăng nhập trong (ngày)',
+  'Long enough for staff who are often without signal.': 'Đủ dài cho nhân viên hay ở nơi mất sóng.',
+  'A new ticket goes to the first team of the area its place lies in. Areas cannot overlap.':
+    'Phiếu mới được giao cho đội đầu tiên của khu vực chứa vị trí phiếu. Các khu vực không được chồng lên nhau.',
+  'Add area': 'Thêm khu vực',
+  'Add team': 'Thêm đội',
+  'Areas and teams': 'Khu vực và đội',
+  'Boundary from {0}.': 'Ranh giới lấy từ file {0}.',
+  'Change the area': 'Sửa khu vực',
+  'Click on the map to add the corners of the area, in order around it. Drag a corner to move it.':
+    'Bấm trên bản đồ để thêm các góc của khu vực, theo thứ tự đi vòng quanh. Kéo một góc để di chuyển.',
+  'Corner {0}': 'Góc {0}',
+  'Delete the area {0}?': 'Xóa khu vực {0}?',
+  'Delete the team {0}?': 'Xóa đội {0}?',
+  'Delete {0}': 'Xóa {0}',
+  'Draw on the map instead': 'Vẽ trên bản đồ thay thế',
+  'Gets the new tickets of this area': 'Nhận các phiếu mới của khu vực này',
+  'Give the area a name.': 'Hãy đặt tên cho khu vực.',
+  'Map of the areas': 'Bản đồ các khu vực',
+  'Map: click to add the corners of the area': 'Bản đồ: bấm để thêm các góc của khu vực',
+  'Mark at least three corners on the map.': 'Hãy đánh dấu ít nhất ba góc trên bản đồ.',
+  'Move or delete the teams of this area first.': 'Hãy chuyển hoặc xóa các đội của khu vực này trước.',
+  'Move {0} to another area': 'Chuyển {0} sang khu vực khác',
+  'New area': 'Khu vực mới',
+  'New name of the team': 'Tên mới của đội',
+  'New team in {0}': 'Đội mới trong {0}',
+  'New team name': 'Tên đội mới',
+  'No areas yet. Add the first one.': 'Chưa có khu vực nào. Hãy thêm khu vực đầu tiên.',
+  'No team yet: tickets here wait for NOC to send them to a team.':
+    'Chưa có đội: phiếu ở đây sẽ chờ NOC chuyển cho một đội.',
+  'People, tickets or vans belong to this team, so it is kept. Move its people to another team instead.':
+    'Đội này đã có người, phiếu hoặc xe nên được giữ lại. Hãy chuyển người của đội sang đội khác.',
+  'Read the boundary from a GeoJSON file': 'Lấy ranh giới từ file GeoJSON',
+  'Remove the last corner': 'Bỏ góc cuối',
+  'Rename {0}': 'Đổi tên {0}',
+  'The boundary overlaps {0}.': 'Ranh giới chồng lên {0}.',
+  'The edges of the boundary cross. Move the corners so they do not.':
+    'Các cạnh của ranh giới cắt nhau. Hãy di chuyển các góc để không còn cắt nhau.',
+  'The file has no polygon.': 'File không có vùng nào (polygon).',
+  'The file is not GeoJSON.': 'File không phải định dạng GeoJSON.',
+  'This area has several parts; draw it again to replace them with one shape.':
+    'Khu vực này gồm nhiều phần; vẽ lại sẽ thay bằng một vùng duy nhất.',
+  'Tickets or depots belong to this area, so it is kept for history.':
+    'Khu vực đã có phiếu hoặc kho nên được giữ lại để lưu lịch sử.',
+  'e.g. Matola Norte': 'VD: Matola Norte',
+  manager: 'quản lý',
+  '{0} corners': '{0} góc',
+  '{0} km²': '{0} km²',
+  '{0} open ticket': '{0} phiếu đang mở',
+  '{0} open tickets': '{0} phiếu đang mở',
+  '{0} people': '{0} người',
+  '{0} person': '{0} người',
+  'You do not have access to this action': 'Bạn không có quyền thực hiện thao tác này'
 };

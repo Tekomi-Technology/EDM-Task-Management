@@ -1,11 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { loadEnv } from '../src/config/env';
+import { users } from '../src/db/schema';
 import { createTestApp, tokenFor, type Caller, type TestContext } from './helpers';
 
 const ANY_ID = '00000000-0000-4000-8000-0000000000aa';
-/** Routes anyone may call: the health check (load balancers) and the API description. */
-const PUBLIC = ['GET /api/health'];
+/** Routes anyone may call: the health check (load balancers) and signing in. */
+const PUBLIC = [
+  'GET /api/health',
+  'POST /api/auth/sign-in',
+  'POST /api/auth/refresh',
+  'POST /api/auth/sign-out'
+];
 
 /** Checks that hold for every route, read from the API description so a new route cannot be forgotten. */
 describe('security of every route', () => {
@@ -50,7 +56,11 @@ describe('security of every route', () => {
   });
 
   it('refuses a signed-in person with no role on every route', async () => {
-    const nobody = await tokenFor('nobody');
+    const [row] = await t.db
+      .insert(users)
+      .values({ username: `no.role.${Date.now()}`, fullName: 'No Role', roles: [] })
+      .returning({ id: users.id });
+    const nobody = await tokenFor({ userId: row!.id });
     const allowed: string[] = [];
     for (const r of routes) {
       const name = `${r.method.toUpperCase()} ${r.path}`;

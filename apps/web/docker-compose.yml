@@ -1,0 +1,22 @@
+# The web app on a server: the built pages behind nginx. Settings in .env next to this file (copy .env.example).
+# Start or update:  docker compose up -d --build
+# The server's nginx sends everything that is not /api or photos to WEB_HOST_PORT (see DEPLOY.md).
+name: edm-web
+
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # The pages call ${VITE_API_URL}/api: the API is under the same public address.
+        VITE_API_URL: ${WEB_PUBLIC_URL:?set WEB_PUBLIC_URL}
+    image: edm-web:latest
+    restart: unless-stopped
+    environment:
+      # Where the page may connect and load images from (Content-Security-Policy, nginx.conf.template).
+      API_PUBLIC_URL: ${WEB_PUBLIC_URL}
+      S3_PUBLIC_ENDPOINT: ${WEB_PUBLIC_URL}
+      MAP_TILE_ORIGIN: ${MAP_TILE_ORIGIN:-https://tile.openstreetmap.org}
+    ports:
+      - '127.0.0.1:${WEB_HOST_PORT:-8090}:80'

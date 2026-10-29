@@ -6,12 +6,11 @@ Phases 1 to 5 are done: tickets, network incidents, field staff, stock, new cust
 
 ## What is in the repo
 
-| Path                   | What it is                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| `apps/api`             | NestJS API (Node.js + TypeScript, Drizzle ORM, BullMQ). Swagger at `/api/docs`  |
-| `apps/web`             | React + Vite web app for team managers, NOC, BO and admins                      |
-| `tools/callcenter-sim` | Command-line stand-in for the Call Center system, and the end-to-end check      |
-| `infra`                | Docker Compose for local development and for staging/production, Keycloak realm |
+| Path                   | What it is                                                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`             | Backend: NestJS API (Drizzle ORM, BullMQ), its Docker Compose (with Postgres, Redis, photo storage) and backup scripts. Swagger at `/api/docs` |
+| `apps/web`             | React + Vite web app for team managers, NOC, BO and admins, and its Docker Compose                                                             |
+| `tools/callcenter-sim` | Command-line stand-in for the Call Center system, and the end-to-end check                                                                     |
 
 ## Run it on your machine
 
@@ -20,14 +19,14 @@ Needs Node 24, pnpm 10 and Docker.
 ```bash
 cp .env.example .env
 pnpm install
-pnpm infra:up                      # Postgres+PostGIS, Redis, S3 storage, Keycloak (takes ~1 min the first time)
+pnpm services:up                   # Postgres+PostGIS, Redis, S3 storage (apps/api/docker-compose.dev.yml)
 pnpm --filter @edm/api db:migrate
 pnpm --filter @edm/api db:seed     # areas, teams, sample users and customers
 pnpm --filter @edm/api dev         # API on http://localhost:3000 (docs: /api/docs)
 pnpm --filter @edm/web dev         # web on http://localhost:5173
 ```
 
-Ports are offset to avoid clashes: Postgres 55432, Redis 56379, S3 storage 59000, Keycloak 58080 (admin console: admin / admin).
+Ports are offset to avoid clashes: Postgres 55432, Redis 56379, S3 storage 59000.
 
 ### Sample accounts (development only, password `Edm@2026`)
 
@@ -76,26 +75,26 @@ mobile app in its `src/types.ts`: when the API changes a format, change those to
 pnpm lint
 pnpm typecheck
 pnpm test          # shared rules, API (against the local Postgres/Redis/storage, separate test database), web
-pnpm e2e           # sample flow through real Keycloak; needs the API running
+pnpm e2e           # the sample flow against the running stack; needs the API running
 ```
 
 CI (`.github/workflows/ci.yml`) runs lint, type check, tests and build on every push and pull request, then builds the API and web Docker images.
 
 ## Deploy (staging / production)
 
-On a single VPS with everything in Docker under one address (https://edm.tekomi.vn), follow
-[infra/DEPLOY-VPS.md](infra/DEPLOY-VPS.md). The generic steps, with an external S3 and proxy:
+The backend (`apps/api`) and the web app (`apps/web`) are each started on their own with Docker Compose, and the
+server's nginx sends `/api` and the photo addresses to the backend and everything else to the web app:
 
 ```bash
-docker build -f apps/api/Dockerfile -t edm-api .
-docker build -f apps/web/Dockerfile --build-arg VITE_API_URL=https://... --build-arg VITE_KEYCLOAK_URL=https://... -t edm-web .
-cp infra/.env.prod.example infra/.env.prod   # fill in real values
-docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod up -d
+cd apps/api && cp .env.example .env && docker compose up -d --build   # API, Postgres, Redis, photo storage
+cd apps/web && cp .env.example .env && docker compose up -d --build   # web app
 ```
 
-The API container applies database migrations on start.
-
-Keycloak imports `infra/keycloak/realm-edm.prod.json` on first start. Unlike the development realm it has no sample users and no password-grant client, requires HTTPS for outside connections, enforces a password policy and brute-force protection, and takes the Call Center and Sales client secrets from `CALL_CENTER_CLIENT_SECRET` and `SALES_CLIENT_SECRET`. After the first start, sign in to the Keycloak admin console (`KEYCLOAK_ADMIN_PASSWORD`), create the real staff accounts in realm `edm` and give each one its role. Then add each person's team in the `users` table (an admin screen for this comes in a later phase).
+The full steps, the nginx site and updates are in [DEPLOY.md](DEPLOY.md). The API applies database migrations when it
+starts. Signing in is part of the API: people sign in on the web app's own page (or in the EDM Field app); the other
+EDM systems call with API keys. On a new server, give the first administrator a temporary password with
+`docker compose exec api node dist/db/set-password.js <username> --admin "Full Name"`, sign in, and set up the rest
+in Settings.
 
 ## Notes
 

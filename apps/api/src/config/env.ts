@@ -7,12 +7,11 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().int().default(3000),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
-  KEYCLOAK_URL: z.string().url(),
-  KEYCLOAK_REALM: z.string().default('edm'),
-  KEYCLOAK_AUDIENCE: z.string().default('edm-api'),
-  /** Confidential client the API uses to create, block and reset accounts in Keycloak (admin screens). */
-  KEYCLOAK_ADMIN_CLIENT_ID: z.string().default('edm-api-admin'),
-  KEYCLOAK_ADMIN_CLIENT_SECRET: z.string().optional(),
+  /**
+   * Signs the sign-in tokens. A long random value (`openssl rand -hex 32`); changing it signs everyone out.
+   * Development and tests have a fixed one; production refuses to start without its own.
+   */
+  AUTH_SECRET: z.string().min(32).optional(),
   S3_ENDPOINT: z.string().url(),
   S3_PUBLIC_ENDPOINT: z.string().url().optional(),
   S3_REGION: z.string().default('us-east-1'),
@@ -106,7 +105,8 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
 });
 
-export type Env = z.infer<typeof envSchema>;
+/** AUTH_SECRET always has a value once loaded (a fixed one outside production). */
+export type Env = Omit<z.infer<typeof envSchema>, 'AUTH_SECRET'> & { AUTH_SECRET: string };
 
 let cached: Env | undefined;
 
@@ -116,6 +116,14 @@ export function loadEnv(): Env {
   const rootEnv = resolve(__dirname, '../../../../.env');
   if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
   const parsed = envSchema
+    .refine((e) => e.NODE_ENV !== 'production' || !!e.AUTH_SECRET, {
+      message: 'AUTH_SECRET is required in production (openssl rand -hex 32)',
+      path: ['AUTH_SECRET']
+    })
+    .transform((e) => ({
+      ...e,
+      AUTH_SECRET: e.AUTH_SECRET ?? 'development-only-secret-do-not-use-in-production'
+    }))
     .refine((e) => e.SMS_PROVIDER !== 'http' || !!e.SMS_HTTP_URL, {
       message: 'SMS_HTTP_URL is required when SMS_PROVIDER=http',
       path: ['SMS_HTTP_URL']

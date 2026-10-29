@@ -11,7 +11,7 @@ import {
 } from '../contract';
 import { z } from 'zod';
 import type { AuthUser } from '../auth/auth-user';
-import { CurrentUser, Roles } from '../auth/decorators';
+import { BeforePasswordChange, CurrentUser, Roles } from '../auth/decorators';
 import { AppError } from '../common/errors';
 import { ApiZodBody, ZodBody } from '../common/zod';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -27,6 +27,7 @@ export class UsersController {
   ) {}
 
   @Get('me')
+  @BeforePasswordChange()
   async me(@CurrentUser() user: AuthUser): Promise<CurrentUserView> {
     return {
       id: user.userId ?? user.sub,

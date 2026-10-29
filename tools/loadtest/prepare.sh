@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 DB="${LOAD_DB:-edm_load}"
 CUSTOMERS="${LOAD_CUSTOMERS:-20000}"
-psql() { docker compose -f infra/docker-compose.yml exec -T postgres psql -U edm -v ON_ERROR_STOP=1 "$@"; }
+psql() { docker compose -f apps/api/docker-compose.dev.yml exec -T postgres psql -U edm -v ON_ERROR_STOP=1 "$@"; }
 
 psql -d edm -c "DROP DATABASE IF EXISTS $DB WITH (FORCE)" -c "CREATE DATABASE $DB OWNER edm"
 psql -d "$DB" -c "CREATE EXTENSION IF NOT EXISTS postgis" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto"

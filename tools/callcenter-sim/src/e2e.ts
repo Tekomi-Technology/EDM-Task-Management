@@ -1,12 +1,12 @@
 /**
- * End-to-end check of the sample flow against the running stack (Keycloak, API, database, storage):
+ * End-to-end check of the sample flow against the running stack (API, database, storage):
  * Call Center complaint → team manager assigns → field staff accept, start, upload a photo, resolve →
  * Call Center confirms with the customer → closed.
  * Then phase 2: automatic assignment to staff on duty, decline, pause/resume, cancel, and account management
- * (create, block, unblock) through the real Keycloak; then phase 2 batch 2: push device registration and
+ * (create, block, unblock, signing in); then phase 2 batch 2: push device registration and
  * replaying actions the app did offline. Phase 4: stock synced from EDM's stock system, a new customer
  * from survey to activation through the Sales system, help requests, and material taken off the van.
- * Run with `pnpm e2e` while `pnpm infra:up` and the API are running.
+ * Run with `pnpm e2e` while `pnpm services:up` and the API are running.
  */
 // The API's contract is CommonJS: values come through its default export, types are erased.
 import contract, {
@@ -28,6 +28,7 @@ import {
   callCenterToken,
   nmsToken,
   salesToken,
+  signIn,
   signInError,
   stockToken,
   userToken
@@ -187,7 +188,7 @@ async function reportsAndSystems(): Promise<void> {
     `Connected systems: the Call Center is connected (today: ${callCenter?.today})`
   );
   const test = await call<{ ok: boolean; message: string }>(carla, 'POST', '/integrations/call_center/test');
-  ok(test.body.ok, `Test connection checks the Call Center’s account in Keycloak: “${test.body.message}”`);
+  ok(test.body.ok, `Test connection checks the Call Center has an API key: “${test.body.message}”`);
   const refused = await call<{ code: string }>(cc, 'GET', '/stock/items');
   ok(refused.status === 403, 'Another system’s account cannot read anything outside its own /intake routes');
 
@@ -651,7 +652,7 @@ async function phase2(t: { cc: string; helena: string; armando: string; admin: s
   ok(cancelled.body.status === 'cancelled', 'Call Center cancels the ticket');
   await call(armando, 'POST', '/me/duty', { onDuty: false });
 
-  // Accounts, through the real Keycloak.
+  // Accounts and signing in.
   const teams = await call<TeamView[]>(admin, 'GET', '/admin/teams');
   const south1 = teams.body.find((x) => x.code === 'SOUTH_1')!;
   const username = `e2e.${Date.now()}`;
@@ -662,15 +663,15 @@ async function phase2(t: { cc: string; helena: string; armando: string; admin: s
     teamId: south1.id
   });
   ok(made.status === 201 && made.body.temporaryPassword, `Admin creates account ${username}`);
-  const firstSignIn = await signInError(username, made.body.temporaryPassword);
-  ok(firstSignIn?.includes('not fully set up'), 'The temporary password works but must be changed first');
+  const firstSignIn = await signIn(username, made.body.temporaryPassword);
+  ok(firstSignIn.body.mustChangePassword === true, 'The temporary password works but must be changed first');
 
   const armandoId = (await call<{ id: string }>(armando, 'GET', '/me')).body.id;
   const blocked = await call<AdminUser>(admin, 'POST', `/admin/users/${armandoId}/block`);
   ok(blocked.body.status === 'blocked', 'Admin blocks Armando');
   const stillValidToken = await call<{ code: string }>(armando, 'GET', '/me');
   ok(stillValidToken.body.code === 'ACCOUNT_DISABLED', 'Armando’s existing session is refused at once');
-  ok((await signInError('armando.cossa'))?.includes('disabled'), 'Armando cannot sign in again');
+  ok((await signInError('armando.cossa'))?.includes('INVALID_CREDENTIALS'), 'Armando cannot sign in again');
 
   await call(admin, 'POST', `/admin/users/${armandoId}/unblock`);
   const back = await call<{ username: string }>(await userToken('armando.cossa'), 'GET', '/me');

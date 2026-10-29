@@ -6,10 +6,9 @@ dist/
 coverage/
 .expo/
 .turbo/
-infra/.env.prod
 tools/callcenter-sim/.nms-last-scenario.json
 
-# Database and attachment backups (infra/scripts/backup.sh)
+# Database and attachment backups (apps/api/scripts/backup.sh)
 backups/
 
 # Project documents and design mockups, kept outside the repository (Google Drive, Figma)

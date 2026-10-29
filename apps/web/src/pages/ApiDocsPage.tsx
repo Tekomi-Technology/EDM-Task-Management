@@ -8,7 +8,7 @@ import type {
 import { useQuery } from '@tanstack/react-query';
 import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { api } from '../api';
 import { useCrumbs } from '../components/ui';
 import { t, translated } from '../i18n';
@@ -152,28 +152,32 @@ function Operation({ op }: { op: IntegrationDocOperation }) {
   );
 }
 
-function SignIn({ docs, system }: { docs: IntegrationDocs; system: IntegrationDocSystem }) {
-  const curl = [
-    `curl -X POST ${docs.tokenUrl} \\`,
-    `  -d grant_type=client_credentials \\`,
-    `  -d client_id=${system.clientId} \\`,
-    `  -d client_secret=<secret>`
-  ].join('\n');
+const API_URL = `${import.meta.env.VITE_API_URL ?? window.location.origin}`;
+
+function SignIn({ system }: { system: IntegrationDocSystem }) {
+  const op = system.operations.find((o) => o.method !== 'GET') ?? system.operations[0];
+  const curl = op
+    ? [
+        `curl -X ${op.method} ${API_URL}${op.path} \\`,
+        `  -H "Authorization: Bearer edm_…" \\`,
+        `  -H "Content-Type: application/json" \\`,
+        `  -d '${JSON.stringify(op.example ?? {})}'`
+      ].join('\n')
+    : '';
   return (
     <section className="card card-pad" style={{ gap: 12 }}>
       <h2 style={{ margin: 0, fontSize: 18 }}>{t('Signing in')}</h2>
       <p style={{ margin: 0 }}>
-        {t(
-          'The system first gets a token from Keycloak with its own account, then sends it with every request in the header'
-        )}{' '}
-        <code>Authorization: Bearer &lt;token&gt;</code>.{' '}
-        {t('A token lasts a few minutes; get a new one when it runs out.')}
+        {t('The system sends its API key with every request, in the header')}{' '}
+        <code>Authorization: Bearer &lt;key&gt;</code>.{' '}
+        {t("Each system has its own keys; a key only opens that system's routes below.")}
       </p>
       <div className="meta">
-        {t('Account (client id):')} <code>{system.clientId}</code> ·{' '}
-        {t('The secret is given by the Keycloak administrator and is never shown here.')}
+        {t('An administrator makes and revokes the keys in')}{' '}
+        <Link to="/api-keys">{t('Settings → API keys')}</Link>.{' '}
+        {t('A key is shown only once, when it is made.')}
       </div>
-      <Code text={curl} label={t('Copy the command')} />
+      {curl && <Code text={curl} label={t('Copy the command')} />}
     </section>
   );
 }
@@ -249,7 +253,7 @@ export function ApiDocsPage() {
               </button>
             ))}
           </div>
-          <SignIn docs={d} system={current} />
+          <SignIn system={current} />
           {current.operations.map((op) => (
             <Operation key={`${op.method} ${op.path}`} op={op} />
           ))}

@@ -1,15 +1,14 @@
 **/node_modules
 **/dist
 **/.expo
-.env
+**/.env
 .git
 *.pptx
 *.pdf
 docs
 
-# Database and attachment backups (infra/scripts/backup.sh)
-backups/
+# Database and attachment backups (apps/api/scripts/backup.sh)
+**/backups/
 
-# Server settings with real secrets (infra/.env.prod) and design mockups
-infra/.env.prod
+# Design mockups
 mockup-figma

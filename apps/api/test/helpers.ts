@@ -2,116 +2,55 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import IORedis from 'ioredis';
-import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWK } from 'jose';
+import { SignJWT } from 'jose';
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
-import { IdentityAdmin } from '../src/admin/identity-admin';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
-import { JWKS } from '../src/auth/jwks';
 import { loadEnv } from '../src/config/env';
 import { DB, type Db } from '../src/db/db.module';
 import { seed } from '../src/db/seed';
-import { SEED_USERS } from '../src/db/seed-data';
-import { FakeIdentityAdmin } from './fake-identity';
+import { SEED_API_KEYS, SEED_USERS } from '../src/db/seed-data';
 
 type SeedUsername = (typeof SEED_USERS)[number]['username'];
-/** "stranger": a new BO account signing in for the first time; "nobody": a Keycloak account with no role here. */
-export type Caller = SeedUsername | 'call-center' | 'nms' | 'sales' | 'stock' | 'stranger' | 'nobody';
+/** A sample person, another EDM system (its sample API key), or any account by id. */
+export type Caller = SeedUsername | 'call-center' | 'nms' | 'sales' | 'stock' | { userId: string };
 
-const keys = generateKeyPair('RS256');
-let jwk: JWK | undefined;
+const SYSTEM_OF = { 'call-center': 'call_center', nms: 'nms', sales: 'sales', stock: 'stock' } as const;
 
-async function signingKey() {
-  const pair = await keys;
-  if (!jwk) jwk = { ...(await exportJWK(pair.publicKey)), kid: 'test-key', alg: 'RS256' };
-  return pair.privateKey;
-}
-
-/** A token shaped like the ones Keycloak issues for the realm `edm`. */
+/** What the caller sends as "Authorization: Bearer …": an access token like /auth/sign-in gives, or an API key. */
 export async function tokenFor(caller: Caller, opts: { expired?: boolean } = {}): Promise<string> {
-  const key = await signingKey();
-  let claims: Record<string, unknown>;
-  let sub: string;
-  if (caller === 'call-center') {
-    sub = 'service-account-call-center';
-    claims = {
-      preferred_username: 'service-account-call-center-system',
-      azp: 'call-center-system',
-      realm_access: { roles: ['integration_call_center'] }
-    };
-  } else if (caller === 'nms') {
-    sub = 'service-account-nms';
-    claims = {
-      preferred_username: 'service-account-nms-system',
-      azp: 'nms-system',
-      realm_access: { roles: ['integration_nms'] }
-    };
-  } else if (caller === 'sales' || caller === 'stock') {
-    sub = `service-account-${caller}`;
-    claims = {
-      preferred_username: `service-account-${caller}-system`,
-      azp: `${caller}-system`,
-      realm_access: { roles: [`integration_${caller}`] }
-    };
-  } else if (caller === 'nobody') {
-    sub = '22222222-2222-4222-8222-222222222222';
-    claims = {
-      preferred_username: 'no.role',
-      realm_access: { roles: ['offline_access', 'uma_authorization'] }
-    };
-  } else if (caller === 'stranger') {
-    sub = '11111111-1111-4111-8111-111111111111';
-    claims = {
-      preferred_username: 'new.person',
-      given_name: 'New',
-      family_name: 'Person',
-      realm_access: { roles: ['bo_support'] }
-    };
-  } else {
-    const u = SEED_USERS.find((x) => x.username === caller)!;
-    sub = u.id;
-    const [given, ...family] = u.fullName.split(' ');
-    claims = {
-      preferred_username: u.username,
-      given_name: given,
-      family_name: family.join(' '),
-      realm_access: { roles: [...u.roles] }
-    };
+  if (typeof caller === 'string' && caller in SYSTEM_OF) {
+    return SEED_API_KEYS.find((k) => k.system === SYSTEM_OF[caller as keyof typeof SYSTEM_OF])!.key;
   }
+  const userId =
+    typeof caller === 'string' ? SEED_USERS.find((x) => x.username === caller)!.id : caller.userId;
   const now = Math.floor(Date.now() / 1000);
-  return new SignJWT(claims)
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
-    .setIssuer('http://keycloak.test/realms/edm')
-    .setAudience('edm-api')
-    .setSubject(sub)
+  return new SignJWT({ sid: randomUUID() })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuer('edm-tasks')
+    .setSubject(userId)
     .setIssuedAt(opts.expired ? now - 3600 : now)
     .setExpirationTime(opts.expired ? now - 60 : now + 900)
-    .sign(key);
+    .sign(new TextEncoder().encode(loadEnv().AUTH_SECRET));
 }
 
 export interface TestContext {
   app: INestApplication;
   db: Db;
-  identity: FakeIdentityAdmin;
   as: (caller: Caller) => {
     get: (url: string) => Promise<request.Response>;
     post: (url: string, body?: object, headers?: Record<string, string>) => Promise<request.Response>;
     patch: (url: string, body?: object) => Promise<request.Response>;
     put: (url: string, body?: object) => Promise<request.Response>;
+    delete: (url: string) => Promise<request.Response>;
   };
   anonymous: () => ReturnType<typeof request>;
   close: () => Promise<void>;
 }
 
 export async function createTestApp(): Promise<TestContext> {
-  await signingKey();
-  const identity = new FakeIdentityAdmin();
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(JWKS)
-    .useValue(createLocalJWKSet({ keys: [jwk!] }))
-    .overrideProvider(IdentityAdmin)
-    .useValue(identity)
-    .compile();
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduleRef.createNestApplication();
   configureApp(app, loadEnv());
   await app.init();
@@ -120,7 +59,6 @@ export async function createTestApp(): Promise<TestContext> {
   return {
     app,
     db,
-    identity,
     as: (caller) => ({
       get: async (url) =>
         request(server)
@@ -136,6 +74,10 @@ export async function createTestApp(): Promise<TestContext> {
           .put(url)
           .set('Authorization', `Bearer ${await tokenFor(caller)}`)
           .send(body ?? {}),
+      delete: async (url) =>
+        request(server)
+          .delete(url)
+          .set('Authorization', `Bearer ${await tokenFor(caller)}`),
       patch: async (url, body) =>
         request(server)
           .patch(url)
@@ -150,7 +92,7 @@ export async function createTestApp(): Promise<TestContext> {
 /** Empties all tables and loads the sample data again; also clears queued jobs. */
 export async function resetData(db: Db): Promise<void> {
   await db.execute(sql`
-    truncate ticket_events, staff_locations, integration_calls, user_notifications, attachments, notification_outbox, push_devices, alarms, help_messages,
+    truncate sessions, api_keys, settings, ticket_events, staff_locations, integration_calls, user_notifications, attachments, notification_outbox, push_devices, alarms, help_messages,
       help_requests, handover_codes, ticket_materials, stock_reservations, stock_movements, vehicles, stock_locations,
       stock_items, tickets, ticket_counters, customers, users, teams, areas restart identity cascade`);
   await seed(db);

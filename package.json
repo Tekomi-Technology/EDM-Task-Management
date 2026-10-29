@@ -6,8 +6,8 @@
     "node": ">=24"
   },
   "scripts": {
-    "infra:up": "docker compose -f infra/docker-compose.yml up -d --wait",
-    "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "services:up": "docker compose -f apps/api/docker-compose.dev.yml up -d --wait",
+    "services:down": "docker compose -f apps/api/docker-compose.dev.yml down",
     "build": "pnpm -r run build",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -20,9 +20,9 @@
     "sales": "pnpm --filter @edm/callcenter-sim run sales",
     "loadtest:prepare": "bash tools/loadtest/prepare.sh",
     "loadtest:api": "API_PORT=3001 DATABASE_URL=postgres://edm:edm_dev_password@localhost:55432/edm_load REDIS_URL=redis://localhost:56379/2 node apps/api/dist/main.js",
-    "loadtest": "docker run --rm -i --add-host host.docker.internal:host-gateway -e API_URL=\"${API_URL:-http://host.docker.internal:3001/api}\" -e KEYCLOAK_URL=\"${KEYCLOAK_URL:-http://host.docker.internal:58080}\" -e PEAK -e ALARM_BATCHES -e ALARMS -e OFFICE -e PHONES -e MINUTES -v \"$PWD/tools/loadtest:/scripts:ro\" grafana/k6:0.54.0 run /scripts/storm.js",
-    "backup": "bash infra/scripts/backup.sh",
-    "restore-check": "bash infra/scripts/restore-check.sh"
+    "loadtest": "docker run --rm -i --add-host host.docker.internal:host-gateway -e API_URL=\"${API_URL:-http://host.docker.internal:3001/api}\" -e PEAK -e ALARM_BATCHES -e ALARMS -e OFFICE -e PHONES -e MINUTES -v \"$PWD/tools/loadtest:/scripts:ro\" grafana/k6:0.54.0 run /scripts/storm.js",
+    "backup": "bash apps/api/scripts/backup.sh",
+    "restore-check": "bash apps/api/scripts/restore-check.sh"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

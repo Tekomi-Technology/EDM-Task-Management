@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type {
   IntegrationDocField,
   IntegrationDocOperation,
@@ -7,7 +7,6 @@ import type {
   IntegrationDocWebhook,
   IntegrationSystem
 } from '../contract';
-import { ENV, type Env } from '../config/env';
 
 /** The part of an OpenAPI 3.0 schema this screen reads. */
 interface Schema {
@@ -41,12 +40,12 @@ export interface OpenApiDocument {
   paths: Record<string, Record<string, Operation>>;
 }
 
-/** Swagger tag, Keycloak client and webhooks of each system that calls EDM Tasks. */
-const SYSTEMS: { system: IntegrationSystem; tag: string; clientId: string }[] = [
-  { system: 'call_center', tag: 'intake: call center', clientId: 'call-center-system' },
-  { system: 'sales', tag: 'intake: sales', clientId: 'sales-system' },
-  { system: 'nms', tag: 'intake: NMS', clientId: 'nms-system' },
-  { system: 'stock', tag: 'intake: stock system', clientId: 'stock-system' }
+/** Swagger tag of each system that calls EDM Tasks (each calls with its own API key). */
+const SYSTEMS: { system: IntegrationSystem; tag: string }[] = [
+  { system: 'call_center', tag: 'intake: call center' },
+  { system: 'sales', tag: 'intake: sales' },
+  { system: 'nms', tag: 'intake: NMS' },
+  { system: 'stock', tag: 'intake: stock system' }
 ];
 
 const PATH_PARAMS: Record<string, string> = {
@@ -112,20 +111,15 @@ const SALES_WEBHOOKS: IntegrationDocWebhook[] = [
 export class IntegrationDocsService {
   private document: OpenApiDocument = { paths: {} };
 
-  constructor(@Inject(ENV) private readonly env: Env) {}
-
   use(document: OpenApiDocument): void {
     this.document = document;
   }
 
   docs(): IntegrationDocs {
-    return {
-      tokenUrl: `${this.env.KEYCLOAK_URL}/realms/${this.env.KEYCLOAK_REALM}/protocol/openid-connect/token`,
-      systems: SYSTEMS.map((s) => this.system(s))
-    };
+    return { systems: SYSTEMS.map((s) => this.system(s)) };
   }
 
-  private system({ system, tag, clientId }: (typeof SYSTEMS)[number]): IntegrationDocSystem {
+  private system({ system, tag }: (typeof SYSTEMS)[number]): IntegrationDocSystem {
     const operations: IntegrationDocOperation[] = [];
     for (const [path, methods] of Object.entries(this.document.paths)) {
       for (const [method, op] of Object.entries(methods)) {
@@ -154,7 +148,7 @@ export class IntegrationDocsService {
         });
       }
     }
-    return { system, clientId, operations, webhooks: system === 'sales' ? SALES_WEBHOOKS : [] };
+    return { system, operations, webhooks: system === 'sales' ? SALES_WEBHOOKS : [] };
   }
 }
 

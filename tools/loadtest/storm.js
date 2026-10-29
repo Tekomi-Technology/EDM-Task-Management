@@ -13,8 +13,6 @@ import { check, sleep } from 'k6';
 
 const CONFIG = {
   api: __ENV.API_URL || 'http://localhost:3001/api',
-  keycloak: __ENV.KEYCLOAK_URL || 'http://localhost:58080',
-  realm: __ENV.KEYCLOAK_REALM || 'edm',
   /** Complaints per second at the peak of the storm (36,000 an hour at 10). */
   peak: Number(__ENV.PEAK || 10),
   /** Alarm batches per second from the NMS, ALARMS alarms each. */
@@ -85,20 +83,16 @@ export const options = {
   summaryTrendStats: ['avg', 'med', 'p(95)', 'p(99)', 'max']
 };
 
-function token(form) {
-  const res = http.post(`${CONFIG.keycloak}/realms/${CONFIG.realm}/protocol/openid-connect/token`, form);
-  if (res.status !== 200) throw new Error(`Keycloak refused ${form.client_id}: ${res.status} ${res.body}`);
-  return res.json('access_token');
+/** A sample person's access token, signed in like the phone app. */
+function person(username) {
+  const res = http.post(
+    `${CONFIG.api}/auth/sign-in`,
+    JSON.stringify({ username, password: __ENV.PASSWORD || 'Edm@2026', client: 'app' }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+  if (res.status !== 200) throw new Error(`Sign-in refused for ${username}: ${res.status} ${res.body}`);
+  return res.json('accessToken');
 }
-const client = (id, secret) =>
-  token({ grant_type: 'client_credentials', client_id: id, client_secret: secret });
-const person = (username) =>
-  token({
-    grant_type: 'password',
-    client_id: 'edm-dev-cli',
-    username,
-    password: __ENV.PASSWORD || 'Edm@2026'
-  });
 
 function retry(request, times = 5) {
   for (let i = 0; i < times; i++) {
@@ -114,8 +108,9 @@ export function setup() {
     throw new Error(`The API at ${CONFIG.api} does not answer`);
   }
   const tokens = {
-    callCenter: client('call-center-system', __ENV.CALLCENTER_CLIENT_SECRET || 'call-center-dev-secret'),
-    nms: client('nms-system', __ENV.NMS_CLIENT_SECRET || 'nms-dev-secret'),
+    // The sample API keys loaded with the sample data.
+    callCenter: __ENV.CALL_CENTER_API_KEY || 'edm_dev-call-center-key-000000000000',
+    nms: __ENV.NMS_API_KEY || 'edm_dev-nms-key-000000000000000000000000',
     office: ['nadia.mussa', 'helena.mondlane', 'carla.manhica', 'joao.matsinhe'].map(person),
     staff: ['armando.cossa', 'ana.sitoe', 'ofelia.tembe'].map(person)
   };

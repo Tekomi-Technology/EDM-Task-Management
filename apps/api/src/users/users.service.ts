@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { OPEN_JOB_STATUSES, type Role, type StaffMember, type StaffSuggestion } from '../contract';
-import { and, arrayContains, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
+import { and, arrayContains, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { AppError } from '../common/errors';
 import { DB, type Db, type Tx } from '../db/db.module';
 import { ticketEvents } from '../db/partitioned';
@@ -62,32 +62,26 @@ export class UsersService {
   ) {}
 
   /**
-   * Finds the user row for a Keycloak account, linking a pre-created row by username or creating one.
-   * Read on every request (one indexed lookup) so team and account changes apply at once; written only when
-   * roles change. Blocked or cancelled accounts are refused even while an older token is still valid.
+   * The signed-in person, read on every request (one indexed lookup) so team, role and account changes apply at
+   * once. Blocked or cancelled accounts are refused even while an older token is still valid.
    */
-  async ensureFromToken(t: {
-    sub: string;
-    username: string;
-    fullName: string;
-    roles: Role[];
-  }): Promise<UserRow> {
-    const key = [...t.roles].sort().join(',');
-    let [row] = await this.db.select(columns).from(users).where(eq(users.keycloakSub, t.sub));
-    if (!row) {
-      [row] = await this.db
-        .update(users)
-        .set({ keycloakSub: t.sub, updatedAt: new Date() })
-        .where(and(eq(users.username, t.username), isNull(users.keycloakSub)))
-        .returning(columns);
-    }
-    if (!row) {
-      [row] = await this.db
-        .insert(users)
-        .values({ keycloakSub: t.sub, username: t.username, fullName: t.fullName, roles: t.roles })
-        .onConflictDoNothing()
-        .returning(columns);
-      if (!row) [row] = await this.db.select(columns).from(users).where(eq(users.keycloakSub, t.sub));
+  async forRequest(id: string) {
+    if (!UUID.test(id)) return undefined;
+    const [row] = await this.db
+      .select({
+        ...columns,
+        username: users.username,
+        mustChangePassword: users.mustChangePassword
+      })
+      .from(users)
+      .where(eq(users.id, id));
+    if (!row) return undefined;
+    if (row.status !== 'active') {
+      throw new AppError(
+        HttpStatus.FORBIDDEN,
+        'ACCOUNT_DISABLED',
+        'This account has been blocked or cancelled'
+      );
     }
     // Remember when people last used the system, without writing on every request.
     void this.db
@@ -100,20 +94,6 @@ export class UsersService {
         )
       )
       .catch(() => undefined);
-    if (row.status !== 'active') {
-      throw new AppError(
-        HttpStatus.FORBIDDEN,
-        'ACCOUNT_DISABLED',
-        'This account has been blocked or cancelled'
-      );
-    }
-    if ([...row.roles].sort().join(',') !== key) {
-      [row] = await this.db
-        .update(users)
-        .set({ roles: t.roles, updatedAt: new Date() })
-        .where(eq(users.id, row.id))
-        .returning(columns);
-    }
     return row;
   }
 

@@ -34,11 +34,14 @@ export class ReportsService {
     private readonly query: TicketsQuery
   ) {}
 
-  /** Start and end (exclusive) of the period, and of the period of the same length just before it. */
+  /**
+   * Start and end (exclusive) of the period, and of the period of the same length just before it: midnight in
+   * Maputo. The ::timestamp matters: a date "at time zone" is first taken as midnight UTC, two hours off.
+   */
   private bounds(q: ReportQuery) {
-    const from = sql`(${q.from}::date at time zone ${TZ})`;
-    const to = sql`((${q.to}::date + 1) at time zone ${TZ})`;
-    const before = sql`((${q.from}::date - (${q.to}::date - ${q.from}::date + 1)) at time zone ${TZ})`;
+    const from = sql`(${q.from}::date::timestamp at time zone ${TZ})`;
+    const to = sql`((${q.to}::date + 1)::timestamp at time zone ${TZ})`;
+    const before = sql`((${q.from}::date - (${q.to}::date - ${q.from}::date + 1))::timestamp at time zone ${TZ})`;
     return { from, to, before };
   }
 

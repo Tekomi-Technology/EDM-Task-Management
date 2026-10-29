@@ -106,6 +106,25 @@ describe('reports and KPIs', () => {
     expect(r).toMatchObject({ closed: 0, closedBefore: 3, perDay: [{ day: tomorrow, closed: 0 }] });
   });
 
+  it('starts and ends each day at midnight in Maputo, whatever the time of day', async () => {
+    const id = await complain('CC-1');
+    await fix(id);
+    await check('CC-1', 'fixed');
+    // 00:30 on 1 March in Maputo is still 28 February in UTC; 23:30 on 1 March is 21:30 UTC.
+    const closeAt = (at: string) =>
+      t.db
+        .update(tickets)
+        .set({ closedAt: new Date(at) })
+        .where(eq(tickets.id, id));
+    const closedOn = async (day: string) =>
+      (await t.as('nadia.mussa').get(`/api/reports?from=${day}&to=${day}`)).body.closed as number;
+
+    await closeAt('2027-03-01T00:30:00+02:00');
+    expect([await closedOn('2027-02-28'), await closedOn('2027-03-01')]).toEqual([0, 1]);
+    await closeAt('2027-03-01T23:30:00+02:00');
+    expect([await closedOn('2027-03-01'), await closedOn('2027-03-02')]).toEqual([1, 0]);
+  });
+
   it('exports the tickets of the period as a CSV file Excel can open', async () => {
     await scenario();
     const res = await t
