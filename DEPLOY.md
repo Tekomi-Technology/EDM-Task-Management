@@ -70,6 +70,10 @@ server {
     proxy_set_header Host $http_host;
     proxy_request_buffering off;
     proxy_buffering off;
+    # A photo is at most 10 MB, and whatever is stored is only ever shown as an image, never run as a page.
+    client_max_body_size 10m;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Content-Security-Policy "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox" always;
   }
 
   location / {
@@ -113,6 +117,9 @@ docker compose logs -f api
 docker compose restart api
 docker compose down          # stops the part; data stays in the Docker volumes
 ```
+
+Servers set up before the photo checks: add the `client_max_body_size` and the two `add_header` lines of
+`location /edm-attachments/` above to the server's nginx site, then `sudo nginx -t && sudo systemctl reload nginx`.
 
 ## From the old layout (`infra/`, one time)
 

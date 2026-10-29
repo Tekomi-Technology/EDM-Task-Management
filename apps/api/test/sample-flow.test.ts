@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
 import { notificationOutbox } from '../src/db/schema';
-import { createTestApp, ids, resetData, waitFor, type TestContext } from './helpers';
+import { createTestApp, ids, JPEG, resetData, waitFor, type TestContext } from './helpers';
 
 const complaint = (ref: string, contractNo = '40217735') => ({
   externalRef: ref,
@@ -45,7 +45,7 @@ describe('sample flow: Call Center complaint to closed ticket', () => {
       const put = await fetch(upload.body.uploadUrl, {
         method: 'PUT',
         headers: upload.body.headers,
-        body: 'jpeg'
+        body: JPEG
       });
       expect(put.ok).toBe(true);
       attachmentIds.push(upload.body.attachmentId);

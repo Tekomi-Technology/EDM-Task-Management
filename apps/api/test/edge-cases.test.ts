@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { notificationOutbox, tickets } from '../src/db/schema';
-import { createTestApp, ids, resetData, type TestContext } from './helpers';
+import { createTestApp, ids, JPEG, resetData, type TestContext } from './helpers';
 
 const complaint = (ref: string, contractNo = '40217735') => ({
   externalRef: ref,
@@ -137,6 +137,64 @@ describe('inputs and situations that must not break the system', () => {
       .as('armando.cossa')
       .post(`/api/tickets/${id}/resolve`, { note: 'done', attachmentIds: [upload.body.attachmentId] });
     expect([res.status, res.body.code]).toEqual([422, 'ATTACHMENT_NOT_UPLOADED']);
+  });
+
+  it('serves only real photos, as photos, whatever was sent to the upload address', async () => {
+    const { body } = await t.as('call-center').post('/api/intake/call-center/complaints', complaint('CC-19'));
+    const id = body.ticketId;
+    await t.as('helena.mondlane').post(`/api/tickets/${id}/assign`, { assigneeId: ids['armando.cossa'] });
+    await t.as('armando.cossa').post(`/api/tickets/${id}/accept`);
+    await t.as('armando.cossa').post(`/api/tickets/${id}/start`);
+    const page = '<html><script>alert(document.domain)</script></html>';
+    const newUpload = async () =>
+      (
+        await t.as('armando.cossa').post(`/api/tickets/${id}/attachments`, {
+          fileName: 'meter.jpg',
+          contentType: 'image/jpeg',
+          size: 4
+        })
+      ).body as { attachmentId: string; uploadUrl: string; headers: Record<string, string> };
+
+    // The announced type is part of the signature: a web page cannot be stored under another type.
+    const asPage = await newUpload();
+    const put = await fetch(asPage.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'text/html' },
+      body: page
+    });
+    expect(put.ok).toBe(false);
+
+    // Sent with the right type, a web page is still not a photo: refused and removed when the job is finished.
+    await fetch(asPage.uploadUrl, { method: 'PUT', headers: asPage.headers, body: page });
+    const refused = await t
+      .as('armando.cossa')
+      .post(`/api/tickets/${id}/resolve`, { note: 'done', attachmentIds: [asPage.attachmentId] });
+    expect([refused.status, refused.body.code]).toEqual([422, 'ATTACHMENT_INVALID']);
+    const again = await t
+      .as('armando.cossa')
+      .post(`/api/tickets/${id}/resolve`, { note: 'done', attachmentIds: [asPage.attachmentId] });
+    expect(again.body.code).toBe('ATTACHMENT_NOT_UPLOADED');
+
+    // More than announced and more than 10 MB is refused too, even when it starts like a JPEG.
+    const tooBig = await newUpload();
+    const big = new Uint8Array(10 * 1024 * 1024 + 1);
+    big.set(JPEG);
+    await fetch(tooBig.uploadUrl, { method: 'PUT', headers: tooBig.headers, body: big });
+    const bigRes = await t
+      .as('armando.cossa')
+      .post(`/api/tickets/${id}/resolve`, { note: 'done', attachmentIds: [tooBig.attachmentId] });
+    expect(bigRes.body.code).toBe('ATTACHMENT_INVALID');
+
+    // A real photo is kept, and its address always answers with the photo's type.
+    const photo = await newUpload();
+    await fetch(photo.uploadUrl, { method: 'PUT', headers: photo.headers, body: JPEG });
+    const done = await t
+      .as('armando.cossa')
+      .post(`/api/tickets/${id}/resolve`, { note: 'done', attachmentIds: [photo.attachmentId] });
+    expect(done.status).toBe(200);
+    const kept = done.body.attachments.find((a: { id: string }) => a.id === photo.attachmentId);
+    const got = await fetch(kept.url);
+    expect(got.headers.get('content-type')).toBe('image/jpeg');
   });
 
   it('rejects files that are not photos or are too large', async () => {

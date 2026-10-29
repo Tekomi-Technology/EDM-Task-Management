@@ -35,6 +35,8 @@ import {
 } from './client.js';
 
 const { OCCURRED_AT_HEADER } = contract;
+/** The start of a JPEG file: the API checks that a photo really is one. */
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
 
 let step = 0;
 function ok(condition: unknown, message: string): void {
@@ -112,7 +114,7 @@ async function main(): Promise<void> {
   const put = await fetch(upload.body.uploadUrl, {
     method: 'PUT',
     headers: upload.body.headers,
-    body: 'jpeg'
+    body: JPEG
   });
   ok(put.ok, 'Armando uploads a photo');
 
@@ -366,7 +368,7 @@ async function stockAndNewCustomers(): Promise<void> {
     `/tickets/${connId}/attachments`,
     { fileName: 'handover-form.jpg', contentType: 'image/jpeg', size: 4 }
   );
-  await fetch(upload.body.uploadUrl, { method: 'PUT', headers: upload.body.headers, body: 'jpeg' });
+  await fetch(upload.body.uploadUrl, { method: 'PUT', headers: upload.body.headers, body: JPEG });
   const installed = await call<TicketDetail>(armando, 'POST', `/tickets/${connId}/resolve`, {
     note: 'Meter installed and tested',
     attachmentIds: [upload.body.attachmentId],

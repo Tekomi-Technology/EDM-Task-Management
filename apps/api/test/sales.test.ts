@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { customers, notificationOutbox } from '../src/db/schema';
-import { createTestApp, ids, resetData, waitFor, type TestContext } from './helpers';
+import { createTestApp, ids, JPEG, resetData, waitFor, type TestContext } from './helpers';
 import { mockServer, type Received } from './mock-server';
 
 const PROSPECT_PHONE = '+258849000001';
@@ -271,7 +271,7 @@ describe('new customers from the Sales system: survey, connection, handover, act
       installation: { meterNumber: 'MP-1', signedFormAttachmentId: formId }
     });
     expect(notAttached.body.code).toBe('HANDOVER_NOT_CONFIRMED');
-    await fetch(upload.body.uploadUrl, { method: 'PUT', headers: upload.body.headers, body: 'jpeg' });
+    await fetch(upload.body.uploadUrl, { method: 'PUT', headers: upload.body.headers, body: JPEG });
     // A meter already recorded for another customer (Rosa's) is a typing mistake, not a second home for it.
     const taken = await t.as('armando.cossa').post(`/api/tickets/${id}/resolve`, {
       note: 'Done',

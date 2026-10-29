@@ -119,3 +119,6 @@ export const ids = Object.fromEntries(SEED_USERS.map((u) => [u.username, u.id]))
   SeedUsername,
   string
 >;
+
+/** The start of a JPEG file: enough for the photo check when a job is finished. */
+export const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);

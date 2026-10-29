@@ -1,5 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
+  MAX_ATTACHMENT_BYTES,
   mayCheck,
   nextStatus,
   OPEN_JOB_STATUSES,
@@ -34,6 +35,14 @@ import { NotificationsService, type OutgoingSms } from '../notifications/notific
 import { StockService } from '../stock/stock.service';
 import { StorageService } from '../storage/storage.service';
 import { UsersService } from '../users/users.service';
+
+/** How each accepted photo type starts; the upload URL cannot stop someone storing anything else. */
+const PHOTO_SIGNATURES: Record<string, (b: Uint8Array) => boolean> = {
+  'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  'image/png': (b) => [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((v, i) => b[i] === v),
+  'image/webp': (b) =>
+    String.fromCharCode(...b.slice(0, 4)) === 'RIFF' && String.fromCharCode(...b.slice(8, 12)) === 'WEBP'
+};
 
 export interface NewTicket {
   type: TicketType;
@@ -1094,11 +1103,26 @@ export class TicketsService {
     }
     for (const row of rows) {
       if (row.status === 'uploaded') continue;
-      if ((await this.storage.objectSize(row.objectKey)) === null) {
+      const size = await this.storage.objectSize(row.objectKey);
+      if (size === null) {
         throw new AppError(
           HttpStatus.UNPROCESSABLE_ENTITY,
           'ATTACHMENT_NOT_UPLOADED',
           `Photo ${row.fileName} was not uploaded`
+        );
+      }
+      // What was stored, not what was announced: too big, or not really a photo of the announced type.
+      const isPhoto = PHOTO_SIGNATURES[row.contentType];
+      if (
+        size === 0 ||
+        size > MAX_ATTACHMENT_BYTES ||
+        !isPhoto?.(await this.storage.objectStart(row.objectKey, 12))
+      ) {
+        await this.storage.remove(row.objectKey);
+        throw new AppError(
+          HttpStatus.UNPROCESSABLE_ENTITY,
+          'ATTACHMENT_INVALID',
+          `Photo ${row.fileName} is not a JPEG, PNG or WebP image of at most 10 MB; take it again`
         );
       }
       await tx.update(attachments).set({ status: 'uploaded' }).where(eq(attachments.id, row.id));

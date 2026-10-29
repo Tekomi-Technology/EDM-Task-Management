@@ -667,7 +667,8 @@ export class TicketsQuery {
           id: f.id,
           fileName: f.fileName,
           contentType: f.contentType,
-          url: f.status === 'uploaded' ? await this.storage.presignDownload(f.objectKey) : null,
+          url:
+            f.status === 'uploaded' ? await this.storage.presignDownload(f.objectKey, f.contentType) : null,
           createdAt: f.createdAt.toISOString()
         }))
       ),

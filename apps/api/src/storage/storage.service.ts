@@ -1,5 +1,6 @@
 import {
   CreateBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
@@ -46,20 +47,33 @@ export class StorageService implements OnModuleInit {
     }
   }
 
+  /** The Content-Type is part of the signature: the upload must send exactly the type that was checked. */
   presignUpload(key: string, contentType: string): Promise<string> {
     return getSignedUrl(
       this.publicClient,
       new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType: contentType }),
       {
-        expiresIn: UPLOAD_URL_SECONDS
+        expiresIn: UPLOAD_URL_SECONDS,
+        signableHeaders: new Set(['content-type'])
       }
     );
   }
 
-  presignDownload(key: string): Promise<string> {
-    return getSignedUrl(this.publicClient, new GetObjectCommand({ Bucket: this.bucket, Key: key }), {
-      expiresIn: DOWNLOAD_URL_SECONDS
-    });
+  /**
+   * The answer always carries the type recorded when the upload was checked, whatever the uploader sent, so a file
+   * stored as something else (a web page with a script) is never served as such from the app's own address.
+   */
+  presignDownload(key: string, contentType: string): Promise<string> {
+    return getSignedUrl(
+      this.publicClient,
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        ResponseContentType: contentType,
+        ResponseContentDisposition: 'inline'
+      }),
+      { expiresIn: DOWNLOAD_URL_SECONDS }
+    );
   }
 
   /** Size in bytes if the object exists, otherwise null. */
@@ -70,6 +84,18 @@ export class StorageService implements OnModuleInit {
     } catch {
       return null;
     }
+  }
+
+  /** The first bytes of the object, to check what kind of file it really is. */
+  async objectStart(key: string, bytes: number): Promise<Uint8Array> {
+    const res = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key, Range: `bytes=0-${bytes - 1}` })
+    );
+    return res.Body ? await res.Body.transformToByteArray() : new Uint8Array();
+  }
+
+  async remove(key: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 
   async ping(): Promise<void> {
