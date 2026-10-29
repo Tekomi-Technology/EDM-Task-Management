@@ -820,7 +820,7 @@ export interface CreatedApiKey {
   key: string;
 }
 
-/** Settings → Sign-in security. */
+/** Admin area → Sign-in security. */
 export interface SignInSettings {
   minPasswordLength: number;
   maxFailedSignIns: number;
@@ -829,7 +829,7 @@ export interface SignInSettings {
   appSessionDays: number;
 }
 
-// ---- Areas and teams (Settings) ----
+// ---- Areas and teams (admin area) ----
 
 export interface AreaTeamView {
   id: string;

@@ -1,5 +1,7 @@
 import type { NewCustomerCard, NewCustomerStage } from '../types';
 import { useQuery } from '@tanstack/react-query';
+import { Clock, Home as HomeIcon, MapPin } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
 import { Avatar, useCrumbs } from '../components/ui';
@@ -66,43 +68,16 @@ export function NewCustomersPage() {
         </div>
       </div>
       {board.error && <div className="error">{(board.error as Error).message}</div>}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(5, minmax(180px, 1fr))',
-          gap: 16,
-          overflowX: 'auto',
-          paddingBottom: 8
-        }}
-      >
+      <div className="board">
         {COLUMNS.map((col) => {
           const inCol = cards.filter((c) => c.stage === col.stage);
           return (
-            <section
-              key={col.stage}
-              style={{
-                background: '#efeff2',
-                borderRadius: 16,
-                padding: 14,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-                alignSelf: 'start'
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <i
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 5,
-                      background: col.color,
-                      display: 'inline-block'
-                    }}
-                  />
-                  <strong style={{ flex: 1, fontSize: 15 }}>{t(col.title)}</strong>
-                  <span className="meta">{inCol.length}</span>
+            <section key={col.stage} className="board-col" style={{ '--stage': col.color } as CSSProperties}>
+              <div className="board-col-head">
+                <div className="board-col-title">
+                  <i />
+                  <strong>{t(col.title)}</strong>
+                  <span className="board-count">{inCol.length}</span>
                 </div>
                 <div className="meta">{t(col.hint)}</div>
               </div>
@@ -111,50 +86,51 @@ export function NewCustomersPage() {
                   {t('Nothing here.')}
                 </span>
               )}
-              {inCol.map((c) => (
-                <Link
-                  key={c.ticketId}
-                  to={`/tickets/${c.ticketId}`}
-                  className="card card-pad"
-                  style={{ textDecoration: 'none', color: 'inherit', gap: 6, padding: 14 }}
-                >
-                  <strong style={{ fontSize: 15, overflowWrap: 'anywhere' }}>{ticketTitle(c.title)}</strong>
-                  <span className="meta" style={{ fontSize: 14 }}>
-                    {c.place ?? t('No area yet')}
-                  </span>
-                  <span style={{ fontSize: 14 }}>
-                    {[
-                      c.premises ? PREMISES_LABEL[c.premises] : null,
-                      c.supply ? SUPPLY_LABEL[c.supply] : null
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
-                  {c.badge && (
-                    <span
-                      className={`badge ${c.badgeTone ? TONE[c.badgeTone] : ''}`}
-                      style={{ alignSelf: 'flex-start' }}
-                    >
-                      {BADGE_LABEL[c.badge] ?? c.badge}
+              {inCol.map((c) => {
+                const kind = [
+                  c.premises ? PREMISES_LABEL[c.premises] : null,
+                  c.supply ? SUPPLY_LABEL[c.supply] : null
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+                return (
+                  <Link key={c.ticketId} to={`/tickets/${c.ticketId}`} className="board-card">
+                    <span className="board-card-top">
+                      <span className="board-card-code">{c.code}</span>
+                      {c.badge && (
+                        <span className={`badge ${c.badgeTone ? TONE[c.badgeTone] : ''}`}>
+                          {BADGE_LABEL[c.badge] ?? c.badge}
+                        </span>
+                      )}
                     </span>
-                  )}
-                  <span
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}
-                  >
-                    <span className="person" style={{ fontSize: 14 }}>
-                      <Avatar
-                        name={c.assignee?.fullName ?? '?'}
-                        size="sm"
-                        kind={c.assignee ? undefined : 'nobody'}
-                      />
-                      {c.assignee?.fullName ?? <span className="meta">{t('Nobody yet')}</span>}
+                    <strong className="board-card-name">{ticketTitle(c.title)}</strong>
+                    <span className="board-card-line meta">
+                      <MapPin size={15} aria-hidden />
+                      {c.place ?? t('No area yet')}
                     </span>
-                    <span className="meta" style={{ whiteSpace: 'nowrap' }}>
-                      {formatWhen(c.date)}
+                    {kind && (
+                      <span className="board-card-line">
+                        <HomeIcon size={15} aria-hidden />
+                        {kind}
+                      </span>
+                    )}
+                    <span className="board-card-foot">
+                      <span className="person">
+                        <Avatar
+                          name={c.assignee?.fullName ?? '?'}
+                          size="sm"
+                          kind={c.assignee ? undefined : 'nobody'}
+                        />
+                        {c.assignee?.fullName ?? <span className="meta">{t('Nobody yet')}</span>}
+                      </span>
+                      <span className="board-card-when meta">
+                        <Clock size={15} aria-hidden />
+                        {formatWhen(c.date)}
+                      </span>
                     </span>
-                  </span>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </section>
           );
         })}

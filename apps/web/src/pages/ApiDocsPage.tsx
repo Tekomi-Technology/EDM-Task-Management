@@ -174,7 +174,7 @@ function SignIn({ system }: { system: IntegrationDocSystem }) {
       </p>
       <div className="meta">
         {t('An administrator makes and revokes the keys in')}{' '}
-        <Link to="/api-keys">{t('Settings → API keys')}</Link>.{' '}
+        <Link to="/admin/api-keys">{t('Administration → API keys')}</Link>.{' '}
         {t('A key is shown only once, when it is made.')}
       </div>
       {curl && <Code text={curl} label={t('Copy the command')} />}
@@ -215,7 +215,7 @@ function Webhooks({ system }: { system: IntegrationDocSystem }) {
 
 /** What the other EDM systems can call, built by the API from its own description. */
 export function ApiDocsPage() {
-  useCrumbs([{ label: t('Settings') }, { label: t('API documentation') }]);
+  useCrumbs([{ label: t('Administration') }, { label: t('API documentation') }]);
   const [params, setParams] = useSearchParams();
   const docs = useQuery({
     queryKey: ['integration-docs'],

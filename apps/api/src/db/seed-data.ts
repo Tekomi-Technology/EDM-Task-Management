@@ -27,7 +27,7 @@ export const SEED_PASSWORD_HASH =
 
 /**
  * API keys of the other systems for development and tests (the simulators in tools/callcenter-sim use them).
- * On a server, administrators make real keys in Settings → API keys.
+ * On a server, administrators make real keys in the admin area (/admin → API keys).
  */
 export const SEED_API_KEYS = [
   { system: 'call_center', name: 'Call Center (development)', key: 'edm_dev-call-center-key-000000000000' },

@@ -15,3 +15,7 @@ backups/
 docs/
 mockup-figma/
 mockup-figma.zip
+
+# Screenshots and mockups made while working with Claude Code
+.playwright-mcp/
+.superpowers/

@@ -40,7 +40,7 @@ const toView = (r: {
 });
 
 /**
- * Settings → API keys: the Call Center, Sales, NMS and stock systems call the API with a key made here. Only a hash
+ * Admin area → API keys: the Call Center, Sales, NMS and stock systems call the API with a key made here. Only a hash
  * is kept, so a lost key cannot be shown again: make a new one and revoke the old.
  */
 @Injectable()
@@ -88,7 +88,7 @@ export class ApiKeysService {
       .from(apiKeys)
       .where(and(eq(apiKeys.keyHash, sha256(key)), isNull(apiKeys.revokedAt)));
     if (!row) return null;
-    // Shown in Settings; written at most once a minute.
+    // Shown in the admin area; written at most once a minute.
     if (!row.lastUsedAt || Date.now() - row.lastUsedAt.getTime() > 60_000) {
       void this.db
         .update(apiKeys)

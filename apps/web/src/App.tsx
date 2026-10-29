@@ -28,7 +28,7 @@ import { Link, Navigate, NavLink, Outlet, Route, Routes, useNavigate } from 'rea
 import { api } from './api';
 import { signOut } from './auth';
 import { HelpButton, NotificationBell, RegionPicker, RegionProvider, useRegion } from './components/topbar';
-import { Avatar, CrumbContext, hasRole, OFFICE_ROLES, useMe, type Crumb } from './components/ui';
+import { Avatar, Card, CrumbContext, hasRole, OFFICE_ROLES, useMe, type Crumb } from './components/ui';
 import { ROLE_LABEL } from './format';
 import { ApiDocsPage } from './pages/ApiDocsPage';
 import { ApiKeysPage } from './pages/ApiKeysPage';
@@ -152,6 +152,76 @@ function UserMenu() {
   );
 }
 
+function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
+  return (
+    <div className="crumbs" aria-label={t('You are here')}>
+      {crumbs.map((c, i) => (
+        <span key={i} style={{ display: 'contents' }}>
+          {i > 0 && <ChevronRight size={16} />}
+          {i === crumbs.length - 1 ? (
+            <strong>{c.label}</strong>
+          ) : c.to ? (
+            <Link to={c.to}>{c.label}</Link>
+          ) : (
+            <span>{c.label}</span>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The admin area (/admin), for administrators only: its own menu of the admin pages, apart from the operations
+ * pages. Neither links to the other; an administrator opens the address of the part they want.
+ */
+function AdminShell() {
+  const me = useMe();
+  const [crumbs, setCrumbs] = useState<Crumb[]>([]);
+  if (!me.data) return null;
+  if (!hasRole(me.data, 'admin')) {
+    return (
+      <main className="no-access">
+        <Card className="card-pad">
+          <h1>{t('Administration')}</h1>
+          <p>{t('Only administrators can open this page.')}</p>
+          <button type="button" className="btn" onClick={signOut}>
+            <LogOut size={16} /> {t('Sign out')}
+          </button>
+        </Card>
+      </main>
+    );
+  }
+  return (
+    <CrumbContext.Provider value={setCrumbs}>
+      <div className="shell admin">
+        <nav className="nav" aria-label={t('Administration')}>
+          <Link to="/admin/users" className="brand" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <img src="/edm-emblem.png" alt={t('EDM logo')} />
+            <div>
+              <strong>{t('EDM Tasks')}</strong>
+              <small>{t('Administration')}</small>
+            </div>
+          </Link>
+          <NavItem to="/admin/users" icon={<UserCog size={20} />} label={t('Users & roles')} />
+          <NavItem to="/admin/areas" icon={<MapIcon size={20} />} label={t('Areas and teams')} />
+          <NavItem to="/admin/api-keys" icon={<KeyRound size={20} />} label={t('API keys')} />
+          <NavItem to="/admin/security" icon={<ShieldCheck size={20} />} label={t('Sign-in security')} />
+          <NavItem to="/admin/api-docs" icon={<BookOpen size={20} />} label={t('API documentation')} />
+          <div className="version">{t('EDM Tasks · version 1.0')}</div>
+        </nav>
+        <div className="main">
+          <header className="topbar">
+            <Crumbs crumbs={crumbs} />
+            <UserMenu />
+          </header>
+          <Outlet />
+        </div>
+      </div>
+    </CrumbContext.Provider>
+  );
+}
+
 function Shell() {
   return (
     <RegionProvider>
@@ -228,38 +298,11 @@ function ShellLayout() {
               <NavItem to="/reports" icon={<BarChart3 size={20} />} label={t('Reports')} />
             </>
           )}
-          {hasRole(me.data, 'admin', 'technical_manager') && (
-            <>
-              <div className="nav-group">{t('Settings')}</div>
-              {hasRole(me.data, 'admin') && (
-                <>
-                  <NavItem to="/users" icon={<UserCog size={20} />} label={t('Users & roles')} />
-                  <NavItem to="/areas" icon={<MapIcon size={20} />} label={t('Areas and teams')} />
-                  <NavItem to="/api-keys" icon={<KeyRound size={20} />} label={t('API keys')} />
-                  <NavItem to="/security" icon={<ShieldCheck size={20} />} label={t('Sign-in security')} />
-                </>
-              )}
-              <NavItem to="/api-docs" icon={<BookOpen size={20} />} label={t('API documentation')} />
-            </>
-          )}
           <div className="version">{t('EDM Tasks · version 1.0')}</div>
         </nav>
         <div className="main">
           <header className="topbar">
-            <div className="crumbs" aria-label={t('You are here')}>
-              {crumbs.map((c, i) => (
-                <span key={i} style={{ display: 'contents' }}>
-                  {i > 0 && <ChevronRight size={16} />}
-                  {i === crumbs.length - 1 ? (
-                    <strong>{c.label}</strong>
-                  ) : c.to ? (
-                    <Link to={c.to}>{c.label}</Link>
-                  ) : (
-                    <span>{c.label}</span>
-                  )}
-                </span>
-              ))}
-            </div>
+            <Crumbs crumbs={crumbs} />
             {office && <GlobalSearch />}
             {office && <RegionPicker />}
             {office && <NotificationBell />}
@@ -297,13 +340,21 @@ export function App() {
         <Route path="/new-customers" element={<NewCustomersPage />} />
         <Route path="/help" element={<HelpRequestsPage />} />
         <Route path="/stock" element={<StockPage />} />
-        <Route path="/users" element={<UsersPage />} />
         <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/api-docs" element={<ApiDocsPage />} />
-        <Route path="/api-keys" element={<ApiKeysPage />} />
-        <Route path="/areas" element={<AreasPage />} />
-        <Route path="/security" element={<SignInSecurityPage />} />
+        {/* Saved links from before the admin area. */}
+        {['users', 'api-docs', 'api-keys', 'areas', 'security'].map((page) => (
+          <Route key={page} path={`/${page}`} element={<Navigate to={`/admin/${page}`} replace />} />
+        ))}
         <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+      <Route path="/admin" element={<AdminShell />}>
+        <Route index element={<Navigate to="/admin/users" replace />} />
+        <Route path="users" element={<UsersPage />} />
+        <Route path="areas" element={<AreasPage />} />
+        <Route path="api-keys" element={<ApiKeysPage />} />
+        <Route path="security" element={<SignInSecurityPage />} />
+        <Route path="api-docs" element={<ApiDocsPage />} />
+        <Route path="*" element={<Navigate to="/admin/users" replace />} />
       </Route>
     </Routes>
   );

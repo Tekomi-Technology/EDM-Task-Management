@@ -130,9 +130,9 @@ function TeamRow({
   );
 }
 
-/** Settings → Areas and teams: where each team works. A ticket goes to the team of the area its place lies in. */
+/** Admin area → Areas and teams: where each team works. A ticket goes to the team of the area its place lies in. */
 export function AreasPage() {
-  useCrumbs([{ label: t('Settings') }, { label: t('Areas and teams') }]);
+  useCrumbs([{ label: t('Administration') }, { label: t('Areas and teams') }]);
   const queryClient = useQueryClient();
   const areas = useQuery({ queryKey: ['admin-areas'], queryFn: () => api<AreaView[]>('/admin/areas') });
   const [selected, setSelected] = useState<string | null>(null);

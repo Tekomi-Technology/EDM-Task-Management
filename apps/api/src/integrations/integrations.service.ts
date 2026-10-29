@@ -22,7 +22,7 @@ const SLOW_MS = 5_000;
 const TODAY = sql.raw(`(date_trunc('day', now() at time zone 'Africa/Maputo') at time zone 'Africa/Maputo')`);
 
 /** The sign-in client each system uses to call /intake. */
-/** The systems that call us, each with its own API keys (Settings → API keys). */
+/** The systems that call us, each with its own API keys (admin area → API keys). */
 const CALLS_US: readonly IntegrationSystem[] = API_KEY_SYSTEMS;
 const NAME: Record<IntegrationSystem, string> = {
   call_center: 'The Call Center',
@@ -258,7 +258,7 @@ export class IntegrationsService {
         }
       : {
           ok: false,
-          message: `${NAME[system]} has no API key: make one in Settings → API keys.`,
+          message: `${NAME[system]} has no API key: make one in the admin area (/admin → API keys).`,
           durationMs: null
         };
   }

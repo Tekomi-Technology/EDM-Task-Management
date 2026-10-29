@@ -184,4 +184,8 @@ describe('connected systems', () => {
 
     expect((await t.as('helena.mondlane').get('/api/integrations/docs')).status).toBe(403);
   });
+
+  it('keeps the API documentation to administrators (the admin area), not technical managers', async () => {
+    expect((await t.as('carla.manhica').get('/api/integrations/docs')).status).toBe(403);
+  });
 });

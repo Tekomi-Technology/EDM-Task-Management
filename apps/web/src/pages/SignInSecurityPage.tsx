@@ -44,9 +44,9 @@ const FIELDS: { key: keyof SignInSettings; label: string; hint: string; min: num
   }
 ];
 
-/** Settings → Sign-in security. */
+/** Admin area → Sign-in security. */
 export function SignInSecurityPage() {
-  useCrumbs([{ label: t('Settings') }, { label: t('Sign-in security') }]);
+  useCrumbs([{ label: t('Administration') }, { label: t('Sign-in security') }]);
   const queryClient = useQueryClient();
   const current = useQuery({
     queryKey: ['sign-in-settings'],

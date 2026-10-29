@@ -707,7 +707,7 @@ export interface CreatedApiKey {
   key: string;
 }
 
-// ---- Areas and teams (Settings) ----
+// ---- Areas and teams (admin area) ----
 
 export interface AreaTeamView {
   id: string;

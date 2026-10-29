@@ -29,8 +29,9 @@ export class IntegrationsController {
     return this.integrations.overview();
   }
 
-  /** "API documentation": what the other EDM systems can call, and the events EDM Tasks sends them. */
+  /** "API documentation" in the admin area: what the other EDM systems can call, and the events EDM Tasks sends them. */
   @Get('docs')
+  @Roles('admin')
   apiDocs(): IntegrationDocs {
     return this.docs.docs();
   }

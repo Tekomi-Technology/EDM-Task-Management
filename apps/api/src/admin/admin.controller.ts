@@ -33,7 +33,7 @@ import { SignInSettingsService } from '../auth/sign-in-settings.service';
 import { AdminUsersService } from './admin-users.service';
 import { AreasService } from './areas.service';
 
-/** Settings for admins: users and roles, API keys for the other EDM systems, sign-in security. */
+/** The admin area: users and roles, API keys for the other EDM systems, sign-in security. */
 @ApiTags('admin')
 @ApiBearerAuth()
 @Controller('admin')

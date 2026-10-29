@@ -39,7 +39,7 @@ const geometry = (boundary: Boundary) =>
   sql`ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(${JSON.stringify(closed(boundary))}), 4326))`;
 
 /**
- * Settings → Areas and teams. A ticket goes to the area its place lies in, and to the area's first team (by code);
+ * Admin area → Areas and teams. A ticket goes to the area its place lies in, and to the area's first team (by code);
  * areas may not overlap, so every place has one answer.
  */
 @Injectable()

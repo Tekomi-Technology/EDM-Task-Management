@@ -29,7 +29,7 @@ export function configureApp(app: INestApplication, env: Env): void {
     .setTitle('EDM Task Management API')
     .setDescription(
       'Technical ticket system for Electricidade de Moçambique. People sign in at /api/auth/sign-in; ' +
-        'the other EDM systems send an API key made in Settings → API keys (Authorization: Bearer <key>).'
+        'the other EDM systems send an API key made in the admin area, /admin → API keys (Authorization: Bearer <key>).'
     )
     .setVersion('0.1.0')
     .addBearerAuth()

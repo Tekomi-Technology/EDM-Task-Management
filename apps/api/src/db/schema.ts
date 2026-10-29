@@ -129,7 +129,7 @@ export const apiKeys = pgTable('api_keys', {
   createdAt: createdAt()
 });
 
-/** Settings administrators change in the web app (Settings), one JSON value per key. */
+/** Settings administrators change in the web app (admin area), one JSON value per key. */
 export const settings = pgTable('settings', {
   key: text('key').primaryKey(),
   value: jsonb('value').notNull(),

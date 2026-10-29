@@ -87,7 +87,8 @@ can sign in as an administrator):
 cd apps/api && docker compose exec api node dist/db/set-password.js admin.edm --admin "Admin EDM"
 ```
 
-Open `https://edm.tekomi.vn`, sign in with it and choose your own password. Then, in Settings:
+Open `https://edm.tekomi.vn/admin` (the admin area, for administrators only; the operations pages do not link to
+it), sign in with it and choose your own password. Then:
 
 - **Areas and teams:** draw the areas (or read EDM's boundaries from a GeoJSON file) and make their teams;
 - **Users & roles:** the staff accounts, each with a temporary password to give to the person;

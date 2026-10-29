@@ -17,7 +17,7 @@ function UserStatus({ user }: { user: AdminUser }) {
 
 /** Users & roles (admin): create accounts, change roles and teams, block, reset passwords. */
 export function UsersPage() {
-  useCrumbs([{ label: t('Settings') }, { label: t('Users and roles') }]);
+  useCrumbs([{ label: t('Administration') }, { label: t('Users and roles') }]);
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [role, setRole] = useState<UserRole | ''>('');

@@ -788,7 +788,7 @@ export const changePasswordSchema = z.object({
 });
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
 
-/** Settings → Sign-in security. */
+/** Admin area → Sign-in security. */
 export const signInSettingsSchema = z.object({
   minPasswordLength: z.number().int().min(8).max(64),
   maxFailedSignIns: z.number().int().min(3).max(20),
@@ -798,14 +798,14 @@ export const signInSettingsSchema = z.object({
 });
 export type SignInSettings = z.infer<typeof signInSettingsSchema>;
 
-/** Settings → API keys: a key for one of the other EDM systems. */
+/** Admin area → API keys: a key for one of the other EDM systems. */
 export const createApiKeySchema = z.object({
   system: z.enum(API_KEY_SYSTEMS),
   name: z.string().trim().min(2).max(100)
 });
 export type CreateApiKey = z.infer<typeof createApiKeySchema>;
 
-// ---- Areas and teams (Settings) ----
+// ---- Areas and teams (admin area) ----
 
 const lngLat = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]);
 /** A ring: at least a triangle, closed or not (it is closed on saving). */

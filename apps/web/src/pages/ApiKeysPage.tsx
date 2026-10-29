@@ -42,9 +42,9 @@ function NewKey({ created, onDone }: { created: CreatedApiKey; onDone: () => voi
   );
 }
 
-/** Settings → API keys: the keys the Call Center, Sales, NMS and stock systems call EDM Tasks with. */
+/** Admin area → API keys: the keys the Call Center, Sales, NMS and stock systems call EDM Tasks with. */
 export function ApiKeysPage() {
-  useCrumbs([{ label: t('Settings') }, { label: t('API keys') }]);
+  useCrumbs([{ label: t('Administration') }, { label: t('API keys') }]);
   const queryClient = useQueryClient();
   const [system, setSystem] = useState<ApiKeySystem>('call_center');
   const [name, setName] = useState('');
@@ -78,7 +78,7 @@ export function ApiKeysPage() {
           <h1>{t('API keys')}</h1>
           <div className="subtitle">
             {t('The other EDM systems call EDM Tasks with these keys.')}{' '}
-            <Link to="/api-docs">{t('What each system can call')}</Link>
+            <Link to="/admin/api-docs">{t('What each system can call')}</Link>
           </div>
         </div>
       </div>

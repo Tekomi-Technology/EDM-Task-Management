@@ -13,7 +13,7 @@ export const DEFAULT_SIGN_IN_SETTINGS: SignInSettings = {
 };
 const KEY = 'sign_in';
 
-/** Settings → Sign-in security: password length, locking after wrong passwords, how long people stay signed in. */
+/** Admin area → Sign-in security: password length, locking after wrong passwords, how long people stay signed in. */
 @Injectable()
 export class SignInSettingsService {
   private cached: { value: SignInSettings; at: number } | undefined;

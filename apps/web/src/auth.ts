@@ -6,7 +6,7 @@ const API_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/api`
 /**
  * Signing in. The access token lives only in memory; the session itself is an httpOnly cookie the page cannot
  * read, sent only to /api/auth. On load the app asks /auth/refresh: a session that has not ended signs the
- * person in again without a password (for a week, Settings → Sign-in security).
+ * person in again without a password (for a week, admin area → Sign-in security).
  */
 export type AuthState = 'loading' | 'signed-out' | 'must-change-password' | 'signed-in';
 
