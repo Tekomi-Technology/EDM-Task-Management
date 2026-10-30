@@ -212,6 +212,26 @@ export function formatTime(iso: string): string {
 }
 
 /** "09:24" today, "26 Oct, 09:24" on other days. */
+/**
+ * History line of a team change: chosen at creation instead of the place's team, or moved later. The reason is shown
+ * on its own line under it, like the reason of any step.
+ */
+export function teamChangeText(d: Record<string, unknown>): string {
+  const to = String(d.teamName ?? '');
+  if (d.atCreation) {
+    return t('chose team {0} instead of {1} (team of the place)', { 0: to, 1: String(d.fromName ?? '') });
+  }
+  const moved =
+    typeof d.fromName === 'string' && d.fromName
+      ? t('moved it from team {0} to team {1}', { 0: d.fromName, 1: to })
+      : t('moved it to team {0}', { 0: to });
+  const taken =
+    typeof d.unassignedName === 'string' && d.unassignedName
+      ? ' ' + t('(taken back from {0})', { 0: d.unassignedName })
+      : '';
+  return moved + taken;
+}
+
 export function formatWhen(iso: string, now = new Date()): string {
   const d = new Date(iso);
   const day = (x: Date) => x.toLocaleDateString(dateLocale(), { timeZone: TZ });

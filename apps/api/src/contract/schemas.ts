@@ -385,7 +385,11 @@ export const locationBatchSchema = z.object({
 });
 export type LocationBatch = z.infer<typeof locationBatchSchema>;
 
-export const setTeamSchema = z.object({ teamId: z.string().uuid() });
+export const setTeamSchema = z.object({
+  teamId: z.string().uuid(),
+  /** Needed when the ticket already has a team: kept in its history. */
+  reason: z.string().trim().min(3).max(300).optional()
+});
 export const linkTicketsSchema = z.object({ ticketIds: z.array(z.string().uuid()).min(1).max(100) });
 export const notifyCustomersSchema = z.object({ message: z.string().trim().min(5).max(300).optional() });
 
@@ -487,8 +491,32 @@ export const activationResultSchema = z.object({
 });
 export type ActivationResult = z.infer<typeof activationResultSchema>;
 
+/**
+ * Another team than the one covering the place, chosen by NOC, a technical manager or an administrator. The place
+ * keeps its area; the reason goes into the ticket's history.
+ */
+const teamChoice = {
+  teamId: z
+    .string()
+    .uuid()
+    .optional()
+    .meta({ description: 'Send it to this team instead of the team of the place.' }),
+  teamReason: z
+    .string()
+    .trim()
+    .min(3)
+    .max(300)
+    .optional()
+    .meta({ description: 'Why another team goes; needed with teamId.' })
+};
+const teamNeedsReason = (v: { teamId?: string; teamReason?: string }) => !v.teamId || !!v.teamReason;
+const teamReasonIssue = { message: 'Say why another team goes', path: ['teamReason'] };
+
 /** A survey typed in by the office, without the Sales system: nothing is sent back to Sales. */
-export const officeSurveySchema = surveyRequestSchema.omit({ externalRef: true });
+export const officeSurveySchema = surveyRequestSchema
+  .omit({ externalRef: true })
+  .extend(teamChoice)
+  .refine(teamNeedsReason, teamReasonIssue);
 export type OfficeSurvey = z.infer<typeof officeSurveySchema>;
 
 /**
@@ -506,12 +534,14 @@ export const officeConnectionSchema = z
     customer: prospectSchema.optional(),
     premises: z.enum(PREMISES_TYPES).optional(),
     supply: z.enum(SUPPLY_TYPES),
-    notes: z.string().trim().max(2000).optional()
+    notes: z.string().trim().max(2000).optional(),
+    ...teamChoice
   })
   .refine((v) => !!v.surveyTicketId || !!v.customerId || !!v.customer, {
     message: 'Give the survey, or the customer',
     path: ['customer']
-  });
+  })
+  .refine(teamNeedsReason, teamReasonIssue);
 export type OfficeConnection = z.infer<typeof officeConnectionSchema>;
 
 // ---- Stock (phase 4) ----
@@ -716,39 +746,44 @@ const callerPhone = z.string().trim().max(32).optional();
  * complaint), someone reporting the network, or anything else that comes up. Planned work, surveys and connections
  * have their own forms (/network/planned-work, /new-customers/surveys, /new-customers/connections).
  */
-export const officeTicketSchema = z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('customer_complaint'),
-    customerId: z.string().uuid(),
-    problemType: z.enum(PROBLEM_TYPE_KEYS),
-    /** Only for "Something else", which has no set priority. */
-    priority: z.number().int().min(1).max(3).optional(),
-    description: z.string().trim().min(3).max(2000),
-    callerPhone,
-    /** False when the person taking the call decides it is not the open incident nearby. */
-    joinIncident: z.boolean().default(true)
-  }),
-  z.object({
-    type: z.literal('network_incident'),
-    reportType: z.enum(NETWORK_REPORT_TYPE_KEYS),
-    address: z.string().trim().min(3).max(300),
-    location: pointSchema.optional(),
-    description: z.string().trim().min(3).max(2000),
-    callerName: z.string().trim().max(200).optional(),
-    callerPhone
-  }),
-  z.object({
-    type: z.literal('other'),
-    title: z.string().trim().min(3).max(200),
-    description: z.string().trim().min(3).max(2000),
-    priority: z.number().int().min(1).max(3),
-    /** The customer it is about, if any; their place is used when no other place is given. */
-    customerId: z.string().uuid().optional(),
-    address: z.string().trim().min(3).max(300).optional(),
-    location: pointSchema.optional(),
-    callerPhone
-  })
-]);
+export const officeTicketSchema = z
+  .discriminatedUnion('type', [
+    z.object({
+      type: z.literal('customer_complaint'),
+      customerId: z.string().uuid(),
+      problemType: z.enum(PROBLEM_TYPE_KEYS),
+      /** Only for "Something else", which has no set priority. */
+      priority: z.number().int().min(1).max(3).optional(),
+      description: z.string().trim().min(3).max(2000),
+      callerPhone,
+      /** False when the person taking the call decides it is not the open incident nearby. */
+      joinIncident: z.boolean().default(true),
+      ...teamChoice
+    }),
+    z.object({
+      type: z.literal('network_incident'),
+      reportType: z.enum(NETWORK_REPORT_TYPE_KEYS),
+      address: z.string().trim().min(3).max(300),
+      location: pointSchema.optional(),
+      description: z.string().trim().min(3).max(2000),
+      callerName: z.string().trim().max(200).optional(),
+      callerPhone,
+      ...teamChoice
+    }),
+    z.object({
+      type: z.literal('other'),
+      title: z.string().trim().min(3).max(200),
+      description: z.string().trim().min(3).max(2000),
+      priority: z.number().int().min(1).max(3),
+      /** The customer it is about, if any; their place is used when no other place is given. */
+      customerId: z.string().uuid().optional(),
+      address: z.string().trim().min(3).max(300).optional(),
+      location: pointSchema.optional(),
+      callerPhone,
+      ...teamChoice
+    })
+  ])
+  .refine(teamNeedsReason, teamReasonIssue);
 export type OfficeTicket = z.infer<typeof officeTicketSchema>;
 
 /** What would happen if the ticket were created now (the "What happens next" panel). */
@@ -757,18 +792,21 @@ export const ticketPreviewSchema = z.discriminatedUnion('type', [
     type: z.literal('customer_complaint'),
     customerId: z.string().uuid(),
     problemType: z.enum(PROBLEM_TYPE_KEYS),
-    priority: z.number().int().min(1).max(3).optional()
+    priority: z.number().int().min(1).max(3).optional(),
+    teamId: teamChoice.teamId
   }),
   z.object({
     type: z.literal('network_incident'),
     reportType: z.enum(NETWORK_REPORT_TYPE_KEYS),
-    location: pointSchema.optional()
+    location: pointSchema.optional(),
+    teamId: teamChoice.teamId
   }),
   z.object({
     type: z.literal('other'),
     priority: z.number().int().min(1).max(3),
     customerId: z.string().uuid().optional(),
-    location: pointSchema.optional()
+    location: pointSchema.optional(),
+    teamId: teamChoice.teamId
   })
 ]);
 export type TicketPreviewInput = z.infer<typeof ticketPreviewSchema>;

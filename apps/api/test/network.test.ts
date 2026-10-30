@@ -277,10 +277,12 @@ describe('network incidents from the NMS and the public, and planned work', () =
       status: 'assigned',
       assignee: { fullName: 'Armando Cossa' }
     });
+    // Already in that team (moving it to another team is tested in office-tickets.test.ts).
     const again = await t
       .as('nadia.mussa')
-      .post(`/api/tickets/${report.body.ticketId}/team`, { teamId: south1 });
-    expect(again.status).toBe(409);
+      .post(`/api/tickets/${report.body.ticketId}/team`, { teamId: south1, reason: 'Again' });
+    expect(again.status).toBe(422);
+    expect(again.body.code).toBe('SAME_TEAM');
     expect(
       (await t.as('helena.mondlane').post(`/api/tickets/${report.body.ticketId}/team`, { teamId: south1 }))
         .status

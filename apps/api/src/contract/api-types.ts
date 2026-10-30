@@ -635,7 +635,10 @@ export interface CustomerMatch {
 }
 
 export interface TicketPreview {
+  /** The team that goes: the one chosen, or else the team covering the place. */
   team: { id: string; name: string } | null;
+  /** The team covering the place, whatever was chosen. */
+  autoTeam: { id: string; name: string } | null;
   areaName: string | null;
   /** Who automatic assignment would pick now; null when nobody of the team is on duty (the manager is told). */
   assignee: { id: string; fullName: string; distanceM: number | null; openJobs: number } | null;
@@ -730,4 +733,10 @@ export interface AreaView {
   /** In order: the first team gets the area's new tickets. */
   teams: AreaTeamView[];
   openTickets: number;
+}
+
+/** Which area and team a point on the map falls in (forms that only have a place, like surveys). */
+export interface PlaceTeam {
+  areaName: string | null;
+  team: { id: string; name: string } | null;
 }

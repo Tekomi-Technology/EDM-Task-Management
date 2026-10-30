@@ -17,6 +17,9 @@ export const INTEGRATION_ROLES = [
 ] as const;
 export const ROLES = [...USER_ROLES, ...INTEGRATION_ROLES] as const;
 
+/** Who may send a ticket to another team than the one covering its place, at creation or later. */
+export const CHOOSE_TEAM_ROLES = ['noc', 'technical_manager', 'admin'] as const;
+
 /** The other EDM systems that call this one with an API key, and the role each key gives. */
 export const API_KEY_SYSTEMS = ['call_center', 'sales', 'nms', 'stock'] as const;
 export type ApiKeySystem = (typeof API_KEY_SYSTEMS)[number];

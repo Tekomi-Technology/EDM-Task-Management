@@ -99,7 +99,10 @@ export class NetworkController {
     return { sent: await this.tickets.notifyLinkedCustomers(id, user, body.message) };
   }
 
-  /** Put a ticket (e.g. one outside every area) in a team; it is then assigned like a new ticket. */
+  /**
+   * Puts a ticket in a team: one outside every area, or an unfinished one moved to another team (with the reason).
+   * It is then assigned like a new ticket.
+   */
   @Post('tickets/:id/team')
   @HttpCode(200)
   @Roles('noc', 'admin', 'technical_manager')
@@ -110,7 +113,7 @@ export class NetworkController {
     @CurrentUser() user: AuthUser
   ): Promise<TicketDetail> {
     await this.query.detail(id, user);
-    await this.tickets.setTeam(id, body.teamId, user);
+    await this.tickets.setTeam(id, body.teamId, user, body.reason);
     return this.query.detail(id, user);
   }
 

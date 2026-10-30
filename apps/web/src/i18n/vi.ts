@@ -1188,5 +1188,32 @@ export const vi: Record<string, string> = {
   'No depots or vans yet. Start with the depot of each area: Add depot.':
     'Chưa có kho hay xe nào. Hãy bắt đầu bằng kho của từng khu vực: Thêm kho.',
   'This area already has a depot.': 'Khu vực này đã có kho.',
-  'This code is already used by another depot or van.': 'Mã này đã được dùng cho một kho hoặc xe khác.'
+  'This code is already used by another depot or van.': 'Mã này đã được dùng cho một kho hoặc xe khác.',
+  'from the place marked': 'theo vị trí đã đánh dấu',
+  '(team of the place)': '(đội của khu vực)',
+  'Choose another team': 'Chọn đội khác',
+  'Another team': 'Đội khác',
+  'Team that goes': 'Đội sẽ đi',
+  'Why another team goes': 'Lý do chọn đội khác',
+  'For example: closer, the team of the area is on a big outage':
+    'VD: đội gần hơn, đội của khu vực đang xử lý sự cố lớn',
+  'Instead of {0}, the team of the place. The reason is kept in the ticket history.':
+    'Thay cho {0} (đội của khu vực). Lý do được ghi vào lịch sử phiếu.',
+  'The reason is kept in the ticket history.': 'Lý do được ghi vào lịch sử phiếu.',
+  'Use the team of the place': 'Dùng đội của khu vực',
+  'Choose the team that goes, or use the team of the place.':
+    'Hãy chọn đội sẽ đi, hoặc dùng đội của khu vực.',
+  'Write why another team goes.': 'Hãy ghi lý do chọn đội khác.',
+  'chose team {0} instead of {1} (team of the place)': 'đã chọn đội {0} thay cho {1} (đội của khu vực)',
+  'moved it from team {0} to team {1}': 'đã chuyển phiếu từ đội {0} sang đội {1}',
+  '(taken back from {0})': '(đã thu lại việc từ {0})',
+  'Move to another team': 'Chuyển đội',
+  'Now with team {0}.': 'Đang thuộc đội {0}.',
+  'Why it moves': 'Lý do chuyển đội',
+  'Why it moves, e.g. place marked wrongly, closer team':
+    'Lý do chuyển, VD: đánh dấu nhầm vị trí, đội gần hơn',
+  '{0} no longer has the job and is told; the new team gets it like a new ticket.':
+    '{0} sẽ không còn giữ việc này và được báo; đội mới nhận phiếu như phiếu mới.',
+  'Move to this team': 'Chuyển sang đội này',
+  'Keep this team': 'Giữ đội hiện tại'
 };

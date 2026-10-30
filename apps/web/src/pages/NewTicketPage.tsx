@@ -38,6 +38,7 @@ import { api } from '../api';
 import { CustomerSearch } from '../components/CustomerSearch';
 import { LocationPicker } from '../components/LocationPicker';
 import { useMapAddress } from '../components/mapAddress';
+import { TeamChoice, teamChoiceBody, type TeamPick } from '../components/TeamChoice';
 import { ConnectionForm, SurveyForm } from '../components/NewCustomerForms';
 import { creatableTypes, useCrumbs, useMe } from '../components/ui';
 import { formatTime, STATUS_LABEL, ticketTitle } from '../format';
@@ -62,6 +63,8 @@ interface Draft {
   callerPhone: string;
   description: string;
   joinIncident: boolean | null;
+  /** Another team than the one of the place, with the reason (NOC, technical managers, administrators). */
+  team: TeamPick | null;
 }
 
 const EMPTY: Draft = {
@@ -76,7 +79,8 @@ const EMPTY: Draft = {
   callerName: '',
   callerPhone: '',
   description: '',
-  joinIncident: null
+  joinIncident: null,
+  team: null
 };
 
 /** "Save as draft" keeps the form on this computer only, for a call that has to be finished later. */
@@ -281,9 +285,14 @@ export function NewTicketPage() {
               location: d.location ?? undefined
             }
           : null;
+  const chosenTeam = d.team?.teamId || undefined;
   const preview = useQuery({
-    queryKey: ['ticket-preview', previewInput],
-    queryFn: () => api<TicketPreview>('/tickets/preview', { method: 'POST', body: previewInput }),
+    queryKey: ['ticket-preview', previewInput, chosenTeam],
+    queryFn: () =>
+      api<TicketPreview>('/tickets/preview', {
+        method: 'POST',
+        body: { ...previewInput!, teamId: chosenTeam }
+      }),
     enabled: !!previewInput,
     refetchInterval: 30_000
   });
@@ -333,6 +342,7 @@ export function NewTicketPage() {
           callerPhone: d.callerPhone.trim() || undefined
         };
       }
+      body = { ...body, ...teamChoiceBody(d.team) };
       if (body.description.length < 3)
         throw new Error(
           call === 'other' ? t('Write what needs to be done.') : t('Write what the caller says.')
@@ -679,10 +689,20 @@ export function NewTicketPage() {
                   <CheckCircle2 size={18} color="var(--ok)" aria-hidden />
                   {call === 'customer_complaint'
                     ? t('No open network incident near this customer.')
-                    : p.team
-                      ? t('The place is in {0} of team {1}.', { 0: p.areaName ?? 'the area', 1: p.team.name })
+                    : p.autoTeam
+                      ? t('The place is in {0} of team {1}.', {
+                          0: p.areaName ?? 'the area',
+                          1: p.autoTeam.name
+                        })
                       : t('No place marked, or outside the team areas: NOC will route it.')}
                 </div>
+              )}
+              {p && !joining && (
+                <TeamChoice
+                  autoTeamName={p.autoTeam?.name ?? null}
+                  value={d.team}
+                  onChange={(team) => set({ team })}
+                />
               )}
             </Step>
           )}

@@ -18,7 +18,7 @@ import { areas, customers, tickets, users } from '../db/schema';
 import { StockService } from '../stock/stock.service';
 import { TicketsQuery } from '../tickets/tickets.query';
 import { sms } from '../notifications/messages';
-import { DuplicateExternalRef, TicketsService } from '../tickets/tickets.service';
+import { assertMayChooseTeam, DuplicateExternalRef, TicketsService } from '../tickets/tickets.service';
 
 export interface SalesRequestView {
   externalRef: string;
@@ -75,6 +75,7 @@ export class SalesService {
 
   /** A survey typed in by the office (New ticket screen), without the Sales system. */
   async officeSurvey(input: OfficeSurvey, actor: AuthUser): Promise<{ id: string; code: string }> {
+    assertMayChooseTeam(input.teamId, actor);
     return this.createSurvey(input, actor, null);
   }
 
@@ -119,6 +120,7 @@ export class SalesService {
    * customer and the office closes it.
    */
   async officeConnection(input: OfficeConnection, actor: AuthUser): Promise<{ id: string; code: string }> {
+    assertMayChooseTeam(input.teamId, actor);
     const [survey] = input.surveyTicketId
       ? await this.db
           .select()
@@ -166,7 +168,9 @@ export class SalesService {
         customerPhone: input.customer.phone ?? null,
         receivedSms: sms.customerSurveyReceived,
         location: input.customer.location ?? null,
-        details: { premises: input.premises, supply: input.supply, requestedLoadKw: input.requestedLoadKw }
+        details: { premises: input.premises, supply: input.supply, requestedLoadKw: input.requestedLoadKw },
+        teamId: input.teamId,
+        teamReason: input.teamId ? input.teamReason : undefined
       },
       actor
     );
@@ -180,6 +184,8 @@ export class SalesService {
       notes?: string;
       customerId?: string;
       customer?: OfficeConnection['customer'];
+      teamId?: string;
+      teamReason?: string;
     },
     survey: typeof tickets.$inferSelect | undefined,
     actor: AuthUser,
@@ -243,6 +249,8 @@ export class SalesService {
         customerPhone: customer!.phone,
         receivedSms: sms.customerConnectionReceived,
         location: customer!.location ?? survey?.location ?? null,
+        teamId: input.teamId,
+        teamReason: input.teamId ? input.teamReason : undefined,
         details: {
           premises: input.premises ?? survey?.details?.premises,
           supply: input.supply,

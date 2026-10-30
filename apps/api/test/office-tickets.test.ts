@@ -216,6 +216,112 @@ describe('tickets entered by EDM staff', () => {
     expect(closed.body.status).toBe('closed');
   });
 
+  const teamId = async (name: string) =>
+    ((await t.as('nadia.mussa').get('/api/lookups')).body.teams as { id: string; name: string }[]).find(
+      (x) => x.name === name
+    )!.id;
+  const otherTicket = {
+    type: 'other',
+    title: 'Meter box door broken',
+    description: 'The box is open to the street.',
+    priority: 2,
+    location: MATOLA
+  };
+  type Event = { type: string; data: Record<string, unknown> };
+
+  it('lets NOC, technical managers and administrators send a new ticket to another team, keeping the reason', async () => {
+    const south2 = await teamId('South 2');
+    const res = await t.as('carla.manhica').post('/api/tickets', {
+      ...otherTicket,
+      teamId: south2,
+      teamReason: 'South 1 is on the big outage'
+    });
+    expect(res.status).toBe(201);
+    // Nobody of South 2 is on duty: it waits for their manager instead of going to Armando (South 1).
+    expect(res.body).toMatchObject({ status: 'new', assigneeName: null });
+    const detail = (await t.as('nadia.mussa').get(`/api/tickets/${res.body.id}`)).body;
+    // The team chosen goes; the place stays in its own area.
+    expect(detail).toMatchObject({ teamId: south2, teamName: 'South 2', areaName: 'Matola' });
+    const chosen = (detail.events as Event[]).find((e) => e.type === 'team_changed');
+    expect(chosen?.data).toMatchObject({
+      fromName: 'South 1',
+      teamName: 'South 2',
+      reason: 'South 1 is on the big outage',
+      atCreation: true
+    });
+  });
+
+  it('asks why another team goes, and lets only NOC, technical managers and administrators choose it', async () => {
+    const body = { ...otherTicket, teamId: await teamId('South 2') };
+    expect((await t.as('nadia.mussa').post('/api/tickets', body)).status).toBe(400);
+    for (const who of ['paulo.bo', 'helena.mondlane'] as const) {
+      expect(
+        (await t.as(who).post('/api/tickets', { ...body, teamReason: 'Closer to the place' })).status
+      ).toBe(403);
+    }
+  });
+
+  it('shows the team of the place and the team chosen instead, before creating', async () => {
+    const auto = await t
+      .as('paulo.bo')
+      .post('/api/tickets/preview', { type: 'other', priority: 2, location: MATOLA });
+    expect(auto.body).toMatchObject({
+      team: { name: 'South 1' },
+      autoTeam: { name: 'South 1' },
+      areaName: 'Matola'
+    });
+    const chosen = await t
+      .as('nadia.mussa')
+      .post('/api/tickets/preview', {
+        type: 'other',
+        priority: 2,
+        location: MATOLA,
+        teamId: await teamId('South 2')
+      });
+    expect(chosen.body).toMatchObject({
+      team: { name: 'South 2' },
+      autoTeam: { name: 'South 1' },
+      areaName: 'Matola'
+    });
+    // For forms with only a place (surveys): which team the place would get.
+    const place = await t.as('carla.manhica').get(`/api/places/team?lat=${MATOLA.lat}&lng=${MATOLA.lng}`);
+    expect(place.body).toMatchObject({ areaName: 'Matola', team: { name: 'South 1' } });
+  });
+
+  it('moves a ticket someone is working on to another team, with a reason, and tells that staff member', async () => {
+    const south2 = await teamId('South 2');
+    const id = (await t.as('paulo.bo').post('/api/tickets', otherTicket)).body.id as string;
+    await t.as('armando.cossa').post(`/api/tickets/${id}/accept`);
+
+    expect((await t.as('nadia.mussa').post(`/api/tickets/${id}/team`, { teamId: south2 })).status).toBe(422);
+    expect(
+      (
+        await t
+          .as('helena.mondlane')
+          .post(`/api/tickets/${id}/team`, { teamId: south2, reason: 'Closer team' })
+      ).status
+    ).toBe(403);
+    const moved = await t
+      .as('nadia.mussa')
+      .post(`/api/tickets/${id}/team`, { teamId: south2, reason: 'The place was marked wrongly' });
+    expect(moved.status).toBe(200);
+    expect(moved.body).toMatchObject({ teamId: south2, status: 'new', assignee: null });
+    const event = (moved.body.events as Event[]).find((e) => e.type === 'team_changed');
+    expect(event?.data).toMatchObject({
+      fromName: 'South 1',
+      teamName: 'South 2',
+      reason: 'The place was marked wrongly',
+      unassignedName: 'Armando Cossa'
+    });
+    const told = await t.db.select().from(notificationOutbox).where(eq(notificationOutbox.ticketId, id));
+    expect(told.some((m) => m.recipient === '+258840000006' && m.body.includes('passado'))).toBe(true);
+
+    // Moving it to the team it is already in, or once the work is done, is refused.
+    expect(
+      (await t.as('nadia.mussa').post(`/api/tickets/${id}/team`, { teamId: south2, reason: 'Again' })).status
+    ).toBe(422);
+  });
+
   it('sends an "other" ticket with no place to NOC, and asks for a priority', async () => {
     const body = { type: 'other', title: 'Wrong address on a bill', description: 'Customer asks to fix it.' };
     expect((await t.as('paulo.bo').post('/api/tickets', body)).status).toBe(400);

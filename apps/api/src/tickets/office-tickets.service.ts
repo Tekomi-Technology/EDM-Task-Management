@@ -6,6 +6,7 @@ import {
   type CreatedTicketView,
   type CustomerMatch,
   type OfficeTicket,
+  type PlaceTeam,
   type TicketPreview,
   type TicketPreviewInput
 } from '../contract';
@@ -16,7 +17,7 @@ import { DB, type Db } from '../db/db.module';
 import { areas, customers, teams, tickets, users } from '../db/schema';
 import { sms } from '../notifications/messages';
 import { normalizePhone } from '../notifications/phone';
-import { TicketsService } from './tickets.service';
+import { assertMayChooseTeam, TicketsService } from './tickets.service';
 
 /** "Something else" and "Other" have no set priority; the person taking the call picks one, and the time limit follows it. */
 const SLA_BY_PRIORITY: Record<number, number> = { 1: 120, 2: 240, 3: 1440 };
@@ -90,15 +91,8 @@ export class OfficeTicketsService {
 
   async preview(input: TicketPreviewInput): Promise<TicketPreview> {
     const what = await this.what(input);
-    const where = await this.tickets.whereTo(what.location, { outage: what.outage });
-    const team = where.route?.teamId
-      ? (
-          await this.db
-            .select({ id: teams.id, name: teams.name })
-            .from(teams)
-            .where(eq(teams.id, where.route.teamId))
-        )[0]
-      : undefined;
+    const where = await this.tickets.whereTo(what.location, { outage: what.outage, teamId: input.teamId });
+    const team = await this.team(where.route?.teamId ?? null);
     const areaName = where.route
       ? ((await this.db.select({ name: areas.name }).from(areas).where(eq(areas.id, where.route.areaId)))[0]
           ?.name ?? null)
@@ -136,7 +130,8 @@ export class OfficeTicketsService {
       assignee = { ...pick, openJobs: Number(row?.openJobs ?? 0) };
     }
     return {
-      team: team ?? null,
+      team,
+      autoTeam: await this.team(where.placeTeamId),
       areaName,
       assignee,
       priority: what.priority,
@@ -150,8 +145,29 @@ export class OfficeTicketsService {
     };
   }
 
+  /** Which area and team a point falls in, for forms that only have a place (surveys). */
+  async placeTeam(location: { lat: number; lng: number }): Promise<PlaceTeam> {
+    const where = await this.tickets.whereTo(location, { outage: false });
+    const areaName = where.route
+      ? ((await this.db.select({ name: areas.name }).from(areas).where(eq(areas.id, where.route.areaId)))[0]
+          ?.name ?? null)
+      : null;
+    return { areaName, team: await this.team(where.placeTeamId) };
+  }
+
+  private async team(id: string | null): Promise<{ id: string; name: string } | null> {
+    if (!id) return null;
+    const [row] = await this.db
+      .select({ id: teams.id, name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, id));
+    return row ?? null;
+  }
+
   async create(input: OfficeTicket, actor: AuthUser): Promise<CreatedTicketView> {
+    assertMayChooseTeam(input.teamId, actor);
     const what = await this.what(input);
+    const team = { teamId: input.teamId, teamReason: input.teamId ? input.teamReason : undefined };
     const created =
       input.type === 'customer_complaint'
         ? await this.tickets.create(
@@ -167,7 +183,8 @@ export class OfficeTicketsService {
               customerId: input.customerId,
               customerPhone: (input.callerPhone && normalizePhone(input.callerPhone)) || what.customerPhone,
               location: what.location,
-              linkIncident: input.joinIncident
+              linkIncident: input.joinIncident,
+              ...team
             },
             actor
           )
@@ -186,7 +203,8 @@ export class OfficeTicketsService {
                   .join('\n'),
                 customerId: input.customerId ?? null,
                 customerPhone: (input.callerPhone && normalizePhone(input.callerPhone)) || what.customerPhone,
-                location: what.location
+                location: what.location,
+                ...team
               },
               actor
             )
@@ -211,7 +229,8 @@ export class OfficeTicketsService {
                 customerId: null,
                 customerPhone: (input.callerPhone && normalizePhone(input.callerPhone)) || null,
                 location: what.location,
-                elementName: input.address
+                elementName: input.address,
+                ...team
               },
               actor
             );

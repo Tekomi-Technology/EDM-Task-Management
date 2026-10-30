@@ -1,5 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
+  CHOOSE_TEAM_ROLES,
   MAX_ATTACHMENT_BYTES,
   mayCheck,
   nextStatus,
@@ -56,8 +57,10 @@ export interface NewTicket {
   customerId: string | null;
   customerPhone: string | null;
   location: { lng: number; lat: number } | null;
-  /** Put the ticket in this team instead of routing it by location (planned work). */
+  /** Put the ticket in this team instead of routing it by location (planned work, or a team chosen at creation). */
   teamId?: string;
+  /** Why another team than the one covering the place goes: the place keeps its area, and the choice is recorded. */
+  teamReason?: string;
   /** Planned work is assigned by the team manager, not automatically. Default true. */
   autoAssign?: boolean;
   elementCode?: string | null;
@@ -101,6 +104,17 @@ export interface CreatedTicket {
 const hashCode = (ticketId: string, code: string) =>
   createHash('sha256').update(`${ticketId}:${code}`).digest('hex');
 
+/** Only NOC, technical managers and administrators send a ticket to another team than the one of its place. */
+export function assertMayChooseTeam(teamId: string | undefined, actor: AuthUser): void {
+  if (teamId && !actor.roles.some((r) => (CHOOSE_TEAM_ROLES as readonly string[]).includes(r))) {
+    throw new AppError(
+      HttpStatus.FORBIDDEN,
+      'FORBIDDEN_ROLE',
+      'Only NOC, technical managers and administrators choose another team'
+    );
+  }
+}
+
 /** Thrown inside the create transaction when the same external reference was already received. */
 export class DuplicateExternalRef extends Error {}
 
@@ -138,11 +152,12 @@ export class TicketsService {
     const outboxIds: string[] = [];
     {
       const code = await this.nextCode(tx);
-      const route = input.teamId
-        ? await this.teamRoute(tx, input.teamId)
-        : input.location
-          ? await this.route(tx, input.location)
-          : null;
+      const placeRoute = input.location ? await this.route(tx, input.location) : null;
+      const chosen = input.teamId ? await this.teamRoute(tx, input.teamId) : null;
+      // A team chosen instead of the place's team: the ticket stays in the area of its place.
+      const route = chosen
+        ? { ...chosen, areaId: input.teamReason ? (placeRoute?.areaId ?? chosen.areaId) : chosen.areaId }
+        : placeRoute;
       const incident =
         input.type === 'customer_complaint' &&
         input.linkIncident !== false &&
@@ -186,6 +201,16 @@ export class TicketsService {
         teamId: route?.teamId ?? null,
         routed: !!route?.teamId
       });
+      if (chosen && input.teamReason && placeRoute?.teamId !== chosen.teamId) {
+        await this.addEvent(tx, ticket.id, 'team_changed', actor, {
+          from: placeRoute?.teamId ?? null,
+          fromName: placeRoute?.teamId ? (await this.teamRoute(tx, placeRoute.teamId)).teamName : null,
+          to: chosen.teamId,
+          teamName: chosen.teamName,
+          reason: input.teamReason,
+          atCreation: true
+        });
+      }
       const messages: OutgoingSms[] = [];
       let status: TicketStatus = ticket.status;
 
@@ -264,14 +289,18 @@ export class TicketsService {
    */
   async whereTo(
     location: { lng: number; lat: number } | null,
-    opts: { outage: boolean }
+    opts: { outage: boolean; teamId?: string }
   ): Promise<{
     route: { areaId: string; teamId: string | null } | null;
+    /** The team covering the place, whatever team was chosen. */
+    placeTeamId: string | null;
     incident: { id: string; code: string } | null;
     assignee: { id: string; fullName: string; distanceM: number | null } | null;
   }> {
     return this.db.transaction(async (tx) => {
-      const route = location ? await this.route(tx, location) : null;
+      const place = location ? await this.route(tx, location) : null;
+      const chosen = opts.teamId ? await this.teamRoute(tx, opts.teamId) : null;
+      const route = chosen ? { areaId: place?.areaId ?? chosen.areaId, teamId: chosen.teamId } : place;
       const incident = opts.outage && location ? await this.nearbyIncident(tx, location) : null;
       const staff =
         route?.teamId && this.env.AUTO_ASSIGN
@@ -279,6 +308,7 @@ export class TicketsService {
           : undefined;
       return {
         route,
+        placeTeamId: place?.teamId ?? null,
         incident,
         assignee: staff ? { id: staff.id, fullName: staff.fullName, distanceM: staff.distanceM } : null
       };
@@ -735,31 +765,73 @@ export class TicketsService {
    * Moves a ticket to another team (tickets outside every area, or sent to the wrong team). Only while nobody is
    * working on it; it is then assigned like a new ticket.
    */
-  async setTeam(ticketId: string, teamId: string, actor: AuthUser): Promise<void> {
+  /**
+   * Moves an unfinished ticket to another team (a ticket outside every area, a place marked wrongly, a closer or
+   * less busy team). Once it has a team, the reason is needed and kept. Whoever was holding it is told and freed, and
+   * the ticket is assigned in the new team like a new one.
+   */
+  async setTeam(ticketId: string, teamId: string, actor: AuthUser, reason?: string): Promise<void> {
     const outboxIds: string[] = [];
     await this.db.transaction(async (tx) => {
       const [ticket] = await tx.select().from(tickets).where(eq(tickets.id, ticketId)).for('update');
       if (!ticket) throw notFound('Ticket');
-      if (!['new', 'reopened'].includes(ticket.status)) {
+      if (!['new', 'assigned', 'accepted', 'in_progress', 'on_hold', 'reopened'].includes(ticket.status)) {
         throw new AppError(
           HttpStatus.CONFLICT,
           'INVALID_TRANSITION',
-          'Only tickets nobody is working on can move to another team'
+          'Only tickets that are not finished can move to another team'
+        );
+      }
+      if (ticket.teamId === teamId) {
+        throw new AppError(
+          HttpStatus.UNPROCESSABLE_ENTITY,
+          'SAME_TEAM',
+          'The ticket is already in this team'
+        );
+      }
+      if (ticket.teamId && !reason) {
+        throw new AppError(
+          HttpStatus.UNPROCESSABLE_ENTITY,
+          'REASON_REQUIRED',
+          'Say why the ticket moves to another team'
         );
       }
       const route = await this.teamRoute(tx, teamId);
+      const previous = ticket.assigneeId ? await this.users.findById(ticket.assigneeId, tx) : undefined;
+      const status: TicketStatus = ticket.assigneeId
+        ? ticket.status === 'reopened'
+          ? 'reopened'
+          : 'new'
+        : ticket.status;
       await tx
         .update(tickets)
-        .set({ teamId, areaId: ticket.areaId ?? route.areaId, updatedAt: new Date() })
+        .set({
+          teamId,
+          areaId: ticket.areaId ?? route.areaId,
+          assigneeId: null,
+          status,
+          updatedAt: new Date()
+        })
         .where(eq(tickets.id, ticketId));
       await this.addEvent(tx, ticketId, 'team_changed', actor, {
         from: ticket.teamId,
+        fromName: ticket.teamId ? (await this.teamRoute(tx, ticket.teamId)).teamName : null,
         to: teamId,
-        teamName: route.teamName
+        teamName: route.teamName,
+        reason: reason ?? null,
+        unassignedName: previous?.fullName ?? null
       });
       const messages: OutgoingSms[] = [];
+      if (previous) {
+        messages.push({
+          recipient: previous.phone ?? null,
+          body: sms.staffUnassigned(ticket.code),
+          ticketId,
+          staff: { userId: previous.id, title: push.jobMoved }
+        });
+      }
       if (!ticket.incidentId) {
-        const auto = await this.autoAssign(tx, ticket, teamId, ticket.status, messages);
+        const auto = await this.autoAssign(tx, ticket, teamId, status, messages);
         if (!auto) {
           messages.push(
             ...toOffice(

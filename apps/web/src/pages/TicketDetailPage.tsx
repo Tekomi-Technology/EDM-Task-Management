@@ -8,6 +8,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { TicketMap } from '../components/TicketMap';
 import { Avatar, hasRole, OFFICE_ROLES, useCrumbs, useMe } from '../components/ui';
 import {
+  teamChangeText,
   EVENT_LABEL,
   firstName,
   formatTime,
@@ -88,8 +89,7 @@ function describe(e: TicketEventView): string {
   if (e.type === 'alarm_raised' || e.type === 'alarm_cleared') {
     return `${base}: ${String(e.data.alarmType ?? '')} (${String(e.data.elementCode ?? '')})`;
   }
-  if (e.type === 'team_changed' && typeof e.data.teamName === 'string')
-    return tr('moved it to team {0}', { 0: e.data.teamName });
+  if (e.type === 'team_changed' && typeof e.data.teamName === 'string') return teamChangeText(e.data);
   if (e.type === 'escalate') {
     const told =
       Array.isArray(e.data.notified) && e.data.notified.length
@@ -476,8 +476,8 @@ export function TicketDetailPage() {
               </span>
             </section>
           )}
-          {!t.teamId && canRoute && !['closed', 'cancelled'].includes(t.status) && (
-            <TeamPanel ticketId={t.id} onChange={done} />
+          {canRoute && !['resolved', 'closed', 'cancelled'].includes(t.status) && (
+            <TeamPanel t={t} onChange={done} />
           )}
           {left ? (
             <section className="card card-pad">
@@ -691,37 +691,95 @@ function NetworkCard({ t, onChange }: { t: TicketDetail; onChange: (updated: Tic
   );
 }
 
-/** Tickets outside every area have no team: NOC puts them in one, and they are assigned as usual. */
-function TeamPanel({ ticketId, onChange }: { ticketId: string; onChange: (updated: TicketDetail) => void }) {
+/**
+ * The ticket's team, for NOC, technical managers and administrators. A ticket outside every area has none and is put
+ * in one; an unfinished ticket can move to another team, saying why. Whoever holds it is told and freed, and the new
+ * team gets it like a new ticket.
+ */
+function TeamPanel({ t, onChange }: { t: TicketDetail; onChange: (updated: TicketDetail) => void }) {
+  const [open, setOpen] = useState(!t.teamId);
   const [teamId, setTeamId] = useState('');
-  const lookups = useQuery({ queryKey: ['lookups'], queryFn: () => api<Lookups>('/lookups') });
+  const [reason, setReason] = useState('');
+  const lookups = useQuery({ queryKey: ['lookups'], queryFn: () => api<Lookups>('/lookups'), enabled: open });
   const move = useMutation({
-    mutationFn: () => api<TicketDetail>(`/tickets/${ticketId}/team`, { method: 'POST', body: { teamId } }),
-    onSuccess: onChange
+    mutationFn: () =>
+      api<TicketDetail>(`/tickets/${t.id}/team`, {
+        method: 'POST',
+        body: { teamId, reason: reason.trim() || undefined }
+      }),
+    onSuccess: (updated) => {
+      setOpen(false);
+      setTeamId('');
+      setReason('');
+      onChange(updated);
+    }
   });
+  const needsReason = !!t.teamId;
+  if (!open) {
+    return (
+      <section className="card card-pad" aria-label={tr('Team')}>
+        <span className="label" style={{ fontSize: 15 }}>
+          {tr('Team')}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between' }}>
+          <strong>{t.teamName}</strong>
+          <button type="button" className="btn btn-sm" onClick={() => setOpen(true)}>
+            {tr('Move to another team')}
+          </button>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="card card-pad" aria-label={tr('Choose a team')}>
-      <h2>{tr('No team yet')}</h2>
+      <h2>{t.teamId ? tr('Move to another team') : tr('No team yet')}</h2>
       <span className="meta" style={{ fontSize: 14 }}>
-        {tr('The place is outside every team area. Choose the team that should go.')}
+        {t.teamId
+          ? tr('Now with team {0}.', { 0: t.teamName ?? '' })
+          : tr('The place is outside every team area. Choose the team that should go.')}
       </span>
       <select aria-label={tr('Team')} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
         <option value="">{tr('Choose a team…')}</option>
-        {lookups.data?.teams.map((x) => (
-          <option key={x.id} value={x.id}>
-            {x.name} · {x.areaName}
-          </option>
-        ))}
+        {lookups.data?.teams
+          .filter((x) => x.id !== t.teamId)
+          .map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.name} · {x.areaName}
+            </option>
+          ))}
       </select>
+      {needsReason && (
+        <input
+          aria-label={tr('Why it moves')}
+          value={reason}
+          maxLength={300}
+          placeholder={tr('Why it moves, e.g. place marked wrongly, closer team')}
+          onChange={(e) => setReason(e.target.value)}
+        />
+      )}
+      {t.assignee && (
+        <div className="notice" style={{ margin: 0 }}>
+          {tr('{0} no longer has the job and is told; the new team gets it like a new ticket.', {
+            0: t.assignee.fullName
+          })}
+        </div>
+      )}
       {move.error && <div className="error">{(move.error as ApiRequestError).message}</div>}
-      <button
-        type="button"
-        className="btn btn-primary"
-        disabled={!teamId || move.isPending}
-        onClick={() => move.mutate()}
-      >
-        {tr('Send to this team')}
-      </button>
+      <div className="btn-row">
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!teamId || (needsReason && reason.trim().length < 3) || move.isPending}
+          onClick={() => move.mutate()}
+        >
+          {t.teamId ? tr('Move to this team') : tr('Send to this team')}
+        </button>
+        {t.teamId && (
+          <button type="button" className="btn" onClick={() => setOpen(false)}>
+            {tr('Keep this team')}
+          </button>
+        )}
+      </div>
     </section>
   );
 }

@@ -60,6 +60,9 @@ export function useMe() {
   return useQuery({ queryKey: ['me'], queryFn: () => api<CurrentUser>('/me'), staleTime: 60_000 });
 }
 
+/** Who may send a ticket to another team than the one of its place (at creation or later). */
+export const CHOOSE_TEAM_ROLES = ['noc', 'technical_manager', 'admin'];
+
 /** EDM staff who may answer a call and enter a ticket themselves (New ticket screen). */
 export const TAKES_CALLS_ROLES = ['admin', 'technical_manager', 'team_manager', 'noc', 'bo_support'];
 

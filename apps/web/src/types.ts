@@ -676,7 +676,10 @@ export interface CustomerMatch {
 }
 
 export interface TicketPreview {
+  /** The team that goes: the one chosen, or else the team of the place. */
   team: { id: string; name: string } | null;
+  /** The team of the place, whatever was chosen. */
+  autoTeam: { id: string; name: string } | null;
   areaName: string | null;
   /** Who automatic assignment would pick now; null when nobody of the team is on duty (the manager is told). */
   assignee: { id: string; fullName: string; distanceM: number | null; openJobs: number } | null;
@@ -732,41 +735,51 @@ export interface CreateUser {
 }
 
 /** POST /tickets (New ticket screen): an EDM customer, a member of the public reporting the network, or other work. */
-export type OfficeTicket =
-  | {
-      type: 'customer_complaint';
-      customerId: string;
-      problemType: ProblemType;
-      /** Only for "other", which has no set priority (1 to 3). */
-      priority?: number;
-      description: string;
-      callerPhone?: string;
-      /** False when the caller's problem is not the open incident nearby. Default true. */
-      joinIncident?: boolean;
-    }
-  | {
-      type: 'network_incident';
-      reportType: NetworkReportType;
-      address: string;
-      location?: { lat: number; lng: number };
-      description: string;
-      callerName?: string;
-      callerPhone?: string;
-    }
-  | {
-      type: 'other';
-      title: string;
-      description: string;
-      /** 1 to 3; the time limit follows it. */
-      priority: number;
-      customerId?: string;
-      address?: string;
-      location?: { lat: number; lng: number };
-      callerPhone?: string;
-    };
+/**
+ * Another team than the one of the place (NOC, technical managers and administrators only), with the reason.
+ */
+export interface TeamChoiceInput {
+  teamId?: string;
+  teamReason?: string;
+}
+
+export type OfficeTicket = TeamChoiceInput &
+  (
+    | {
+        type: 'customer_complaint';
+        customerId: string;
+        problemType: ProblemType;
+        /** Only for "other", which has no set priority (1 to 3). */
+        priority?: number;
+        description: string;
+        callerPhone?: string;
+        /** False when the caller's problem is not the open incident nearby. Default true. */
+        joinIncident?: boolean;
+      }
+    | {
+        type: 'network_incident';
+        reportType: NetworkReportType;
+        address: string;
+        location?: { lat: number; lng: number };
+        description: string;
+        callerName?: string;
+        callerPhone?: string;
+      }
+    | {
+        type: 'other';
+        title: string;
+        description: string;
+        /** 1 to 3; the time limit follows it. */
+        priority: number;
+        customerId?: string;
+        address?: string;
+        location?: { lat: number; lng: number };
+        callerPhone?: string;
+      }
+  );
 
 /** POST /new-customers/surveys: a survey without the Sales system. */
-export interface OfficeSurvey {
+export interface OfficeSurvey extends TeamChoiceInput {
   customer: { fullName: string; phone?: string; address: string; location?: { lat: number; lng: number } };
   premises: PremisesType;
   supply: SupplyType;
@@ -775,7 +788,7 @@ export interface OfficeSurvey {
 }
 
 /** POST /new-customers/connections: a connection without the Sales system (checked by the Call Center). */
-export interface OfficeConnection {
+export interface OfficeConnection extends TeamChoiceInput {
   contractNo: string;
   surveyTicketId?: string;
   customerId?: string;
@@ -786,10 +799,17 @@ export interface OfficeConnection {
 }
 
 /** POST /tickets/preview */
-export type TicketPreviewInput =
+export type TicketPreviewInput = { teamId?: string } & (
   | { type: 'customer_complaint'; customerId: string; problemType: ProblemType; priority?: number }
   | { type: 'network_incident'; reportType: NetworkReportType; location?: { lat: number; lng: number } }
-  | { type: 'other'; priority: number; customerId?: string; location?: { lat: number; lng: number } };
+  | { type: 'other'; priority: number; customerId?: string; location?: { lat: number; lng: number } }
+);
+
+/** GET /places/team: which area and team a point on the map falls in. */
+export interface PlaceTeam {
+  areaName: string | null;
+  team: { id: string; name: string } | null;
+}
 
 // ---- Signing in and settings ----
 

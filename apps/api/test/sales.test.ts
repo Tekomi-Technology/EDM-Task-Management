@@ -295,6 +295,44 @@ describe('new customers from the Sales system: survey, connection, handover, act
     expect(failed.body.status).toBe('reopened');
   });
 
+  it('lets the office send a survey or a connection to another team than the one of the place, with the reason', async () => {
+    const teams = (await t.as('carla.manhica').get('/api/lookups')).body.teams as {
+      id: string;
+      name: string;
+    }[];
+    const south2 = teams.find((x) => x.name === 'South 2')!.id;
+    const form: Record<string, unknown> = { ...survey('unused'), teamId: south2 };
+    delete form.externalRef;
+    expect((await t.as('carla.manhica').post('/api/new-customers/surveys', form)).status).toBe(400);
+    const made = await t
+      .as('carla.manhica')
+      .post('/api/new-customers/surveys', { ...form, teamReason: 'South 1 is on the outage' });
+    expect(made.status).toBe(201);
+    const surveyed = (await t.as('carla.manhica').get(`/api/tickets/${made.body.id}`)).body;
+    expect(surveyed).toMatchObject({ teamName: 'South 2' });
+    expect(
+      (surveyed.events as { type: string; data: Record<string, unknown> }[]).find(
+        (e) => e.type === 'team_changed'
+      )?.data
+    ).toMatchObject({ teamName: 'South 2', reason: 'South 1 is on the outage', atCreation: true });
+
+    const conn = await t.as('carla.manhica').post('/api/new-customers/connections', {
+      contractNo: '88302',
+      customer: {
+        fullName: 'Escola Primária',
+        address: 'Matola Gare, Rua 4',
+        location: { lat: -25.915, lng: 32.455 }
+      },
+      supply: 'single_phase',
+      teamId: south2,
+      teamReason: 'South 2 has the meters'
+    });
+    expect(conn.status).toBe(201);
+    expect((await t.as('carla.manhica').get(`/api/tickets/${conn.body.id}`)).body).toMatchObject({
+      teamName: 'South 2'
+    });
+  });
+
   it('takes a survey and a connection typed in by the office, without Sales, checked by the Call Center queue', async () => {
     await t.as('armando.cossa').post('/api/me/duty', { onDuty: true });
     const form: Record<string, unknown> = survey('unused');

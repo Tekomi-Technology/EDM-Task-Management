@@ -3,10 +3,12 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   customerLookupSchema,
   officeTicketSchema,
+  reverseGeocodeSchema,
   ticketPreviewSchema,
   type CreatedTicketView,
   type CustomerMatch,
   type OfficeTicket,
+  type PlaceTeam,
   type TicketPreview,
   type TicketPreviewInput
 } from '../contract';
@@ -38,6 +40,12 @@ export class OfficeTicketsController {
   @ApiZodBody(ticketPreviewSchema)
   preview(@ZodBody(ticketPreviewSchema) body: TicketPreviewInput): Promise<TicketPreview> {
     return this.office.preview(body);
+  }
+
+  /** Which area and team a point on the map falls in (forms that only have a place, like surveys). */
+  @Get('places/team')
+  placeTeam(@ZodQuery(reverseGeocodeSchema) q: z.infer<typeof reverseGeocodeSchema>): Promise<PlaceTeam> {
+    return this.office.placeTeam(q);
   }
 
   @Post('tickets')

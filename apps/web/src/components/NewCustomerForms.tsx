@@ -3,6 +3,7 @@ import type {
   NewCustomerCard,
   OfficeConnection,
   OfficeSurvey,
+  PlaceTeam,
   PremisesType,
   SupplyType
 } from '../types';
@@ -15,6 +16,7 @@ import { t } from '../i18n';
 import { CustomerSearch } from './CustomerSearch';
 import { LocationPicker } from './LocationPicker';
 import { useMapAddress } from './mapAddress';
+import { TeamChoice, teamChoiceBody, type TeamPick } from './TeamChoice';
 
 type Created = { id: string; code: string };
 type Prospect = OfficeSurvey['customer'];
@@ -132,6 +134,16 @@ function SupplyAndPremises({
 
 const EMPTY_PROSPECT: Prospect = { fullName: '', phone: '', address: '' };
 
+/** The team of the area a point falls in, once the point is marked. */
+function usePlaceTeam(location: { lat: number; lng: number } | null | undefined): string | null {
+  const place = useQuery({
+    queryKey: ['place-team', location?.lat, location?.lng],
+    queryFn: () => api<PlaceTeam>(`/places/team?lat=${location!.lat}&lng=${location!.lng}`),
+    enabled: !!location
+  });
+  return place.data?.team?.name ?? null;
+}
+
 function clean(p: Prospect): Prospect {
   return {
     fullName: p.fullName.trim(),
@@ -148,6 +160,8 @@ export function SurveyForm({ onCreated }: { onCreated: (t: Created) => void }) {
   const [supply, setSupply] = useState<SupplyType>('single_phase');
   const [load, setLoad] = useState('');
   const [notes, setNotes] = useState('');
+  const [team, setTeam] = useState<TeamPick | null>(null);
+  const placeTeam = usePlaceTeam(customer.location);
   const create = useMutation({
     mutationFn: () =>
       api<Created>('/new-customers/surveys', {
@@ -157,7 +171,8 @@ export function SurveyForm({ onCreated }: { onCreated: (t: Created) => void }) {
           premises: premises as PremisesType,
           supply,
           requestedLoadKw: load ? Number(load) : undefined,
-          notes: notes.trim() || undefined
+          notes: notes.trim() || undefined,
+          ...teamChoiceBody(team)
         } satisfies OfficeSurvey
       }),
     onSuccess: onCreated
@@ -193,6 +208,7 @@ export function SurveyForm({ onCreated }: { onCreated: (t: Created) => void }) {
         <label htmlFor="nc-notes">{t('Notes for the surveyor (optional)')}</label>
         <textarea id="nc-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
+      <TeamChoice autoTeamName={placeTeam} value={team} onChange={setTeam} />
       <div className="notice" style={{ margin: 0 }}>
         {t(
           'The team of the area surveys the premises. The survey closes when the report is sent; nothing is sent to the Sales system.'
@@ -220,6 +236,8 @@ export function ConnectionForm({ onCreated }: { onCreated: (t: Created) => void 
   const [premises, setPremises] = useState<PremisesType | ''>('');
   const [supply, setSupply] = useState<SupplyType>('single_phase');
   const [notes, setNotes] = useState('');
+  const [team, setTeam] = useState<TeamPick | null>(null);
+  const newPlaceTeam = usePlaceTeam(basis === 'new' ? customer.location : null);
   const board = useQuery({
     queryKey: ['new-customers', ''],
     queryFn: () => api<NewCustomerCard[]>('/new-customers')
@@ -239,7 +257,8 @@ export function ConnectionForm({ onCreated }: { onCreated: (t: Created) => void 
           customer: basis === 'new' ? clean(customer) : undefined,
           premises: premises || undefined,
           supply,
-          notes: notes.trim() || undefined
+          notes: notes.trim() || undefined,
+          ...teamChoiceBody(team)
         } satisfies OfficeConnection
       });
     },
@@ -315,6 +334,13 @@ export function ConnectionForm({ onCreated }: { onCreated: (t: Created) => void 
         <label htmlFor="nc-cnotes">{t('Notes for the team (optional)')}</label>
         <textarea id="nc-cnotes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
+      <TeamChoice
+        autoTeamName={
+          basis === 'customer' ? (known?.teamName ?? null) : basis === 'new' ? newPlaceTeam : null
+        }
+        value={team}
+        onChange={setTeam}
+      />
       <div className="notice" style={{ margin: 0 }}>
         {t(
           'The team of the area builds the connection. Then the Call Center checks it with the customer, and it is closed in Closing checks.'
