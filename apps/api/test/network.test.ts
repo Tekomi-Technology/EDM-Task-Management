@@ -317,6 +317,14 @@ describe('network incidents from the NMS and the public, and planned work', () =
       planned: { kind: 'maintenance', outage: true, customersAffected: 240, element: 'PT-1180 · Liberdade' }
     });
 
+    // Switching duty on does not pick up planned work: the manager gives it out closer to the date.
+    await t.as('ofelia.tembe').post('/api/me/duty', { onDuty: false });
+    await t.as('ofelia.tembe').post('/api/me/duty', { onDuty: true });
+    expect((await t.as('nadia.mussa').get(`/api/tickets/${created.body.id}`)).body).toMatchObject({
+      status: 'new',
+      assignee: null
+    });
+
     const week = (
       await t
         .as('joao.matsinhe')

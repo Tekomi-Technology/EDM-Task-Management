@@ -61,6 +61,8 @@ export const teams = pgTable('teams', {
   areaId: uuid('area_id')
     .notNull()
     .references(() => areas.id),
+  /** The team that gets the new tickets of its area; when none is marked, the first by code does. */
+  receivesNew: boolean('receives_new').notNull().default(false),
   createdAt: createdAt()
 });
 

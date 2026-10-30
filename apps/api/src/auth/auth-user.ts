@@ -21,7 +21,7 @@ export interface AuthUser {
 export const SYSTEM_ACTOR: AuthUser = {
   sub: 'system',
   username: 'system',
-  fullName: 'System (auto-assign)',
+  fullName: 'System',
   roles: ['admin'],
   userId: null,
   teamId: null,
@@ -40,6 +40,13 @@ export function actorLabel(user: AuthUser): string {
 }
 
 /** Actor recorded in ticket history for time-limit reminders and escalations. */
+/** Automatic assignment, named so the history says who gave the job out. */
+export const AUTO_ASSIGN_ACTOR: AuthUser = {
+  ...SYSTEM_ACTOR,
+  sub: 'system-auto-assign',
+  fullName: 'System (auto-assign)'
+};
+
 export const TIME_LIMITS_ACTOR: AuthUser = {
   ...SYSTEM_ACTOR,
   sub: 'system-time-limits',

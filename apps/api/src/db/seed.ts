@@ -25,6 +25,7 @@ import {
   SEED_USERS,
   SEED_VANS
 } from './seed-data';
+import { markTeamReceivers } from './team-receivers';
 
 /** Inserts or refreshes the sample areas, teams, users and customers. Safe to run repeatedly. */
 export async function seed(db: Db): Promise<void> {
@@ -43,6 +44,7 @@ export async function seed(db: Db): Promise<void> {
       .values({ code: t.code, name: t.name, areaId: areaId(t.areaCode) })
       .onConflictDoUpdate({ target: teams.code, set: { name: t.name, areaId: areaId(t.areaCode) } });
   }
+  await markTeamReceivers(db);
   const teamRows = await db.select({ id: teams.id, code: teams.code }).from(teams);
   const teamId = (code: string | null) => (code ? teamRows.find((r) => r.code === code)!.id : null);
 

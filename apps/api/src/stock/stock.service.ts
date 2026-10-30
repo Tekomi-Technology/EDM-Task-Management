@@ -429,6 +429,21 @@ export class StockService {
     return depot?.id ?? null;
   }
 
+  /** What the depot of an area or team could set aside now (its balance minus what is reserved), per item. */
+  async freeInDepot(
+    place: { areaId: string | null; teamId: string | null },
+    itemIds: string[]
+  ): Promise<{ depot: { id: string; name: string } | null; free: Map<string, number> }> {
+    return this.db.transaction(async (tx) => {
+      const depotId = await this.depotFor(tx, place);
+      const free = new Map<string, number>();
+      if (!depotId) return { depot: null, free };
+      for (const id of itemIds) free.set(id, await this.available(tx, depotId, id));
+      const loc = await this.location(tx, depotId);
+      return { depot: { id: depotId, name: loc!.name }, free };
+    });
+  }
+
   /**
    * Sets material aside in the ticket's depot. With `partial`, reserves what is available and returns what could
    * not be (used for estimates from surveys); otherwise refuses if anything is missing.

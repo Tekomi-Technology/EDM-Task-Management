@@ -173,7 +173,7 @@ const NEXT_FOR: Partial<Record<TicketType, string[]>> = {
   new_connection: [
     'The team of the area gets it; the material estimate of the survey is set aside.',
     'The customer confirms the handover with an SMS code or a signed form.',
-    'The Call Center checks with the customer, then it is closed in Closing checks.'
+    'The Call Center, NOC or an administrator checks with the customer, then closes it in Closing checks.'
   ]
 };
 

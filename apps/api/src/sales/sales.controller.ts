@@ -11,6 +11,7 @@ import {
   type ActivationResult,
   type ConnectionRequest,
   type NewCustomerCard,
+  type WaitingSurvey,
   type OfficeConnection,
   type OfficeSurvey,
   type SurveyRequest
@@ -101,6 +102,13 @@ export class NewCustomersController {
     @ZodQuery(areaFilterSchema) q: AreaFilter
   ): Promise<NewCustomerCard[]> {
     return this.sales.board(user, q.areaId);
+  }
+
+  /** New connection after a survey: the finished surveys waiting for one, with what the connection would take. */
+  @Get('surveys/waiting')
+  @Roles('admin', 'technical_manager')
+  waitingSurveys(@CurrentUser() user: AuthUser): Promise<WaitingSurvey[]> {
+    return this.sales.waitingSurveys(user);
   }
 
   /** New ticket screen: a survey without the Sales system (nothing is sent back to Sales). */

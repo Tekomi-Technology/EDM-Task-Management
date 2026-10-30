@@ -112,6 +112,35 @@ export interface ReservationView {
   locationName: string;
 }
 
+/** A finished survey a connection can follow (New ticket → New connection → After a survey). */
+export interface WaitingSurvey {
+  ticketId: string;
+  code: string;
+  customer: { fullName: string; phone: string | null; address: string | null } | null;
+  premises: PremisesType | null;
+  supply: SupplyType | null;
+  requestedLoadKw: number | null;
+  result: SurveyResult;
+  distanceToNetworkM: number | null;
+  nearestElement: string | null;
+  worksNeeded: string | null;
+  surveyedBy: string | null;
+  surveyedAt: string | null;
+  /** Who the connection would go to: the team of the place and the person automatic assignment would pick. */
+  team: { id: string; name: string } | null;
+  assignee: { id: string; fullName: string; onDuty: boolean } | null;
+  /** The depot of the area, and for each estimated material how much is free there now. */
+  depot: { id: string; name: string } | null;
+  materials: {
+    itemId: string;
+    code: string;
+    name: string;
+    unit: StockUnit;
+    needed: number;
+    free: number | null;
+  }[];
+}
+
 export interface NewCustomerInfo {
   kind: 'survey' | 'connection';
   premises: PremisesType | null;

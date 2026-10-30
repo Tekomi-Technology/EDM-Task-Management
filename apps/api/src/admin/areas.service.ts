@@ -12,6 +12,7 @@ import { eq, sql } from 'drizzle-orm';
 import { AppError, notFound } from '../common/errors';
 import { DB, type Db, type Tx } from '../db/db.module';
 import { areas, teams } from '../db/schema';
+import { markTeamReceivers } from '../db/team-receivers';
 
 /** "Maputo Central" → "MAPUTO_CENTRAL": letters and digits only, accents dropped. */
 export function codeFrom(name: string): string {
@@ -64,7 +65,7 @@ export class AreasService {
             'people', (select count(*)::int from users u where u.team_id = t.id and u.status = 'active'),
             'managers', coalesce((select json_agg(u.full_name order by u.full_name) from users u
               where u.team_id = t.id and u.status = 'active' and 'team_manager' = any(u.roles)), '[]'::json)
-          ) order by t.code)
+          ) order by t.receives_new desc, t.code)
           from teams t where t.area_id = a.id) as teams
       from areas a
       order by a.name`);
@@ -140,6 +141,7 @@ export class AreasService {
         .insert(teams)
         .values({ code, name: input.name, areaId: input.areaId })
         .returning({ id: teams.id });
+      await markTeamReceivers(tx);
       return row!.id;
     });
     return this.team(id);
@@ -149,10 +151,20 @@ export class AreasService {
   async updateTeam(id: string, input: UpdateTeam): Promise<TeamView> {
     await this.team(id);
     if (input.areaId) await this.get(input.areaId);
-    await this.db
-      .update(teams)
-      .set({ ...(input.name ? { name: input.name } : {}), ...(input.areaId ? { areaId: input.areaId } : {}) })
-      .where(eq(teams.id, id));
+    await this.db.transaction(async (tx) => {
+      // A team moved to another area does not take over the new tickets there.
+      const changes = {
+        ...(input.name ? { name: input.name } : {}),
+        ...(input.areaId ? { areaId: input.areaId, receivesNew: false } : {})
+      };
+      if (Object.keys(changes).length) await tx.update(teams).set(changes).where(eq(teams.id, id));
+      if (input.receivesNew) {
+        const [row] = await tx.select({ areaId: teams.areaId }).from(teams).where(eq(teams.id, id));
+        await tx.update(teams).set({ receivesNew: false }).where(eq(teams.areaId, row!.areaId));
+        await tx.update(teams).set({ receivesNew: true }).where(eq(teams.id, id));
+      }
+      await markTeamReceivers(tx);
+    });
     return this.team(id);
   }
 
@@ -174,7 +186,10 @@ export class AreasService {
         'People, tickets or vans belong to this team; move the people to another team, the team is kept for history'
       );
     }
-    await this.db.delete(teams).where(eq(teams.id, id));
+    await this.db.transaction(async (tx) => {
+      await tx.delete(teams).where(eq(teams.id, id));
+      await markTeamReceivers(tx);
+    });
   }
 
   private async get(id: string): Promise<AreaView> {

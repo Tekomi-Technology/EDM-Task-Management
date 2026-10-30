@@ -304,7 +304,7 @@ export class OfficeTicketsService {
     if (!location) return { areaName: null, teamName: null };
     const result = await this.db.execute<{ area: string; team: string | null }>(sql`
       select a.name as area,
-        (select t.name from teams t where t.area_id = a.id order by t.code limit 1) as team
+        (select t.name from teams t where t.area_id = a.id order by t.receives_new desc, t.code limit 1) as team
       from areas a
       where ST_Contains(a.boundary, ST_SetSRID(ST_MakePoint(${location.lng}, ${location.lat}), 4326))
       order by a.code limit 1`);

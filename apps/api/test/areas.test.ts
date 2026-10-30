@@ -118,6 +118,38 @@ describe('areas and teams (Settings)', () => {
     expect(shrunk.status).toBe(200);
   });
 
+  it('lets the administrator choose which team of an area gets its new tickets', async () => {
+    const matola = await areaNamed('Matola');
+    const zeta = (await admin().post('/api/admin/teams', { name: 'Zeta', areaId: matola.id })).body;
+    const teamsOf = async () =>
+      ((await areaNamed('Matola')) as unknown as { teams: { name: string }[] }).teams.map((x) => x.name);
+    const whoGets = async () =>
+      (
+        await t.as('paulo.bo').post('/api/tickets/preview', {
+          type: 'other',
+          priority: 2,
+          location: { lat: -25.931, lng: 32.471 }
+        })
+      ).body.team.name;
+    expect(await teamsOf()).toEqual(['South 1', 'Zeta']);
+    expect(await whoGets()).toBe('South 1');
+    // A team added later never takes over by itself, whatever its name.
+    await admin().post('/api/admin/teams', { name: 'Alfa', areaId: matola.id });
+    expect(await teamsOf()).toEqual(['South 1', 'Alfa', 'Zeta']);
+    expect(await whoGets()).toBe('South 1');
+
+    expect((await admin().patch(`/api/admin/teams/${zeta.id}`, { receivesNew: true })).status).toBe(200);
+    // The team that gets the new tickets is listed first.
+    expect(await teamsOf()).toEqual(['Zeta', 'Alfa', 'South 1']);
+    expect(await whoGets()).toBe('Zeta');
+
+    // Moved to another area, it no longer takes the new tickets of either: the first team left in Matola does.
+    const north = (await admin().post('/api/admin/areas', { name: 'Matola Norte', boundary: NORTH })).body;
+    await admin().patch(`/api/admin/teams/${zeta.id}`, { areaId: north.id });
+    expect(await whoGets()).toBe('Alfa');
+    expect((await admin().patch(`/api/admin/teams/${zeta.id}`, { receivesNew: false })).status).toBe(400);
+  });
+
   it('moves teams between areas, and deletes only what was never used', async () => {
     const matola = await areaNamed('Matola');
     const north = (await admin().post('/api/admin/areas', { name: 'Matola Norte', boundary: NORTH })).body;

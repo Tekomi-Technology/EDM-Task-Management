@@ -533,13 +533,18 @@ export const officeConnectionSchema = z
     /** A new customer, when there was no survey and they are not known yet. */
     customer: prospectSchema.optional(),
     premises: z.enum(PREMISES_TYPES).optional(),
-    supply: z.enum(SUPPLY_TYPES),
+    /** Left out after a survey: the supply surveyed is kept. */
+    supply: z.enum(SUPPLY_TYPES).optional(),
     notes: z.string().trim().max(2000).optional(),
     ...teamChoice
   })
   .refine((v) => !!v.surveyTicketId || !!v.customerId || !!v.customer, {
     message: 'Give the survey, or the customer',
     path: ['customer']
+  })
+  .refine((v) => !!v.surveyTicketId || !!v.supply, {
+    message: 'Say which supply is connected',
+    path: ['supply']
   })
   .refine(teamNeedsReason, teamReasonIssue);
 export type OfficeConnection = z.infer<typeof officeConnectionSchema>;
@@ -894,5 +899,8 @@ export const createTeamSchema = z.object({
 });
 export type CreateTeam = z.infer<typeof createTeamSchema>;
 
-export const updateTeamSchema = createTeamSchema.partial();
+export const updateTeamSchema = createTeamSchema.partial().extend({
+  /** Make this team the one that gets the new tickets of its area. */
+  receivesNew: z.literal(true).optional()
+});
 export type UpdateTeam = z.infer<typeof updateTeamSchema>;

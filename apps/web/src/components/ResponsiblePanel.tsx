@@ -37,7 +37,9 @@ export function ResponsiblePanel({
 
   const state = !t.assignee
     ? unfinished
-      ? { text: 'Nobody yet', tone: 'late' }
+      ? t.type === 'planned_work'
+        ? { text: 'To be given out', tone: 'blue' }
+        : { text: 'Nobody yet', tone: 'late' }
       : null
     : PERSON_STATE[t.status];
   return (
@@ -64,7 +66,9 @@ export function ResponsiblePanel({
                 ? tr('Team {0}', { 0: t.teamName ?? '' })
                 : t.incident
                   ? tr('Nobody is sent: it closes with network incident {0}.', { 0: t.incident.code })
-                  : tr('Nobody is left in team {0} to give it to.', { 0: t.teamName ?? '' })}
+                  : t.type === 'planned_work'
+                    ? tr('The team manager chooses who goes before the planned date.')
+                    : tr('Nobody is left in team {0} to give it to.', { 0: t.teamName ?? '' })}
           </span>
         </div>
       </div>

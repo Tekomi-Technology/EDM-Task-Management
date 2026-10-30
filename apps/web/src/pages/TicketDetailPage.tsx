@@ -130,7 +130,8 @@ function Timeline({ events }: { events: TicketEventView[] }) {
             <div className="what">
               <div>
                 <span className="meta when">{formatWhen(e.createdAt)}</span>
-                <strong>{e.actorName ?? tr('System')}</strong>{' '}
+                {/* System names and notes are the app's own words, so they are translated. */}
+                <strong>{system ? tr(e.actorName ?? 'System') : e.actorName}</strong>{' '}
                 <span style={{ color: 'var(--text-2)' }}>{describe(e)}</span>
               </div>
               {typeof e.data.occurredAt === 'string' && (
@@ -139,7 +140,9 @@ function Timeline({ events }: { events: TicketEventView[] }) {
                   {tr('without signal, sent when back online')}
                 </div>
               )}
-              {typeof e.data.note === 'string' && <div className="note">{e.data.note}</div>}
+              {typeof e.data.note === 'string' && (
+                <div className="note">{system ? tr(e.data.note) : e.data.note}</div>
+              )}
               {typeof e.data.reason === 'string' && (
                 <div className="note">
                   {tr('Reason:')} {e.data.reason}

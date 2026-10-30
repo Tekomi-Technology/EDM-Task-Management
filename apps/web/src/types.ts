@@ -800,8 +800,36 @@ export interface OfficeConnection extends TeamChoiceInput {
   customerId?: string;
   customer?: OfficeSurvey['customer'];
   premises?: PremisesType;
-  supply: SupplyType;
+  /** Left out after a survey: the supply surveyed is kept. */
+  supply?: SupplyType;
   notes?: string;
+}
+
+/** GET /new-customers/surveys/waiting: a finished survey a connection can follow. */
+export interface WaitingSurvey {
+  ticketId: string;
+  code: string;
+  customer: { fullName: string; phone: string | null; address: string | null } | null;
+  premises: PremisesType | null;
+  supply: SupplyType | null;
+  requestedLoadKw: number | null;
+  result: 'feasible' | 'feasible_with_works' | 'not_feasible';
+  distanceToNetworkM: number | null;
+  nearestElement: string | null;
+  worksNeeded: string | null;
+  surveyedBy: string | null;
+  surveyedAt: string | null;
+  team: { id: string; name: string } | null;
+  assignee: { id: string; fullName: string; onDuty: boolean } | null;
+  depot: { id: string; name: string } | null;
+  materials: {
+    itemId: string;
+    code: string;
+    name: string;
+    unit: string;
+    needed: number;
+    free: number | null;
+  }[];
 }
 
 /** POST /tickets/preview */

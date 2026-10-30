@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import { api, ApiRequestError } from '../api';
+import { TemporaryPasswordDialog, type TemporaryPassword } from '../components/TemporaryPasswordDialog';
 import { useCrumbs } from '../components/ui';
 import { UserEditor } from '../components/UserEditor';
 import { ROLE_LABEL } from '../format';
@@ -24,7 +25,7 @@ export function UsersPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   /** A temporary password, shown once after creating an account or resetting its password. */
-  const [secret, setSecret] = useState<{ fullName: string; password: string } | null>(null);
+  const [secret, setSecret] = useState<TemporaryPassword | null>(null);
 
   const params = new URLSearchParams();
   if (search.trim()) params.set('search', search.trim());
@@ -59,7 +60,7 @@ export function UsersPage() {
     },
     onSuccess: (created) => {
       if (created) {
-        setSecret({ fullName: created.user.fullName, password: created.temporaryPassword });
+        setSecret({ ...created.user, password: created.temporaryPassword });
         setCreating(false);
         setSelectedId(created.user.id);
       }
@@ -78,8 +79,7 @@ export function UsersPage() {
       return { ...v, result };
     },
     onSuccess: ({ user, result }) => {
-      if ('temporaryPassword' in result)
-        setSecret({ fullName: user.fullName, password: result.temporaryPassword });
+      if ('temporaryPassword' in result) setSecret({ ...user, password: result.temporaryPassword });
       void refresh();
     }
   });
@@ -111,27 +111,7 @@ export function UsersPage() {
         </button>
       </div>
 
-      {secret && (
-        <div className="notice" role="status">
-          <div>
-            {t('Temporary password for')} <strong>{secret.fullName}</strong>:{' '}
-            <span className="secret">{secret.password}</span>
-          </div>
-          <div style={{ marginTop: 4 }}>
-            {t(
-              'Give it to the person directly. They choose a new password at first sign-in. It is not shown again.'
-            )}
-          </div>
-          <button
-            type="button"
-            className="btn btn-sm"
-            style={{ marginTop: 10 }}
-            onClick={() => setSecret(null)}
-          >
-            {t('Done')}
-          </button>
-        </div>
-      )}
+      {secret && <TemporaryPasswordDialog secret={secret} onClose={() => setSecret(null)} />}
       {error && <div className="error">{error.message}</div>}
 
       <div className="two-col" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 420px)' }}>

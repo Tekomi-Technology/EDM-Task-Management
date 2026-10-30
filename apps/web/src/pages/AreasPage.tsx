@@ -1,8 +1,9 @@
 import type { AreaView, Boundary } from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2, Upload, Users } from 'lucide-react';
+import { Plus, Upload, Users } from 'lucide-react';
 import { useState, type ChangeEvent } from 'react';
 import { api, ApiRequestError } from '../api';
+import { ActionMenu } from '../components/ActionMenu';
 import { AreaMap, type LngLat } from '../components/AreaMap';
 import { useCrumbs } from '../components/ui';
 import { t } from '../i18n';
@@ -60,21 +61,28 @@ function TeamRow({
   team,
   areas,
   areaId,
+  receivesNew,
   onError
 }: {
   team: AreaView['teams'][number];
   areas: AreaView[];
   areaId: string;
+  /** This team gets the new tickets of its area. */
+  receivesNew: boolean;
   onError: (message: string | null) => void;
 }) {
   const queryClient = useQueryClient();
+  const [mode, setMode] = useState<'rename' | 'move' | 'delete' | null>(null);
+  const [name, setName] = useState(team.name);
+  const [target, setTarget] = useState('');
   const done = () => {
     onError(null);
+    setMode(null);
     void queryClient.invalidateQueries({ queryKey: ['admin-areas'] });
     void queryClient.invalidateQueries({ queryKey: ['lookups'] });
   };
   const change = useMutation({
-    mutationFn: (body: { name?: string; areaId?: string }) =>
+    mutationFn: (body: { name?: string; areaId?: string; receivesNew?: true }) =>
       api(`/admin/teams/${team.id}`, { method: 'PATCH', body }),
     onSuccess: done,
     onError: (e) => onError(problem(e))
@@ -84,48 +92,103 @@ function TeamRow({
     onSuccess: done,
     onError: (e) => onError(problem(e))
   });
+  const others = areas.filter((a) => a.id !== areaId);
   return (
     <div className="area-team">
-      <Users size={16} aria-hidden />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <strong>{team.name}</strong>
-        <div className="meta">
-          {t(team.people === 1 ? '{0} person' : '{0} people', { 0: team.people })}
-          {team.managers.length ? ` · ${t('manager')}: ${team.managers.join(', ')}` : ''}
+      <div className="area-team-row">
+        <span className="area-team-icon" aria-hidden="true">
+          <Users size={18} />
+        </span>
+        <div className="area-team-text">
+          <div className="area-team-name">
+            <strong>{team.name}</strong>
+            {receivesNew && <span className="chip chip-ok">{t('Gets new tickets')}</span>}
+          </div>
+          <span className="meta">
+            {t(team.people === 1 ? '{0} person' : '{0} people', { 0: team.people })} ·{' '}
+            {team.managers.length ? t('Manager: {0}', { 0: team.managers.join(', ') }) : t('No manager yet')}
+          </span>
         </div>
+        <ActionMenu
+          label={t('Actions for team {0}', { 0: team.name })}
+          actions={[
+            { label: t('Rename the team'), onSelect: () => (setName(team.name), setMode('rename')) },
+            ...(receivesNew
+              ? []
+              : [
+                  {
+                    label: t('Make it get the new tickets'),
+                    onSelect: () => change.mutate({ receivesNew: true })
+                  }
+                ]),
+            ...(others.length
+              ? [{ label: t('Move to another area…'), onSelect: () => (setTarget(''), setMode('move')) }]
+              : []),
+            { label: t('Delete the team'), danger: true, onSelect: () => setMode('delete') }
+          ]}
+        />
       </div>
-      <select
-        aria-label={t('Move {0} to another area', { 0: team.name })}
-        value={areaId}
-        onChange={(e) => change.mutate({ areaId: e.target.value })}
-      >
-        {areas.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
-      <button
-        type="button"
-        className="btn btn-sm"
-        aria-label={t('Rename {0}', { 0: team.name })}
-        onClick={() => {
-          const name = window.prompt(t('New name of the team'), team.name)?.trim();
-          if (name && name !== team.name) change.mutate({ name });
-        }}
-      >
-        <Pencil size={14} />
-      </button>
-      <button
-        type="button"
-        className="btn btn-sm"
-        aria-label={t('Delete {0}', { 0: team.name })}
-        onClick={() => {
-          if (window.confirm(t('Delete the team {0}?', { 0: team.name }))) remove.mutate();
-        }}
-      >
-        <Trash2 size={14} />
-      </button>
+      {mode === 'rename' && (
+        <form
+          className="area-inline"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (name.trim() && name.trim() !== team.name) change.mutate({ name: name.trim() });
+            else setMode(null);
+          }}
+        >
+          <label htmlFor={`rename-${team.id}`}>{t('Name of the team')}</label>
+          <input id={`rename-${team.id}`} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          <div className="btn-row">
+            <button type="submit" className="btn btn-sm btn-primary" disabled={name.trim().length < 2}>
+              {t('Save')}
+            </button>
+            <button type="button" className="btn btn-sm" onClick={() => setMode(null)}>
+              {t('Cancel')}
+            </button>
+          </div>
+        </form>
+      )}
+      {mode === 'move' && (
+        <form
+          className="area-inline"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (target) change.mutate({ areaId: target });
+          }}
+        >
+          <label htmlFor={`move-${team.id}`}>{t('Move {0} to the area', { 0: team.name })}</label>
+          <select id={`move-${team.id}`} value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">{t('Choose…')}</option>
+            {others.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          <div className="btn-row">
+            <button type="submit" className="btn btn-sm btn-primary" disabled={!target}>
+              {t('Move')}
+            </button>
+            <button type="button" className="btn btn-sm" onClick={() => setMode(null)}>
+              {t('Cancel')}
+            </button>
+          </div>
+        </form>
+      )}
+      {mode === 'delete' && (
+        <div className="area-inline">
+          <span>{t('Delete the team {0}?', { 0: team.name })}</span>
+          <div className="btn-row">
+            <button type="button" className="btn btn-sm btn-danger" onClick={() => remove.mutate()}>
+              {t('Delete')}
+            </button>
+            <button type="button" className="btn btn-sm" onClick={() => setMode(null)}>
+              {t('Cancel')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -139,6 +202,8 @@ export function AreasPage() {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newTeam, setNewTeam] = useState<Record<string, string>>({});
+  const [adding, setAdding] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['admin-areas'] });
@@ -178,6 +243,7 @@ export function AreasPage() {
       api('/admin/teams', { method: 'POST', body: { areaId, name } }),
     onSuccess: (_r, { areaId }) => {
       setNewTeam((x) => ({ ...x, [areaId]: '' }));
+      setAdding(null);
       setError(null);
       refresh();
     },
@@ -234,7 +300,7 @@ export function AreasPage() {
         <div>
           <h1>{t('Areas and teams')}</h1>
           <div className="subtitle">
-            {t('A new ticket goes to the first team of the area its place lies in. Areas cannot overlap.')}
+            {t('A new ticket goes to the team of its area marked "Gets new tickets". Areas cannot overlap.')}
           </div>
         </div>
         {!editing && (
@@ -245,7 +311,7 @@ export function AreasPage() {
       </div>
       {(error ?? areas.error) && <div className="error">{error ?? (areas.error as Error).message}</div>}
 
-      <div className="two-col" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(340px, 440px)' }}>
+      <div className="two-col" style={{ gridTemplateColumns: 'minmax(0, 3fr) minmax(380px, 2fr)' }}>
         <section className="card card-pad" aria-label={t('Map of the areas')}>
           <AreaMap
             areas={editing ? list.filter((a) => a.id !== editing.id) : list}
@@ -340,66 +406,104 @@ export function AreasPage() {
               <section
                 key={a.id}
                 className={`card card-pad area-card${a.id === selected ? ' selected' : ''}`}
-                style={{ gap: 12 }}
                 onClick={() => setSelected(a.id)}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div className="area-card-head">
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ margin: 0, fontSize: 18 }}>{a.name}</h2>
+                    <h2>{a.name}</h2>
                     <div className="meta">
                       {t('{0} km²', { 0: a.sizeKm2.toLocaleString() })} ·{' '}
-                      {t(a.openTickets === 1 ? '{0} open ticket' : '{0} open tickets', { 0: a.openTickets })}
+                      {t(a.openTickets === 1 ? '{0} open ticket' : '{0} open tickets', { 0: a.openTickets })}{' '}
+                      · {t(a.teams.length === 1 ? '{0} team' : '{0} teams', { 0: a.teams.length })}
                     </div>
                   </div>
-                  <button type="button" className="btn btn-sm" onClick={() => startEdit(a)}>
-                    <Pencil size={14} /> {t('Change')}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    aria-label={t('Delete {0}', { 0: a.name })}
-                    onClick={() => {
-                      if (window.confirm(t('Delete the area {0}?', { 0: a.name }))) removeArea.mutate(a.id);
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <ActionMenu
+                    label={t('Actions for area {0}', { 0: a.name })}
+                    actions={[
+                      { label: t('Change the name and boundary'), onSelect: () => startEdit(a) },
+                      { label: t('Delete the area'), danger: true, onSelect: () => setDeleting(a.id) }
+                    ]}
+                  />
                 </div>
+                {deleting === a.id && (
+                  <div className="area-inline">
+                    <span>{t('Delete the area {0}?', { 0: a.name })}</span>
+                    <div className="btn-row">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        onClick={() => {
+                          setDeleting(null);
+                          removeArea.mutate(a.id);
+                        }}
+                      >
+                        {t('Delete')}
+                      </button>
+                      <button type="button" className="btn btn-sm" onClick={() => setDeleting(null)}>
+                        {t('Cancel')}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {a.teams.length === 0 ? (
-                  <div className="meta">
+                  <div className="meta area-empty">
                     {t('No team yet: tickets here wait for NOC to send them to a team.')}
                   </div>
                 ) : (
-                  a.teams.map((team, i) => (
-                    <div key={team.id}>
-                      <TeamRow team={team} areas={list} areaId={a.id} onError={setError} />
-                      {i === 0 && a.teams.length > 1 && (
-                        <div className="meta" style={{ marginLeft: 26 }}>
-                          {t('Gets the new tickets of this area')}
-                        </div>
-                      )}
-                    </div>
-                  ))
+                  <div className="area-teams">
+                    {a.teams.map((team, i) => (
+                      <TeamRow
+                        key={team.id}
+                        team={team}
+                        areas={list}
+                        areaId={a.id}
+                        receivesNew={i === 0}
+                        onError={setError}
+                      />
+                    ))}
+                  </div>
                 )}
-                <form
-                  className="btn-row"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const name = newTeam[a.id]?.trim();
-                    if (name) addTeam.mutate({ areaId: a.id, name });
-                  }}
-                >
-                  <input
-                    aria-label={t('New team in {0}', { 0: a.name })}
-                    placeholder={t('New team name')}
-                    value={newTeam[a.id] ?? ''}
-                    onChange={(e) => setNewTeam((x) => ({ ...x, [a.id]: e.target.value }))}
-                    style={{ flex: 1, minWidth: 0 }}
-                  />
-                  <button type="submit" className="btn btn-sm" disabled={!newTeam[a.id]?.trim()}>
-                    <Plus size={14} /> {t('Add team')}
+                {adding === a.id ? (
+                  <form
+                    className="area-inline"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const name = newTeam[a.id]?.trim();
+                      if (name) addTeam.mutate({ areaId: a.id, name });
+                    }}
+                  >
+                    <label htmlFor={`new-team-${a.id}`}>{t('Name of the new team')}</label>
+                    <input
+                      id={`new-team-${a.id}`}
+                      value={newTeam[a.id] ?? ''}
+                      onChange={(e) => setNewTeam((x) => ({ ...x, [a.id]: e.target.value }))}
+                      autoFocus
+                    />
+                    <div className="btn-row">
+                      <button
+                        type="submit"
+                        className="btn btn-sm btn-primary"
+                        disabled={!newTeam[a.id]?.trim()}
+                      >
+                        {t('Add team')}
+                      </button>
+                      <button type="button" className="btn btn-sm" onClick={() => setAdding(null)}>
+                        {t('Cancel')}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className="link-button area-add-team"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAdding(a.id);
+                    }}
+                  >
+                    <Plus size={15} /> {t('Add a team')}
                   </button>
-                </form>
+                )}
               </section>
             ))}
           </div>

@@ -320,8 +320,6 @@ export const vi: Record<string, string> = {
   'gave the job automatically to': 'đã tự động giao việc cho',
   'Give {0} a new temporary password?': 'Cấp mật khẩu tạm thời mới cho {0}?',
   'Give a job': 'Giao việc',
-  'Give it to the person directly. They choose a new password at first sign-in. It is not shown again.':
-    'Hãy đưa trực tiếp cho người đó. Họ sẽ đặt mật khẩu mới ở lần đăng nhập đầu tiên. Mật khẩu này sẽ không hiện lại.',
   'Give to a van': 'Cấp cho xe',
   'Give to a van, or move stock': 'Cấp cho xe hoặc chuyển kho',
   Good: 'Tốt',
@@ -692,6 +690,13 @@ export const vi: Record<string, string> = {
   'Surveys done': 'Số khảo sát đã xong',
   'Switch a line off': 'Cắt điện một tuyến',
   System: 'Hệ thống',
+  'System (auto-assign)': 'Hệ thống (tự giao việc)',
+  'System (time limits)': 'Hệ thống (theo dõi hạn)',
+  'Survey report sent to Sales': 'Đã gửi kết quả khảo sát cho Sales',
+  'Survey report kept for the connection': 'Đã lưu kết quả khảo sát để làm đấu nối',
+  'The team manager chooses who goes before the planned date.':
+    'Quản lý đội chọn người làm trước ngày thực hiện.',
+  'To be given out': 'Chờ phân công',
   'Target {0}%': 'Mục tiêu {0}%',
   Team: 'Đội',
   'team {0}': 'đội {0}',
@@ -699,7 +704,6 @@ export const vi: Record<string, string> = {
   'Team {0} · nobody assigned yet': 'Đội {0} · chưa giao cho ai',
   'Team manager': 'Quản lý đội',
   'Technical manager': 'Quản lý kỹ thuật',
-  'Temporary password for': 'Mật khẩu tạm thời của',
   'The area next to the search narrows lists, maps and reports to that area.':
     'Ô khu vực cạnh thanh tìm kiếm sẽ lọc danh sách, bản đồ và báo cáo theo khu vực đó.',
   "The Call Center sees planned cuts through its connection, so it can answer calls. Texting each affected customer needs EDM's list of customers per transformer (to be loaded later).":
@@ -1004,8 +1008,8 @@ export const vi: Record<string, string> = {
   Supply: 'Nguồn điện',
   'Team managers, technical managers, NOC and administrators record the result.':
     'Quản lý đội, quản lý kỹ thuật, NOC và quản trị viên ghi nhận kết quả.',
-  'The team of the area builds the connection. Then the Call Center checks it with the customer, and it is closed in Closing checks.':
-    'Đội phụ trách khu vực sẽ lắp đặt. Sau đó Call Center kiểm tra với khách, rồi phiếu được đóng ở mục Nghiệm thu.',
+  'The team of the area builds the connection. Then the Call Center, NOC or an administrator checks it with the customer and closes it in Closing checks.':
+    'Đội của khu vực sẽ lắp đặt. Sau đó Call Center, NOC hoặc Admin kiểm tra với khách và đóng phiếu ở mục Nghiệm thu.',
   'The team of the area surveys the premises. The survey closes when the report is sent; nothing is sent to the Sales system.':
     'Đội phụ trách khu vực sẽ đến khảo sát. Phiếu tự đóng khi có biên bản khảo sát; không gửi gì sang hệ thống Sales.',
   'The work is done': 'Việc đã làm xong',
@@ -1035,8 +1039,8 @@ export const vi: Record<string, string> = {
     'Đội phụ trách khu vực nhận việc; vật tư dự kiến của khảo sát được giữ sẵn trong kho.',
   'The customer confirms the handover with an SMS code or a signed form.':
     'Khách xác nhận bàn giao bằng mã SMS hoặc biên bản có chữ ký.',
-  'The Call Center checks with the customer, then it is closed in Closing checks.':
-    'Call Center kiểm tra với khách, rồi phiếu được đóng ở mục Nghiệm thu.',
+  'The Call Center, NOC or an administrator checks with the customer, then closes it in Closing checks.':
+    'Call Center, NOC hoặc Admin kiểm tra với khách, rồi đóng phiếu ở mục Nghiệm thu.',
   'Maintenance / network change': 'Bảo dưỡng / thay đổi lưới',
   'by the office': 'do văn phòng',
   'Finding the address of the point…': 'Đang tìm địa chỉ của điểm đã chọn…',
@@ -1122,8 +1126,6 @@ export const vi: Record<string, string> = {
     'Tính từ lần dùng gần nhất; quá thời gian này phải đăng nhập lại.',
   'EDM Field app: stay signed in for (days)': 'App EDM Field: giữ đăng nhập trong (ngày)',
   'Long enough for staff who are often without signal.': 'Đủ dài cho nhân viên hay ở nơi mất sóng.',
-  'A new ticket goes to the first team of the area its place lies in. Areas cannot overlap.':
-    'Phiếu mới được giao cho đội đầu tiên của khu vực chứa vị trí phiếu. Các khu vực không được chồng lên nhau.',
   'Add area': 'Thêm khu vực',
   'Add team': 'Thêm đội',
   'Areas and teams': 'Khu vực và đội',
@@ -1262,5 +1264,60 @@ export const vi: Record<string, string> = {
   'Nobody on it yet': 'Chưa có ai làm',
   'Nobody is left in team {0} to give it to.': 'Đội {0} không còn ai để tự giao.',
   'Wrong team?': 'Sai đội?',
-  'No team yet.': 'Chưa có đội.'
+  'No team yet.': 'Chưa có đội.',
+  Contact: 'Liên hệ',
+  'Asked for': 'Yêu cầu',
+  '{0} m to the network': '{0} m tới lưới',
+  'Surveyed by': 'Khảo sát bởi',
+  'No team yet: NOC sends it to the right team.': 'Chưa có đội: NOC sẽ chuyển cho đúng đội.',
+  'expected: {0}': 'dự kiến {0}',
+  'Estimated material · {0}': 'Vật tư ước tính · {0}',
+  'Estimated material': 'Vật tư ước tính',
+  'No depot in this area': 'Khu vực chưa có kho',
+  '{0} item short': 'Thiếu {0} loại',
+  '{0} items short': 'Thiếu {0} loại',
+  'All in stock': 'Đủ cả',
+  'no depot': 'chưa có kho',
+  'short of {0}': 'thiếu {0}',
+  'in stock': 'đủ',
+  'The ticket can still be made: what is in stock is set aside, the rest must come in before the job.':
+    'Vẫn tạo được phiếu: phần có trong kho sẽ được giữ sẵn, phần thiếu cần nhập thêm trước ngày đi lắp.',
+  'Find a survey': 'Tìm khảo sát',
+  'Ticket code, customer name or phone': 'Mã phiếu, tên khách hoặc số điện thoại',
+  '{0} finished survey is waiting for a connection': '{0} khảo sát đã xong đang chờ đấu nối',
+  '{0} finished surveys are waiting for a connection': '{0} khảo sát đã xong đang chờ đấu nối',
+  'No survey matches.': 'Không có khảo sát nào khớp.',
+  'Who is the connection for?': 'Đấu nối cho khách nào?',
+  'e.g. HD-2026-0153': 'Ví dụ: HD-2026-0153',
+  'Premises and supply': 'Công trình và nguồn điện',
+  'as surveyed': 'theo khảo sát',
+  'Gets new tickets': 'Nhận phiếu mới',
+  'Manager: {0}': 'Quản lý: {0}',
+  'No manager yet': 'Chưa có quản lý',
+  'Actions for team {0}': 'Thao tác cho đội {0}',
+  'Rename the team': 'Đổi tên đội',
+  'Make it get the new tickets': 'Đặt làm đội nhận phiếu mới',
+  'Move to another area…': 'Chuyển sang khu vực khác…',
+  'Delete the team': 'Xóa đội',
+  'Name of the team': 'Tên đội',
+  'Move {0} to the area': 'Chuyển {0} sang khu vực',
+  Move: 'Chuyển',
+  Delete: 'Xóa',
+  '{0} team': '{0} đội',
+  '{0} teams': '{0} đội',
+  'Actions for area {0}': 'Thao tác cho khu vực {0}',
+  'Change the name and boundary': 'Sửa tên và ranh giới',
+  'Delete the area': 'Xóa khu vực',
+  'Name of the new team': 'Tên đội mới',
+  'Add a team': 'Thêm đội',
+  'A new ticket goes to the team of its area marked "Gets new tickets". Areas cannot overlap.':
+    'Phiếu mới được giao cho đội có nhãn "Nhận phiếu mới" của khu vực chứa vị trí phiếu. Các khu vực không được chồng lên nhau.',
+  'Temporary password of {0}': 'Mật khẩu tạm của {0}',
+  'Copy the password': 'Sao chép mật khẩu',
+  'Give it to the person directly. They sign in on the EDM Field app and choose a new password the first time.':
+    'Đưa tận tay cho người này. Họ đăng nhập trên app EDM Field và phải đặt mật khẩu mới ngay lần đầu.',
+  'Give it to the person directly. They sign in at {0} and choose a new password the first time.':
+    'Đưa tận tay cho người này. Họ đăng nhập tại {0} và phải đặt mật khẩu mới ngay lần đầu.',
+  'Once closed it cannot be seen again.': 'Đóng hộp này là không xem lại được.',
+  'I have written down or passed on this password': 'Tôi đã ghi lại hoặc đã gửi mật khẩu này'
 };

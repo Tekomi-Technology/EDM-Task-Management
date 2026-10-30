@@ -113,6 +113,13 @@
       "when": 1793179279285,
       "tag": "0015_drop_keycloak_id",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793347952140,
+      "tag": "0016_team_receives_new",
+      "breakpoints": true
     }
   ]
 }

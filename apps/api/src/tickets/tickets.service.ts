@@ -17,7 +17,7 @@ import {
 } from '../contract';
 import { and, eq, inArray, isNull, ne, notInArray, sql } from 'drizzle-orm';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
-import { actorLabel, SYSTEM_ACTOR, type AuthUser } from '../auth/auth-user';
+import { actorLabel, AUTO_ASSIGN_ACTOR, SYSTEM_ACTOR, type AuthUser } from '../auth/auth-user';
 import { AppError, notFound } from '../common/errors';
 import { ENV, type Env } from '../config/env';
 import { DB, type Db, type Tx } from '../db/db.module';
@@ -596,7 +596,10 @@ export class TicketsService {
         await this.addEvent(tx, ticketId, 'close', SYSTEM_ACTOR, {
           from: 'resolved',
           to: 'closed',
-          note: 'Survey report sent to Sales'
+          note:
+            ticket.source === 'sales'
+              ? 'Survey report sent to Sales'
+              : 'Survey report kept for the connection'
         });
         await this.consume(tx, ticketId, actor);
         const survey = input.survey!;
@@ -648,22 +651,29 @@ export class TicketsService {
    */
   private async autoAssign(
     tx: Tx,
-    ticket: { id: string; code: string; title: string; location: { lat: number; lng: number } | null },
+    ticket: {
+      id: string;
+      code: string;
+      title: string;
+      type?: string;
+      location: { lat: number; lng: number } | null;
+    },
     teamId: string,
     current: TicketStatus,
     messages: OutgoingSms[],
     excludeIds: string[] = []
   ): Promise<TicketStatus | null> {
-    if (!this.env.AUTO_ASSIGN) return null;
+    // Planned work is given out by the team manager closer to the date, never automatically.
+    if (!this.env.AUTO_ASSIGN || ticket.type === 'planned_work') return null;
     const staff = await this.users.pickAutoAssignee(tx, teamId, excludeIds, ticket.location);
     if (!staff) return null;
-    const to = nextStatus(current, 'assign', SYSTEM_ACTOR, null);
+    const to = nextStatus(current, 'assign', AUTO_ASSIGN_ACTOR, null);
     await tx
       .update(tickets)
       .set({ status: to, assigneeId: staff.id, updatedAt: new Date() })
       .where(eq(tickets.id, ticket.id));
     await this.users.markAssigned(tx, staff.id);
-    await this.addEvent(tx, ticket.id, 'assign', SYSTEM_ACTOR, {
+    await this.addEvent(tx, ticket.id, 'assign', AUTO_ASSIGN_ACTOR, {
       from: current,
       to,
       assigneeId: staff.id,
@@ -926,7 +936,8 @@ export class TicketsService {
             eq(tickets.teamId, teamId),
             inArray(tickets.status, ['new', 'reopened']),
             isNull(tickets.assigneeId),
-            isNull(tickets.incidentId)
+            isNull(tickets.incidentId),
+            ne(tickets.type, 'planned_work')
           )
         )
         .orderBy(tickets.priority, sql`${tickets.dueAt} asc nulls last`, tickets.createdAt)
@@ -1354,7 +1365,7 @@ export class TicketsService {
   ): Promise<{ areaId: string; teamId: string | null } | null> {
     const result = await tx.execute<{ area_id: string; team_id: string | null }>(sql`
       select a.id as area_id,
-        (select t.id from teams t where t.area_id = a.id order by t.code limit 1) as team_id
+        (select t.id from teams t where t.area_id = a.id order by t.receives_new desc, t.code limit 1) as team_id
       from areas a
       where ST_Contains(a.boundary, ST_SetSRID(ST_MakePoint(${p.lng}, ${p.lat}), 4326))
       order by a.code

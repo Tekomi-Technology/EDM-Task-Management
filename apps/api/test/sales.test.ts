@@ -57,9 +57,13 @@ describe('new customers from the Sales system: survey, connection, handover, act
   const event = (r: Received) =>
     JSON.parse(r.body) as { event: string; externalRef: string; data: Record<string, unknown> };
 
-  async function doSurvey(ref: string, result: 'feasible' | 'feasible_with_works' | 'not_feasible') {
+  async function doSurvey(
+    ref: string,
+    result: 'feasible' | 'feasible_with_works' | 'not_feasible',
+    overrides: object = {}
+  ) {
     await t.as('ana.sitoe').post('/api/me/duty', { onDuty: true });
-    const created = await t.as('sales').post('/api/intake/sales/survey-requests', survey(ref));
+    const created = await t.as('sales').post('/api/intake/sales/survey-requests', survey(ref, overrides));
     const id = created.body.ticketId as string;
     for (const step of ['accept', 'start']) await t.as('ana.sitoe').post(`/api/tickets/${id}/${step}`);
     const done = await t.as('ana.sitoe').post(`/api/tickets/${id}/resolve`, {
@@ -175,6 +179,44 @@ describe('new customers from the Sales system: survey, connection, handover, act
     expect(board.map((c: { stage: string; title: string }) => [c.stage, c.title])).toEqual([
       ['contract_signed', 'Contract 88213']
     ]);
+  });
+
+  it('lists the finished surveys waiting for a connection, with who would go and what the depot has', async () => {
+    const { id } = await doSurvey('S-W1', 'feasible_with_works', { supply: 'three_phase' });
+    await doSurvey('S-W2', 'not_feasible');
+    expect((await t.as('helena.mondlane').get('/api/new-customers/surveys/waiting')).status).toBe(403);
+
+    const list = (await t.as('carla.manhica').get('/api/new-customers/surveys/waiting')).body;
+    // The survey found not feasible cannot be followed by a connection.
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({
+      ticketId: id,
+      customer: { fullName: 'Loja Esperança', phone: PROSPECT_PHONE, address: 'Matola Gare, Rua 4' },
+      premises: 'shop',
+      supply: 'three_phase',
+      requestedLoadKw: 6,
+      result: 'feasible_with_works',
+      distanceToNetworkM: 35,
+      nearestElement: 'P-77',
+      worksNeeded: 'One new pole',
+      surveyedBy: 'Ana Sitoe',
+      team: { name: 'South 1' },
+      assignee: { fullName: expect.any(String) },
+      depot: { name: expect.any(String) }
+    });
+    const cable = list[0].materials.find((m: { code: string }) => m.code === 'CAB-216');
+    expect(cable).toMatchObject({ needed: 40, unit: 'm', free: expect.any(Number) });
+
+    // Without a supply, the connection keeps the one surveyed; then the survey is no longer waiting.
+    const conn = await t
+      .as('carla.manhica')
+      .post('/api/new-customers/connections', { contractNo: '88401', surveyTicketId: id });
+    expect(conn.status).toBe(201);
+    expect((await t.as('carla.manhica').get(`/api/tickets/${conn.body.id}`)).body.newCustomer).toMatchObject({
+      supply: 'three_phase',
+      premises: 'shop'
+    });
+    expect((await t.as('carla.manhica').get('/api/new-customers/surveys/waiting')).body).toEqual([]);
   });
 
   it('refuses a connection the survey found not feasible', async () => {

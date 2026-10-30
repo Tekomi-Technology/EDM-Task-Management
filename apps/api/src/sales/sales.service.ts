@@ -7,14 +7,15 @@ import {
   type NewCustomerStage,
   type OfficeConnection,
   type OfficeSurvey,
-  type SurveyRequest
+  type SurveyRequest,
+  type WaitingSurvey
 } from '../contract';
 import { and, desc, eq, inArray, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { AuthUser } from '../auth/auth-user';
 import { AppError, notFound } from '../common/errors';
 import { DB, type Db } from '../db/db.module';
-import { areas, customers, tickets, users } from '../db/schema';
+import { areas, customers, stockItems, teams, tickets, users } from '../db/schema';
 import { StockService } from '../stock/stock.service';
 import { TicketsQuery } from '../tickets/tickets.query';
 import { sms } from '../notifications/messages';
@@ -179,7 +180,7 @@ export class SalesService {
   private async createConnection(
     input: {
       contractNo: string;
-      supply: OfficeConnection['supply'];
+      supply?: OfficeConnection['supply'];
       premises?: OfficeConnection['premises'];
       notes?: string;
       customerId?: string;
@@ -198,6 +199,9 @@ export class SalesService {
         'The survey found this connection not feasible'
       );
     }
+
+    // The supply of the contract, else the one surveyed.
+    const supply = input.supply ?? survey?.details?.supply ?? 'single_phase';
 
     // The customer: the one surveyed (now with a contract), the one chosen, the one with this contract, or a new one.
     let customerId = survey?.customerId ?? input.customerId ?? null;
@@ -243,8 +247,7 @@ export class SalesService {
         priority: 3,
         slaMinutes: NEW_CUSTOMER_SLA_MINUTES.connection,
         title: `New connection, contract ${input.contractNo}`,
-        description:
-          input.notes ?? `New ${input.supply.replace('_', '-')} connection for ${customer!.fullName}.`,
+        description: input.notes ?? `New ${supply.replace('_', '-')} connection for ${customer!.fullName}.`,
         customerId: customer!.id,
         customerPhone: customer!.phone,
         receivedSms: sms.customerConnectionReceived,
@@ -253,7 +256,7 @@ export class SalesService {
         teamReason: input.teamId ? input.teamReason : undefined,
         details: {
           premises: input.premises ?? survey?.details?.premises,
-          supply: input.supply,
+          supply,
           contractNo: input.contractNo,
           surveyTicketId: survey?.id
         }
@@ -269,6 +272,107 @@ export class SalesService {
       });
     }
     return ticket;
+  }
+
+  /**
+   * Finished surveys a connection can follow (not found infeasible, no connection yet), newest first, with what the
+   * connection would take from them: the customer, the result, who would go and whether the depot has the material.
+   */
+  async waitingSurveys(user: AuthUser): Promise<WaitingSurvey[]> {
+    const scope = this.query.listScope(user);
+    if (scope === null) return [];
+    const followed = new Set(
+      (
+        await this.db
+          .select({ surveyId: sql<string | null>`${tickets.details}->>'surveyTicketId'` })
+          .from(tickets)
+          .where(and(eq(tickets.type, 'new_connection'), notInArray(tickets.status, ['cancelled'])))
+      ).map((r) => r.surveyId)
+    );
+    const rows = await this.db
+      .select({
+        id: tickets.id,
+        code: tickets.code,
+        details: tickets.details,
+        location: tickets.location,
+        closedAt: tickets.closedAt,
+        customerName: customers.fullName,
+        customerPhone: customers.phone,
+        customerAddress: customers.address,
+        surveyedBy: assignee.fullName
+      })
+      .from(tickets)
+      .leftJoin(customers, eq(customers.id, tickets.customerId))
+      .leftJoin(assignee, eq(assignee.id, tickets.assigneeId))
+      .where(
+        and(
+          scope,
+          eq(tickets.type, 'new_customer_survey'),
+          eq(tickets.status, 'closed'),
+          sql`coalesce(${tickets.details}->'survey'->>'result', '') <> 'not_feasible'`
+        )
+      )
+      .orderBy(desc(tickets.closedAt))
+      .limit(50);
+
+    const out: WaitingSurvey[] = [];
+    for (const r of rows.filter((x) => !followed.has(x.id))) {
+      const d = r.details ?? {};
+      const where = await this.tickets.whereTo(r.location, { outage: false });
+      const teamId = where.route?.teamId ?? null;
+      const [team] = teamId
+        ? await this.db.select({ id: teams.id, name: teams.name }).from(teams).where(eq(teams.id, teamId))
+        : [];
+      const estimate = d.survey?.estimatedMaterials ?? [];
+      const items = estimate.length
+        ? await this.db
+            .select()
+            .from(stockItems)
+            .where(
+              inArray(
+                stockItems.id,
+                estimate.map((l) => l.itemId)
+              )
+            )
+        : [];
+      const stock = await this.stock.freeInDepot(
+        { areaId: where.route?.areaId ?? null, teamId },
+        estimate.map((l) => l.itemId)
+      );
+      out.push({
+        ticketId: r.id,
+        code: r.code,
+        customer: r.customerName
+          ? { fullName: r.customerName, phone: r.customerPhone, address: r.customerAddress }
+          : null,
+        premises: (d.premises ?? null) as WaitingSurvey['premises'],
+        supply: (d.supply ?? null) as WaitingSurvey['supply'],
+        requestedLoadKw: d.requestedLoadKw ?? null,
+        result: (d.survey?.result ?? 'feasible') as WaitingSurvey['result'],
+        distanceToNetworkM: d.survey?.distanceToNetworkM ?? null,
+        nearestElement: d.survey?.nearestElement ?? null,
+        worksNeeded: d.survey?.worksNeeded ?? null,
+        surveyedBy: r.surveyedBy,
+        surveyedAt: r.closedAt?.toISOString() ?? null,
+        team: team ?? null,
+        assignee: where.assignee
+          ? { id: where.assignee.id, fullName: where.assignee.fullName, onDuty: where.assignee.onDuty }
+          : null,
+        depot: stock.depot,
+        materials: estimate.map((l) => {
+          const item = items.find((i) => i.id === l.itemId);
+          return {
+            itemId: l.itemId,
+            code: item?.code ?? '',
+            name: item?.name ?? '',
+            unit: item?.unit ?? 'pcs',
+            needed: l.quantity,
+            free: stock.depot ? (stock.free.get(l.itemId) ?? 0) : null
+          };
+        })
+      });
+    }
+    return out;
   }
 
   async status(externalRef: string): Promise<SalesRequestView> {

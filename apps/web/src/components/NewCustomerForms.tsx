@@ -1,11 +1,11 @@
 import type {
   CustomerMatch,
-  NewCustomerCard,
   OfficeConnection,
   OfficeSurvey,
   PlaceTeam,
   PremisesType,
-  SupplyType
+  SupplyType,
+  WaitingSurvey
 } from '../types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react';
@@ -16,6 +16,7 @@ import { t } from '../i18n';
 import { CustomerSearch } from './CustomerSearch';
 import { LocationPicker } from './LocationPicker';
 import { useMapAddress } from './mapAddress';
+import { SurveyPicker } from './SurveyPicker';
 import { TeamChoice, teamChoiceBody, type TeamPick } from './TeamChoice';
 
 type Created = { id: string; code: string };
@@ -230,7 +231,9 @@ type Basis = 'survey' | 'customer' | 'new';
 export function ConnectionForm({ onCreated }: { onCreated: (t: Created) => void }) {
   const [basis, setBasis] = useState<Basis>('survey');
   const [contractNo, setContractNo] = useState('');
-  const [surveyId, setSurveyId] = useState('');
+  const [picked, setPicked] = useState<WaitingSurvey | null>(null);
+  /** After a survey the premises and supply surveyed are kept, unless the contract differs. */
+  const [changeKind, setChangeKind] = useState(false);
   const [known, setKnown] = useState<CustomerMatch | null>(null);
   const [customer, setCustomer] = useState<Prospect>(EMPTY_PROSPECT);
   const [premises, setPremises] = useState<PremisesType | ''>('');
@@ -238,25 +241,21 @@ export function ConnectionForm({ onCreated }: { onCreated: (t: Created) => void 
   const [notes, setNotes] = useState('');
   const [team, setTeam] = useState<TeamPick | null>(null);
   const newPlaceTeam = usePlaceTeam(basis === 'new' ? customer.location : null);
-  const board = useQuery({
-    queryKey: ['new-customers', ''],
-    queryFn: () => api<NewCustomerCard[]>('/new-customers')
-  });
-  const surveys = (board.data ?? []).filter((c) => c.stage === 'survey_done' && c.badgeTone !== 'bad');
+  const keepSurveyed = basis === 'survey' && !changeKind;
 
   const create = useMutation({
     mutationFn: () => {
-      if (basis === 'survey' && !surveyId) throw new Error(t('Choose the survey.'));
+      if (basis === 'survey' && !picked) throw new Error(t('Choose the survey.'));
       if (basis === 'customer' && !known) throw new Error(t('Find the customer first.'));
       return api<Created>('/new-customers/connections', {
         method: 'POST',
         body: {
           contractNo: contractNo.trim(),
-          surveyTicketId: basis === 'survey' ? surveyId : undefined,
+          surveyTicketId: basis === 'survey' ? picked!.ticketId : undefined,
           customerId: basis === 'customer' ? known!.id : undefined,
           customer: basis === 'new' ? clean(customer) : undefined,
-          premises: premises || undefined,
-          supply,
+          premises: keepSurveyed ? undefined : premises || undefined,
+          supply: keepSurveyed ? undefined : supply,
           notes: notes.trim() || undefined,
           ...teamChoiceBody(team)
         } satisfies OfficeConnection
@@ -270,11 +269,7 @@ export function ConnectionForm({ onCreated }: { onCreated: (t: Created) => void 
   };
   return (
     <form className="card card-pad" style={{ gap: 16 }} onSubmit={submit} aria-label={t('New connection')}>
-      <h2 style={{ margin: 0, fontSize: 21 }}>{t('Which contract and customer?')}</h2>
-      <div className="field" style={{ maxWidth: 320 }}>
-        <label htmlFor="nc-contract">{t('Contract number')}</label>
-        <input id="nc-contract" required value={contractNo} onChange={(e) => setContractNo(e.target.value)} />
-      </div>
+      <h2 style={{ margin: 0, fontSize: 21 }}>{t('Who is the connection for?')}</h2>
       <div className="segmented" role="radiogroup" aria-label={t('Customer')}>
         {(
           [
@@ -289,23 +284,13 @@ export function ConnectionForm({ onCreated }: { onCreated: (t: Created) => void 
         ))}
       </div>
       {basis === 'survey' && (
-        <div className="field">
-          <label htmlFor="nc-survey">{t('Survey done')}</label>
-          <select id="nc-survey" value={surveyId} onChange={(e) => setSurveyId(e.target.value)}>
-            <option value="">{t('Choose…')}</option>
-            {surveys.map((s) => (
-              <option key={s.ticketId} value={s.ticketId}>
-                {s.code} · {s.title}
-                {s.place ? ` · ${s.place}` : ''}
-              </option>
-            ))}
-          </select>
-          <span className="meta">
-            {surveys.length === 0
-              ? t('No finished survey is waiting for a connection.')
-              : t('Customer, place and the material estimate are taken from the survey.')}
-          </span>
-        </div>
+        <SurveyPicker
+          value={picked}
+          onChange={(survey) => {
+            setPicked(survey);
+            setChangeKind(false);
+          }}
+        />
       )}
       {basis === 'customer' &&
         (known ? (
@@ -323,27 +308,72 @@ export function ConnectionForm({ onCreated }: { onCreated: (t: Created) => void 
           <CustomerSearch onPick={setKnown} />
         ))}
       {basis === 'new' && <ProspectFields value={customer} onChange={setCustomer} />}
-      <SupplyAndPremises
-        premises={premises}
-        supply={supply}
-        onPremises={setPremises}
-        onSupply={setSupply}
-        premisesOptional={basis === 'survey'}
-      />
+      <h2 style={{ margin: '4px 0 0', fontSize: 18 }}>{t('Contract')}</h2>
+      <div className="field" style={{ maxWidth: 320 }}>
+        <label htmlFor="nc-contract">{t('Contract number')}</label>
+        <input
+          id="nc-contract"
+          required
+          value={contractNo}
+          placeholder={t('e.g. HD-2026-0153')}
+          onChange={(e) => setContractNo(e.target.value)}
+        />
+      </div>
+      {keepSurveyed ? (
+        picked && (
+          <div className="field">
+            <span className="label">{t('Premises and supply')}</span>
+            <div className="btn-row" style={{ alignItems: 'center' }}>
+              <strong>
+                {[
+                  picked.premises && PREMISES_LABEL[picked.premises],
+                  picked.supply && SUPPLY_LABEL[picked.supply]
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || '—'}
+              </strong>
+              <span className="meta">{t('as surveyed')}</span>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setPremises(picked.premises ?? '');
+                  setSupply(picked.supply ?? 'single_phase');
+                  setChangeKind(true);
+                }}
+              >
+                {t('Change')}
+              </button>
+            </div>
+          </div>
+        )
+      ) : (
+        <SupplyAndPremises
+          premises={premises}
+          supply={supply}
+          onPremises={setPremises}
+          onSupply={setSupply}
+          premisesOptional={basis === 'survey'}
+        />
+      )}
       <div className="field">
         <label htmlFor="nc-cnotes">{t('Notes for the team (optional)')}</label>
         <textarea id="nc-cnotes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
       <TeamChoice
         autoTeamName={
-          basis === 'customer' ? (known?.teamName ?? null) : basis === 'new' ? newPlaceTeam : null
+          basis === 'customer'
+            ? (known?.teamName ?? null)
+            : basis === 'new'
+              ? newPlaceTeam
+              : (picked?.team?.name ?? null)
         }
         value={team}
         onChange={setTeam}
       />
       <div className="notice" style={{ margin: 0 }}>
         {t(
-          'The team of the area builds the connection. Then the Call Center checks it with the customer, and it is closed in Closing checks.'
+          'The team of the area builds the connection. Then the Call Center, NOC or an administrator checks it with the customer and closes it in Closing checks.'
         )}
       </div>
       {create.error && <div className="error">{(create.error as Error).message}</div>}
