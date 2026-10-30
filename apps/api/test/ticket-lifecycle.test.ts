@@ -29,6 +29,9 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
     expect(res.status).toBe(200);
   }
 
+  const block = (who: 'ana.sitoe' | 'armando.cossa') =>
+    t.db.update(users).set({ status: 'blocked' }).where(eq(users.id, ids[who]));
+
   async function complain(ref: string, contractNo?: string) {
     const res = await t
       .as('call-center')
@@ -92,19 +95,23 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
     expect((await complain('CC-W3')).assigneeName).toBe('Armando Cossa');
   });
 
-  it('leaves the ticket for the manager when nobody in the team is on duty', async () => {
+  it('gives the ticket to someone off duty when nobody in the team is on duty, without bothering the manager', async () => {
     await onDuty('ana.sitoe');
     await onDuty('ana.sitoe', false);
     await onDuty('ofelia.tembe'); // on duty, but in the other team
     const ticket = await complain('CC-B1');
-    expect(ticket.status).toBe('new');
-    expect(await smsTo(PHONES.helena)).toHaveLength(1);
+    expect(ticket).toMatchObject({ status: 'assigned', assigneeName: 'Ana Sitoe' });
+    expect(await smsTo(PHONES.ana)).toHaveLength(1);
+    expect(await smsTo(PHONES.helena)).toHaveLength(0);
   });
 
-  it('does not give jobs to blocked staff even if they were on duty', async () => {
+  it('does not give jobs to blocked staff, and leaves the ticket for the manager when nobody is left', async () => {
     await onDuty('armando.cossa');
-    await t.db.update(users).set({ status: 'blocked' }).where(eq(users.id, ids['armando.cossa']));
-    expect((await complain('CC-B2')).status).toBe('new');
+    await block('armando.cossa');
+    expect(await complain('CC-B2')).toMatchObject({ status: 'assigned', assigneeName: 'Ana Sitoe' });
+    await block('ana.sitoe');
+    expect((await complain('CC-B3')).status).toBe('new');
+    expect(await smsTo(PHONES.helena)).toHaveLength(1);
   });
 
   it('passes a declined job to someone else, and to the manager once everyone has declined', async () => {
@@ -143,14 +150,18 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
   });
 
   it('gives waiting tickets to whoever switches duty on, most urgent first, but not jobs they declined', async () => {
+    await block('ana.sitoe');
     await onDuty('armando.cossa');
     const declined = await complain('CC-W0');
     await t.as('armando.cossa').post(`/api/tickets/${declined.ticketId}/decline`, { reason: 'No ladder' });
     await onDuty('armando.cossa', false);
+    // Nobody is left in the team (Armando is away for a while): tickets wait.
+    await block('armando.cossa');
     const first = await complain('CC-W1');
     const second = await complain('CC-W2');
     expect([first.status, second.status]).toEqual(['new', 'new']);
 
+    await t.db.update(users).set({ status: 'active' }).where(eq(users.id, ids['armando.cossa']));
     await onDuty('armando.cossa');
     for (const id of [first.ticketId, second.ticketId]) {
       const d = await detail(id);

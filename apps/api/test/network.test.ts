@@ -64,7 +64,9 @@ describe('network incidents from the NMS and the public, and planned work', () =
       network: { elementCode: 'F-12', severity: 'critical', activeAlarms: 1 }
     });
     expect((await smsTo(NADIA_NOC)).some((b) => b.includes(r!.code!))).toBe(true);
-    expect(await smsTo(HELENA)).toHaveLength(1); // nobody on duty: the team manager assigns
+    // Nobody on duty: it still goes straight to someone of the team, and the manager is not bothered.
+    expect(d.assignee).not.toBeNull();
+    expect(await smsTo(HELENA)).toHaveLength(0);
     expect((await t.as('call-center').post('/api/intake/nms/alarms', { alarms: [alarm()] })).status).toBe(
       403
     );

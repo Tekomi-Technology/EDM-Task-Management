@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { notificationOutbox, users } from '../src/db/schema';
 import { createTestApp, ids, resetData, type TestContext } from './helpers';
 
@@ -21,10 +21,17 @@ describe('notifications under the bell', () => {
       problemType: 'no_power_single',
       description: 'No power'
     });
+  /** Every field staff member of South 1 is away, so new tickets of the team wait for the manager. */
+  const nobodyLeft = () =>
+    t.db
+      .update(users)
+      .set({ status: 'blocked' })
+      .where(inArray(users.id, [ids['armando.cossa'], ids['ana.sitoe']]));
   const inbox = async (who: Parameters<TestContext['as']>[0]) =>
     (await t.as(who).get('/api/me/notifications')).body;
 
   it('tells the team manager about a ticket nobody could take, with a link to it', async () => {
+    await nobodyLeft();
     const created = (await complain('CC-1')).body;
     expect(await inbox('helena.mondlane')).toEqual({
       unread: 1,
@@ -36,13 +43,13 @@ describe('notifications under the bell', () => {
         })
       ]
     });
-    // The manager of the other team and the field staff are not told.
+    // The manager of the other team is not told.
     expect((await inbox('joao.matsinhe')).unread).toBe(0);
-    expect((await inbox('armando.cossa')).unread).toBe(0);
   });
 
   it('still reaches a manager without a phone number, who then gets no SMS', async () => {
     await t.db.update(users).set({ phone: null }).where(eq(users.id, ids['helena.mondlane']));
+    await nobodyLeft();
     await complain('CC-2');
     expect((await inbox('helena.mondlane')).unread).toBe(1);
     expect(
@@ -63,6 +70,7 @@ describe('notifications under the bell', () => {
   });
 
   it('marks notifications read, one or all, and only the person’s own', async () => {
+    await nobodyLeft();
     await complain('CC-3');
     await complain('CC-4');
     const items = (await inbox('helena.mondlane')).items as { id: string }[];

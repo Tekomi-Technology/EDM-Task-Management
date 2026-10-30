@@ -1,5 +1,6 @@
 import type { Lookups, StaffSuggestion, TicketDetail } from '../types';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { ArrowLeftRight, Undo2, UserRoundCog } from 'lucide-react';
 import { useState } from 'react';
 import { api, ApiRequestError } from '../api';
 import { firstName } from '../format';
@@ -34,66 +35,85 @@ export function ResponsiblePanel({
     onChange(updated);
   };
 
+  const state = !t.assignee
+    ? unfinished
+      ? { text: 'Nobody yet', tone: 'late' }
+      : null
+    : PERSON_STATE[t.status];
   return (
     <section className="card card-pad responsible" aria-label={tr('Who is on it')}>
-      <span className="label" style={{ fontSize: 15 }}>
-        {tr('Who is on it')}
-      </span>
-
-      <div className="responsible-row">
-        <span className="meta">{tr('Team')}</span>
-        <strong>{t.teamName ?? tr('No team yet')}</strong>
-        {canRoute && mode !== 'team' && (
-          <button type="button" className="btn btn-sm" onClick={() => setMode('team')}>
-            {t.teamId ? tr('Move to another team') : tr('Choose a team')}
-          </button>
-        )}
+      <div className="responsible-head">
+        <span className="label" style={{ fontSize: 15 }}>
+          {tr('Who is on it')}
+        </span>
+        {state && <span className={`chip chip-${state.tone}`}>{tr(state.text)}</span>}
       </div>
-      {mode === 'team' && <TeamForm t={t} onDone={close} onCancel={() => setMode(null)} />}
 
-      <div className="responsible-row">
-        <span className="meta">{tr('Person')}</span>
+      <div className="responsible-person">
         {t.assignee ? (
-          <span className="person">
-            <Avatar name={t.assignee.fullName} />
-            <strong>{t.assignee.fullName}</strong>
-          </span>
-        ) : unfinished ? (
-          <strong className="late">{tr('Nobody yet')}</strong>
+          <Avatar name={t.assignee.fullName} size="lg" />
         ) : (
-          <span className="meta">—</span>
+          <Avatar name="?" size="lg" kind="nobody" />
         )}
-        {mode === null && (holding || (canAssign && unfinished)) && (
-          <span className="btn-row" style={{ gap: 6 }}>
-            {holding && canAssign && (
-              <button type="button" className="btn btn-sm" onClick={() => setMode('takeBack')}>
-                {tr('Take the job back')}
-              </button>
-            )}
-            {canAssign && t.teamId && (
-              <button type="button" className="btn btn-sm" onClick={() => setMode('person')}>
-                {t.assignee ? tr('Change person') : tr('Choose a person')}
-              </button>
-            )}
+        <div className="responsible-text">
+          <strong>{t.assignee ? t.assignee.fullName : unfinished ? tr('Nobody on it yet') : '—'}</strong>
+          <span className="meta">
+            {!t.teamId
+              ? tr('No team yet')
+              : t.assignee || !unfinished
+                ? tr('Team {0}', { 0: t.teamName ?? '' })
+                : t.incident
+                  ? tr('Nobody is sent: it closes with network incident {0}.', { 0: t.incident.code })
+                  : tr('Nobody is left in team {0} to give it to.', { 0: t.teamName ?? '' })}
           </span>
-        )}
-      </div>
-      {unfinished && !t.assignee && mode === null && (
-        <div className="meta" style={{ fontSize: 14 }}>
-          {t.incident
-            ? tr('Nobody is sent: it closes with network incident {0}.', { 0: t.incident.code })
-            : !t.teamId
-              ? tr('Choose a team first; the job is then given out automatically.')
-              : tr(
-                  'Nobody in the team is on duty to take it. It goes to the first one who switches duty on.'
-                )}
         </div>
+      </div>
+
+      {mode === null && canAssign && holding && (
+        <div className="responsible-actions">
+          <button type="button" className="btn" onClick={() => setMode('person')}>
+            <UserRoundCog size={16} /> {tr('Change person')}
+          </button>
+          <button type="button" className="btn" onClick={() => setMode('takeBack')}>
+            <Undo2 size={16} /> {tr('Take the job back')}
+          </button>
+        </div>
+      )}
+      {mode === null && canAssign && unfinished && !t.assignee && t.teamId && !t.incident && (
+        <button type="button" className="btn btn-primary" onClick={() => setMode('person')}>
+          <UserRoundCog size={16} /> {tr('Choose a person')}
+        </button>
       )}
       {mode === 'takeBack' && <TakeBackForm t={t} onDone={close} onCancel={() => setMode(null)} />}
       {mode === 'person' && <PersonForm t={t} onDone={close} onCancel={() => setMode(null)} />}
+
+      {canRoute && (
+        <div className="responsible-foot">
+          {mode === 'team' ? (
+            <TeamForm t={t} onDone={close} onCancel={() => setMode(null)} />
+          ) : (
+            <span className="meta" style={{ fontSize: 14 }}>
+              {t.teamId ? tr('Wrong team?') : tr('No team yet.')}{' '}
+              <button type="button" className="link-button" onClick={() => setMode('team')}>
+                <ArrowLeftRight size={14} /> {t.teamId ? tr('Move to another team') : tr('Choose a team')}
+              </button>
+            </span>
+          )}
+        </div>
+      )}
     </section>
   );
 }
+
+/** What the person holding the ticket is doing, in words, with the colour of the chip. */
+const PERSON_STATE: Partial<Record<TicketDetail['status'], { text: string; tone: string }>> = {
+  assigned: { text: 'Has not accepted the job yet', tone: 'blue' },
+  accepted: { text: 'Accepted, on the way', tone: 'blue' },
+  in_progress: { text: 'Working on site', tone: 'ok' },
+  on_hold: { text: 'Paused', tone: 'warn' },
+  resolved: { text: 'Reported the job done', tone: 'purple' },
+  closed: { text: 'Did the job', tone: 'ok' }
+};
 
 interface FormProps {
   t: TicketDetail;
@@ -116,32 +136,39 @@ function TeamForm({ t, onDone, onCancel }: FormProps) {
   const needsReason = !!t.teamId;
   return (
     <div className="responsible-form">
+      <strong>{t.teamId ? tr('Move to another team') : tr('Choose a team')}</strong>
       {!t.teamId && (
         <span className="meta" style={{ fontSize: 14 }}>
           {tr('The place is outside every team area. Choose the team that should go.')}
         </span>
       )}
-      <select aria-label={tr('Team')} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-        <option value="">{tr('Choose a team…')}</option>
-        {lookups.data?.teams
-          .filter((x) => x.id !== t.teamId)
-          .map((x) => (
-            <option key={x.id} value={x.id}>
-              {x.name} · {x.areaName}
-            </option>
-          ))}
-      </select>
+      <div className="field">
+        <label htmlFor="move-team">{t.teamId ? tr('New team') : tr('Team')}</label>
+        <select id="move-team" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+          <option value="">{tr('Choose a team…')}</option>
+          {lookups.data?.teams
+            .filter((x) => x.id !== t.teamId)
+            .map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name} · {x.areaName}
+              </option>
+            ))}
+        </select>
+      </div>
       {needsReason && (
-        <input
-          aria-label={tr('Why it moves')}
-          value={reason}
-          maxLength={300}
-          placeholder={tr('Why it moves, e.g. place marked wrongly, closer team')}
-          onChange={(e) => setReason(e.target.value)}
-        />
+        <div className="field">
+          <label htmlFor="move-reason">{tr('Why it moves')}</label>
+          <input
+            id="move-reason"
+            value={reason}
+            maxLength={300}
+            placeholder={tr('e.g. place marked wrongly')}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
       )}
       {t.assignee && (
-        <div className="notice" style={{ margin: 0 }}>
+        <div className="meta" style={{ fontSize: 14 }}>
           {tr('{0} no longer has the job and is told; the new team gets it like a new ticket.', {
             0: t.assignee.fullName
           })}
@@ -176,15 +203,19 @@ function TakeBackForm({ t, onDone, onCancel }: FormProps) {
   });
   return (
     <div className="responsible-form">
-      <input
-        aria-label={tr('Why the job is taken back')}
-        value={reason}
-        maxLength={500}
-        placeholder={tr('Why, e.g. sick, phone off, cannot be reached')}
-        onChange={(e) => setReason(e.target.value)}
-      />
-      <div className="notice" style={{ margin: 0 }}>
-        {tr('{0} no longer has the job and is told. It goes to the next person of the team on duty.', {
+      <strong>{tr('Take the job back from {0}', { 0: t.assignee!.fullName })}</strong>
+      <div className="field">
+        <label htmlFor="take-back-reason">{tr('Why the job is taken back')}</label>
+        <input
+          id="take-back-reason"
+          value={reason}
+          maxLength={500}
+          placeholder={tr('e.g. sick, phone off')}
+          onChange={(e) => setReason(e.target.value)}
+        />
+      </div>
+      <div className="meta" style={{ fontSize: 14 }}>
+        {tr('{0} no longer has the job and is told. It goes to the next person of the team.', {
           0: t.assignee!.fullName
         })}
       </div>
@@ -235,21 +266,25 @@ function PersonForm({ t, onDone, onCancel }: FormProps) {
   }
   return (
     <div className="responsible-form">
-      <select aria-label={tr('Person')} value={picked} onChange={(e) => setPicked(e.target.value)}>
-        <option value="">{tr('Choose a person…')}</option>
-        {others.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.fullName} ·{' '}
-            {s.onDuty
-              ? tr(s.openJobs === 1 ? 'on duty, {0} unfinished job' : 'on duty, {0} unfinished jobs', {
-                  0: s.openJobs
-                })
-              : tr('off duty')}
-          </option>
-        ))}
-      </select>
+      <strong>{t.assignee ? tr('Change person') : tr('Choose a person')}</strong>
+      <div className="field">
+        <label htmlFor="pick-person">{tr('Who goes')}</label>
+        <select id="pick-person" value={picked} onChange={(e) => setPicked(e.target.value)}>
+          <option value="">{tr('Choose a person…')}</option>
+          {others.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.fullName} ·{' '}
+              {s.onDuty
+                ? tr(s.openJobs === 1 ? 'on duty, {0} unfinished job' : 'on duty, {0} unfinished jobs', {
+                    0: s.openJobs
+                  })
+                : tr('off duty')}
+            </option>
+          ))}
+        </select>
+      </div>
       {chosen && !chosen.onDuty && (
-        <div className="notice" style={{ margin: 0 }}>
+        <div className="meta" style={{ fontSize: 14 }}>
           {tr('{0} is off duty and sees the job when back on the app; an SMS is sent now.', {
             0: firstName(chosen.fullName)
           })}

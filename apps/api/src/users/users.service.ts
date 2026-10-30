@@ -167,7 +167,7 @@ export class UsersService {
         doneToday: r.doneToday,
         distanceM: r.distanceM,
         locationAt: r.locationAt,
-        bestMatch: i === 0 && r.onDuty
+        bestMatch: i === 0
       }));
   }
 
@@ -188,8 +188,9 @@ export class UsersService {
   }
 
   /**
-   * Who should get a job automatically: active field staff of the team who are on duty, fewest unfinished jobs
-   * first, then whoever has waited longest since their last assignment.
+   * Who should get a job automatically: active field staff of the team, those on duty first (someone off duty gets
+   * it when nobody is on duty, and sees it on their next shift), then fewest unfinished jobs, nearest, and whoever
+   * has waited longest since their last assignment.
    */
   async pickAutoAssignee(
     tx: Tx,
@@ -204,7 +205,6 @@ export class UsersService {
         and(
           eq(users.teamId, teamId),
           eq(users.status, 'active'),
-          eq(users.onDuty, true),
           arrayContains(users.roles, ['field_staff']),
           excludeIds.length ? notInArray(users.id, excludeIds) : undefined
         )
@@ -221,6 +221,7 @@ export class UsersService {
       .map((r) => ({ ...r, distanceM: distances.get(r.id) ?? null }))
       .sort(
         (a, b) =>
+          Number(b.onDuty) - Number(a.onDuty) ||
           a.openJobs - b.openJobs ||
           (a.distanceM ?? Infinity) - (b.distanceM ?? Infinity) ||
           (a.lastAssignedAt?.getTime() ?? 0) - (b.lastAssignedAt?.getTime() ?? 0) ||

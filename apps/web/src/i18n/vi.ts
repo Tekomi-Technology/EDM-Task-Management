@@ -464,8 +464,8 @@ export const vi: Record<string, string> = {
   'Nobody here.': 'Không có ai.',
   'Nobody in the team is on duty.': 'Trong đội không ai đang trực.',
   'Nobody matches.': 'Không có ai khớp.',
-  'Nobody of the team is on duty; the manager gets an SMS.':
-    'Trong đội không ai đang trực; quản lý đội sẽ nhận SMS.',
+  'Nobody is left in the team to give it to; the manager gets an SMS.':
+    'Đội không còn ai để giao; quản lý đội sẽ nhận SMS.',
   'Nobody yet': 'Chưa có ai',
   NOC: 'NOC',
   'NOC and administrators record the result.': 'NOC và quản trị viên ghi nhận kết quả.',
@@ -1226,12 +1226,12 @@ export const vi: Record<string, string> = {
     'Không cử người riêng: phiếu đóng cùng sự cố lưới {0}.',
   'Choose a team first; the job is then given out automatically.':
     'Chọn đội trước; sau đó việc sẽ được tự giao.',
-  'Nobody in the team is on duty to take it. It goes to the first one who switches duty on.':
-    'Đang chờ: chưa ai trong đội đang trực để nhận. Phiếu sẽ tự giao cho người đầu tiên bật trực.',
+  'Nobody is left in the team to give it to. Choose a person or move it to another team.':
+    'Đang chờ: đội không còn ai để tự giao. Hãy chọn người hoặc chuyển đội.',
   'Why the job is taken back': 'Lý do thu lại việc',
   'Why, e.g. sick, phone off, cannot be reached': 'Lý do, ví dụ: ốm, tắt máy, không liên lạc được',
-  '{0} no longer has the job and is told. It goes to the next person of the team on duty.':
-    '{0} sẽ không còn giữ việc này và được báo. Phiếu tự giao cho người tiếp theo của đội đang trực.',
+  '{0} no longer has the job and is told. It goes to the next person of the team.':
+    '{0} sẽ không còn giữ việc này và được báo. Phiếu tự giao cho người tiếp theo trong đội.',
   'Keep it with {0}': 'Để {0} làm tiếp',
   'Nobody else in team {0}.': 'Đội {0} không còn ai khác.',
   'on duty, {0} unfinished job': 'đang trực, {0} việc dở',
@@ -1246,6 +1246,21 @@ export const vi: Record<string, string> = {
   'waiting for someone': 'đang chờ giao',
   'Time left to survey': 'Thời gian còn lại để khảo sát',
   'Time left to connect': 'Thời gian còn lại để đấu nối',
-  'Each goes to the first one of its team who switches duty on.':
-    'Mỗi phiếu sẽ tự giao cho người đầu tiên của đội bật trực.'
+  'Nobody was left in the team to give these to. Open one to choose a person.':
+    'Đội không còn ai để tự giao các phiếu này. Mở phiếu để chọn người.',
+  'off duty, sees it on the next shift': 'đang nghỉ trực, sẽ thấy việc khi vào ca',
+  'Has not accepted the job yet': 'Chưa nhận việc',
+  'Accepted, on the way': 'Đã nhận, đang đến',
+  'Working on site': 'Đang làm tại hiện trường',
+  'Reported the job done': 'Đã báo xong',
+  'Did the job': 'Đã làm xong',
+  'New team': 'Đội mới',
+  'e.g. place marked wrongly': 'Ví dụ: đánh dấu sai vị trí',
+  'Take the job back from {0}': 'Thu lại việc từ {0}',
+  'e.g. sick, phone off': 'Ví dụ: ốm, tắt máy',
+  'Who goes': 'Ai sẽ làm',
+  'Nobody on it yet': 'Chưa có ai làm',
+  'Nobody is left in team {0} to give it to.': 'Đội {0} không còn ai để tự giao.',
+  'Wrong team?': 'Sai đội?',
+  'No team yet.': 'Chưa có đội.'
 };

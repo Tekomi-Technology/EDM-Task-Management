@@ -119,7 +119,7 @@ describe('inputs and situations that must not break the system', () => {
       .select({ status: tickets.status })
       .from(tickets)
       .where(eq(tickets.id, body.ticketId));
-    expect(row.status).toBe('new');
+    expect(row.status).toBe('assigned');
   });
 
   it('does not accept a photo that was never uploaded', async () => {

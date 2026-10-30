@@ -43,7 +43,8 @@ describe('ResponsiblePanel', () => {
   it('shows the team and the person together, and lets a manager take the job back with a reason', async () => {
     const wrapper = signedInAs(['team_manager']);
     render(<ResponsiblePanel t={ticket({})} onChange={vi.fn()} />, { wrapper });
-    expect(screen.getByText('South 1')).toBeInTheDocument();
+    expect(screen.getByText('Team South 1')).toBeInTheDocument();
+    expect(screen.getByText('Accepted, on the way')).toBeInTheDocument();
     expect(screen.getByText('Ana Sitoe')).toBeInTheDocument();
     // Moving to another team is for NOC, technical managers and administrators.
     expect(screen.queryByRole('button', { name: 'Move to another team' })).not.toBeInTheDocument();
@@ -56,7 +57,7 @@ describe('ResponsiblePanel', () => {
     expect(confirm).toBeEnabled();
   });
 
-  it('says the ticket waits for someone on duty when nobody has it', () => {
+  it('says the ticket waits when nobody is left in the team', () => {
     const wrapper = signedInAs(['noc']);
     render(
       <ResponsiblePanel
@@ -66,7 +67,8 @@ describe('ResponsiblePanel', () => {
       { wrapper }
     );
     expect(screen.getByText('Nobody yet')).toBeInTheDocument();
-    expect(screen.getByText(/goes to the first one who switches duty on/)).toBeInTheDocument();
+    expect(screen.getByText('Nobody on it yet')).toBeInTheDocument();
+    expect(screen.getByText(/Nobody is left in team South 1/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Take the job back' })).not.toBeInTheDocument();
   });
 });

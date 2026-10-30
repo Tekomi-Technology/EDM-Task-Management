@@ -295,7 +295,7 @@ export class TicketsService {
     /** The team covering the place, whatever team was chosen. */
     placeTeamId: string | null;
     incident: { id: string; code: string } | null;
-    assignee: { id: string; fullName: string; distanceM: number | null } | null;
+    assignee: { id: string; fullName: string; distanceM: number | null; onDuty: boolean } | null;
   }> {
     return this.db.transaction(async (tx) => {
       const place = location ? await this.route(tx, location) : null;
@@ -310,7 +310,9 @@ export class TicketsService {
         route,
         placeTeamId: place?.teamId ?? null,
         incident,
-        assignee: staff ? { id: staff.id, fullName: staff.fullName, distanceM: staff.distanceM } : null
+        assignee: staff
+          ? { id: staff.id, fullName: staff.fullName, distanceM: staff.distanceM, onDuty: staff.onDuty }
+          : null
       };
     });
   }
@@ -641,8 +643,8 @@ export class TicketsService {
   }
 
   /**
-   * Gives the ticket to the least busy field staff member of the team who is on duty, recording it as done by the
-   * system. Returns the new status, or null when auto-assignment is off or nobody is available.
+   * Gives the ticket to a field staff member of the team (on duty first, then the least busy), recording it as done
+   * by the system. Returns the new status, or null when auto-assignment is off or nobody is left in the team.
    */
   private async autoAssign(
     tx: Tx,
@@ -846,7 +848,7 @@ export class TicketsService {
 
   /**
    * Takes a job back from the staff member holding it (sick, phone off, cannot be reached), saying why. They are told,
-   * and the ticket goes to the next person of the team on duty, or waits and the team managers are told.
+   * and the ticket goes to the next person of the team, or waits and the team managers are told.
    */
   async takeBack(ticketId: string, actor: AuthUser, reason: string): Promise<void> {
     const outboxIds: string[] = [];
@@ -909,8 +911,8 @@ export class TicketsService {
   }
 
   /**
-   * A field staff member has switched duty on: the team's tickets that waited because nobody was on duty are given
-   * out now, most urgent first, to whoever on duty is least busy (usually the person who just started).
+   * A field staff member has switched duty on: the team's tickets still waiting for someone (nobody was left to give
+   * them to) are given out now, most urgent first.
    */
   async assignWaiting(teamId: string | null): Promise<void> {
     if (!teamId || !this.env.AUTO_ASSIGN) return;

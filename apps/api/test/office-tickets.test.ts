@@ -237,8 +237,8 @@ describe('tickets entered by EDM staff', () => {
       teamReason: 'South 1 is on the big outage'
     });
     expect(res.status).toBe(201);
-    // Nobody of South 2 is on duty: it waits for their manager instead of going to Armando (South 1).
-    expect(res.body).toMatchObject({ status: 'new', assigneeName: null });
+    // It goes to Ofélia (South 2, off duty) rather than Armando (South 1, on duty).
+    expect(res.body).toMatchObject({ status: 'assigned', assigneeName: 'Ofélia Tembe' });
     const detail = (await t.as('nadia.mussa').get(`/api/tickets/${res.body.id}`)).body;
     // The team chosen goes; the place stays in its own area.
     expect(detail).toMatchObject({ teamId: south2, teamName: 'South 2', areaName: 'Matola' });
@@ -303,7 +303,11 @@ describe('tickets entered by EDM staff', () => {
       .as('nadia.mussa')
       .post(`/api/tickets/${id}/team`, { teamId: south2, reason: 'The place was marked wrongly' });
     expect(moved.status).toBe(200);
-    expect(moved.body).toMatchObject({ teamId: south2, status: 'new', assignee: null });
+    expect(moved.body).toMatchObject({
+      teamId: south2,
+      status: 'assigned',
+      assignee: { fullName: 'Ofélia Tembe' }
+    });
     const event = (moved.body.events as Event[]).find((e) => e.type === 'team_changed');
     expect(event?.data).toMatchObject({
       fromName: 'South 1',

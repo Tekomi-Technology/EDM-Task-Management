@@ -207,10 +207,9 @@ describe('field staff: positions, distance, time limits and performance', () => 
     };
     await work('CC-7', 'fixed');
     await work('CC-8', 'not_fixed');
+    // Ana has the reopened job, so this one goes to Armando automatically.
     const declined = await complain('CC-9');
-    await t
-      .as('helena.mondlane')
-      .post(`/api/tickets/${declined.ticketId}/assign`, { assigneeId: ids['armando.cossa'] });
+    expect(declined.assigneeName).toBe('Armando Cossa');
     await t
       .as('armando.cossa')
       .post(`/api/tickets/${declined.ticketId}/decline`, { reason: 'Too far today' });

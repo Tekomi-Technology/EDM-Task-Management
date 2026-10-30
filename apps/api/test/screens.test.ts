@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { tickets, users } from '../src/db/schema';
 import { createTestApp, ids, resetData, type TestContext } from './helpers';
 
@@ -44,6 +44,11 @@ describe('data for the web screens', () => {
       await t.as('armando.cossa').post(`/api/tickets/${id}/resolve`, { note: 'Fixed the fuse' });
     }
     await t.as('call-center').post('/api/intake/call-center/tickets/CC-4/check-result', { result: 'fixed' });
+    // Nobody was left to take these two (as when the whole team is away): they wait for someone.
+    await t.db
+      .update(tickets)
+      .set({ status: 'new', assigneeId: null })
+      .where(inArray(tickets.id, [fresh, other]));
     // The new ticket is already past its time limit.
     await t.db
       .update(tickets)
@@ -194,8 +199,8 @@ describe('data for the web screens', () => {
     const messages = (await t.as('helena.mondlane').get(`/api/tickets/${s.working}/messages`)).body;
     expect(messages.map((m: { to: string }) => m.to)).toEqual([
       'Customer',
-      'Helena Mondlane (team manager)',
-      'Armando Cossa (field staff)',
+      'Armando Cossa (field staff)', // given to him automatically
+      'Armando Cossa (field staff)', // then by the manager
       'Customer',
       'Armando Cossa (field staff)'
     ]);

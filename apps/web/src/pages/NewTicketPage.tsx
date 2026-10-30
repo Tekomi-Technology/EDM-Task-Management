@@ -751,6 +751,7 @@ export function NewTicketPage() {
                       <div className="meta">
                         {[
                           p.team && t('Team {0}', { 0: p.team.name }),
+                          !p.assignee.onDuty && t('off duty, sees it on the next shift'),
                           km(p.assignee.distanceM) && t('nearest, {0}', { 0: km(p.assignee.distanceM) }),
                           p.assignee.openJobs === 0
                             ? t('free now')
@@ -766,7 +767,7 @@ export function NewTicketPage() {
                         {t('Waits for the manager of team')} {p.team.name}
                       </strong>
                       <div className="meta">
-                        {t('Nobody of the team is on duty; the manager gets an SMS.')}
+                        {t('Nobody is left in the team to give it to; the manager gets an SMS.')}
                       </div>
                     </>
                   ) : (

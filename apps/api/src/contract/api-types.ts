@@ -641,7 +641,14 @@ export interface TicketPreview {
   autoTeam: { id: string; name: string } | null;
   areaName: string | null;
   /** Who automatic assignment would pick now; null when nobody of the team is on duty (the manager is told). */
-  assignee: { id: string; fullName: string; distanceM: number | null; openJobs: number } | null;
+  /** Who automatic assignment would pick: someone on duty first, else someone off duty (sees it on their next shift). */
+  assignee: {
+    id: string;
+    fullName: string;
+    distanceM: number | null;
+    openJobs: number;
+    onDuty: boolean;
+  } | null;
   priority: number;
   slaMinutes: number;
   dueAt: string;

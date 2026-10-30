@@ -292,7 +292,8 @@ describe('new customers from the Sales system: survey, connection, handover, act
       activated: false,
       note: 'Meter not in billing yet'
     });
-    expect(failed.body.status).toBe('reopened');
+    // Back to the team: reopened and given out again straight away.
+    expect(failed.body.status).toBe('assigned');
   });
 
   it('lets the office send a survey or a connection to another team than the one of the place, with the reason', async () => {

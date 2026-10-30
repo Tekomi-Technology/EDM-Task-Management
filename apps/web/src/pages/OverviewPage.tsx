@@ -157,7 +157,7 @@ export function OverviewPage() {
                 ) : (
                   <>
                     <div className="meta" style={{ fontSize: 14, padding: '0 24px 12px' }}>
-                      {tr('Each goes to the first one of its team who switches duty on.')}
+                      {tr('Nobody was left in the team to give these to. Open one to choose a person.')}
                     </div>
                     {data.unassigned.map((t) => (
                       <div key={t.id} className="unassigned-item">
