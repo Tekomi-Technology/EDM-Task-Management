@@ -128,20 +128,17 @@ function UserMenu() {
               {me.data.teamName ? ` · ${me.data.teamName}` : ''}
             </div>
           </div>
-          <div className="menu-language" role="group" aria-label={t('Language')}>
+          <label className="menu-language">
             <Languages size={16} aria-hidden />
-            {(Object.keys(LANGUAGES) as Language[]).map((l) => (
-              <button
-                key={l}
-                type="button"
-                role="menuitemradio"
-                aria-checked={language === l}
-                onClick={() => setLanguage(l)}
-              >
-                {LANGUAGES[l]}
-              </button>
-            ))}
-          </div>
+            <span className="sr-only">{t('Language')}</span>
+            <select value={language} onChange={(e) => setLanguage(e.target.value as Language)}>
+              {(Object.keys(LANGUAGES) as Language[]).map((l) => (
+                <option key={l} value={l}>
+                  {LANGUAGES[l]}
+                </option>
+              ))}
+            </select>
+          </label>
           <button type="button" role="menuitem" onClick={signOut}>
             <LogOut size={16} /> {t('Sign out')}
           </button>

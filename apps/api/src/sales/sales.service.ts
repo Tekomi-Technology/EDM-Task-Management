@@ -355,9 +355,7 @@ export class SalesService {
         surveyedBy: r.surveyedBy,
         surveyedAt: r.closedAt?.toISOString() ?? null,
         team: team ?? null,
-        assignee: where.assignee
-          ? { id: where.assignee.id, fullName: where.assignee.fullName, onDuty: where.assignee.onDuty }
-          : null,
+        teamStaff: where.teamStaff,
         depot: stock.depot,
         materials: estimate.map((l) => {
           const item = items.find((i) => i.id === l.itemId);

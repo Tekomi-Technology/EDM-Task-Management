@@ -86,7 +86,17 @@ export type AlarmSeverity = 'critical' | 'major' | 'minor' | 'warning';
 export type PlannedWorkKind = 'maintenance' | 'network_change';
 
 export type TicketAction =
-  'assign' | 'accept' | 'decline' | 'start' | 'hold' | 'resume' | 'resolve' | 'close' | 'reopen' | 'cancel';
+  | 'assign'
+  | 'claim'
+  | 'accept'
+  | 'decline'
+  | 'start'
+  | 'hold'
+  | 'resume'
+  | 'resolve'
+  | 'close'
+  | 'reopen'
+  | 'cancel';
 
 export type PremisesType = 'home' | 'shop' | 'school' | 'business' | 'farm' | 'other';
 
@@ -169,6 +179,8 @@ export interface TicketDetail extends TicketSummary {
   incident: { id: string; code: string; title: string; status: TicketStatus } | null;
   /** 0 = on time; 1 = staff reminded; 2 = late, team manager and NOC told; 3 = badly late, technical manager told. */
   escalationLevel: number;
+  /** While nobody has claimed it: the last time the team was told, and who. */
+  offer: TicketOffer | null;
   /** Materials recorded on the job; deducted from stock when the ticket closes. */
   materials: TicketMaterialView[];
   /** Materials set aside in a depot for this ticket. */
@@ -220,7 +232,7 @@ export interface NewCustomerInfo {
   installation: {
     meterNumber: string;
     sealNumber: string | null;
-    confirmedBy: 'sms_code' | 'signed_form';
+    confirmedBy: 'sms_code' | 'signed_form' | 'meter_photo';
     confirmedAt: string;
   } | null;
   /** When the Sales system activated the service. */
@@ -384,7 +396,7 @@ export interface StaffSuggestion extends StaffMember {
   locationAt: string | null;
   /** Jobs they reported done today. */
   doneToday: number;
-  /** The person automatic assignment would choose. */
+  /** The best choice when the office names someone: on duty, fewest unfinished jobs, nearest. */
   bestMatch: boolean;
 }
 
@@ -675,20 +687,23 @@ export interface CustomerMatch {
   openTickets: { id: string; code: string; title: string; status: TicketStatus }[];
 }
 
+export interface TicketOffer {
+  teamName: string;
+  /** Field staff told the last time (everyone of the team except those who gave it back). */
+  notified: string[];
+  /** 1 the first time, then one more each time the team is told again. */
+  round: number;
+  at: string;
+}
+
 export interface TicketPreview {
   /** The team that goes: the one chosen, or else the team of the place. */
   team: { id: string; name: string } | null;
   /** The team of the place, whatever was chosen. */
   autoTeam: { id: string; name: string } | null;
   areaName: string | null;
-  /** Who automatic assignment would pick now; null when nobody of the team is on duty (the manager is told). */
-  assignee: {
-    id: string;
-    fullName: string;
-    distanceM: number | null;
-    openJobs: number;
-    onDuty: boolean;
-  } | null;
+  /** How many field staff of the team are told about it; 0: nobody is left, the team manager chooses someone. */
+  teamStaff: number;
   priority: number;
   slaMinutes: number;
   dueAt: string;
@@ -820,7 +835,8 @@ export interface WaitingSurvey {
   surveyedBy: string | null;
   surveyedAt: string | null;
   team: { id: string; name: string } | null;
-  assignee: { id: string; fullName: string; onDuty: boolean } | null;
+  /** How many field staff of the team would be told. */
+  teamStaff: number;
   depot: { id: string; name: string } | null;
   materials: {
     itemId: string;

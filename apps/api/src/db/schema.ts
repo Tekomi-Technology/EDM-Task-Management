@@ -198,6 +198,10 @@ export const tickets = pgTable(
     outage: boolean('outage').notNull().default(false),
     /** How far the time-limit warnings have gone: 0 none, 1 staff reminded, 2 late, 3 badly late. */
     escalationLevel: smallint('escalation_level').notNull().default(0),
+    /** When the waiting ticket was last offered to its team (null: not offered since it last had someone). */
+    offeredAt: timestamp('offered_at', { withTimezone: true }),
+    /** How many times it has been offered since then: 1 the first time, then one more per reminder. */
+    offerRound: smallint('offer_round').notNull().default(0),
     /** New customers: premises, supply, the survey report and the installation (see NewCustomerDetails). */
     details: jsonb('details').$type<NewCustomerDetails>(),
     createdAt: createdAt(),
@@ -374,7 +378,7 @@ export interface NewCustomerDetails {
   installation?: {
     meterNumber: string;
     sealNumber?: string;
-    confirmedBy: 'sms_code' | 'signed_form';
+    confirmedBy: 'sms_code' | 'signed_form' | 'meter_photo';
     confirmedAt: string;
   };
   activatedAt?: string;

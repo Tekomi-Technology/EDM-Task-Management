@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
-import { notificationOutbox, users } from '../src/db/schema';
+import { and, eq } from 'drizzle-orm';
+import { notificationOutbox, pushDevices, tickets, users } from '../src/db/schema';
+import { TicketsService } from '../src/tickets/tickets.service';
 import { createTestApp, ids, resetData, type Caller, type TestContext } from './helpers';
 
 const complaint = (ref: string, contractNo = '40217735') => ({
@@ -16,7 +17,7 @@ const PHONES = {
   ana: '+258840000009'
 };
 
-describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () => {
+describe('full ticket lifecycle: offered to the team, claimed, given back, paused, cancelled', () => {
   let t: TestContext;
   beforeAll(async () => {
     t = await createTestApp();
@@ -40,6 +41,23 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
     return res.body as { ticketId: string; code: string; status: string; assigneeName: string | null };
   }
 
+  async function register(who: 'armando.cossa' | 'ana.sitoe') {
+    const res = await t
+      .as(who)
+      .post('/api/me/devices', { token: `ExponentPushToken[${who}]`, platform: 'android' });
+    expect(res.status).toBe(204);
+  }
+
+  async function pushTitles(who: 'armando.cossa' | 'ana.sitoe'): Promise<string[]> {
+    const rows = await t.db
+      .select({ payload: notificationOutbox.payload })
+      .from(notificationOutbox)
+      .innerJoin(pushDevices, eq(pushDevices.token, notificationOutbox.recipient))
+      .where(and(eq(notificationOutbox.channel, 'push'), eq(pushDevices.userId, ids[who])))
+      .orderBy(notificationOutbox.createdAt);
+    return rows.map((r) => r.payload!.title);
+  }
+
   async function smsTo(phone: string): Promise<string[]> {
     const rows = await t.db.select().from(notificationOutbox).where(eq(notificationOutbox.recipient, phone));
     return rows.map((r) => r.body);
@@ -58,79 +76,109 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
     expect((await t.as('armando.cossa').post('/api/me/duty', { onDuty: 'yes' })).status).toBe(400);
   });
 
-  it('gives new tickets to the least busy staff member on duty, by SMS, without bothering the manager', async () => {
-    await onDuty('armando.cossa');
-    await onDuty('ana.sitoe');
-    const first = await complain('CC-A1');
-    const second = await complain('CC-A2');
-    const third = await complain('CC-A3');
-    // Both start with no jobs, so the first goes by name; then the one with fewer jobs; then whoever waited longer.
-    expect([first, second, third].map((x) => [x.status, x.assigneeName])).toEqual([
-      ['assigned', 'Ana Sitoe'],
-      ['assigned', 'Armando Cossa'],
-      ['assigned', 'Ana Sitoe']
-    ]);
-    expect(await smsTo(PHONES.helena)).toEqual([]);
-    expect((await smsTo(PHONES.ana)).some((b) => b.includes(first.code))).toBe(true);
-
-    const history = (await detail(first.ticketId)).events;
-    expect(history.at(-1)).toMatchObject({
-      type: 'assign',
-      actorName: 'System (auto-assign)',
-      data: { auto: true, assigneeId: ids['ana.sitoe'] }
-    });
-  });
-
-  it('prefers whoever has fewer unfinished jobs over whoever waited longer', async () => {
-    await onDuty('armando.cossa');
-    await onDuty('ana.sitoe');
-    const first = await complain('CC-W1'); // Ana: by name
-    const second = await complain('CC-W2'); // Armando: Ana now has a job
-    expect([first.assigneeName, second.assigneeName]).toEqual(['Ana Sitoe', 'Armando Cossa']);
-    for (const step of ['accept', 'start']) {
-      await t.as('armando.cossa').post(`/api/tickets/${second.ticketId}/${step}`);
-    }
-    await t.as('armando.cossa').post(`/api/tickets/${second.ticketId}/resolve`, { note: 'Done' });
-    // Armando was assigned more recently, but has no unfinished job; Ana still has one.
-    expect((await complain('CC-W3')).assigneeName).toBe('Armando Cossa');
-  });
-
-  it('gives the ticket to someone off duty when nobody in the team is on duty, without bothering the manager', async () => {
-    await onDuty('ana.sitoe');
-    await onDuty('ana.sitoe', false);
+  it('offers a new ticket to the whole team through the app, on duty or not, without bothering the manager', async () => {
+    await register('armando.cossa');
     await onDuty('ofelia.tembe'); // on duty, but in the other team
-    const ticket = await complain('CC-B1');
-    expect(ticket).toMatchObject({ status: 'assigned', assigneeName: 'Ana Sitoe' });
-    expect(await smsTo(PHONES.ana)).toHaveLength(1);
-    expect(await smsTo(PHONES.helena)).toHaveLength(0);
+    const ticket = await complain('CC-A1');
+    expect(ticket).toMatchObject({ status: 'new', assigneeName: null });
+
+    const history = (await detail(ticket.ticketId)).events;
+    expect(history.at(-1)).toMatchObject({
+      type: 'offered',
+      actorName: 'System',
+      data: { notified: ['Ana Sitoe', 'Armando Cossa'], round: 1, teamName: 'South 1' }
+    });
+    // App only: Armando has it installed and gets a push; Ana does not, and gets no SMS either.
+    expect(await pushTitles('armando.cossa')).toEqual(['Novo trabalho para a equipa']);
+    expect(await smsTo(PHONES.ana)).toEqual([]);
+    expect(await smsTo(PHONES.helena)).toEqual([]);
+
+    const offers = (await t.as('ana.sitoe').get('/api/me/offers')).body;
+    expect(offers).toEqual([
+      expect.objectContaining({
+        id: ticket.ticketId,
+        code: ticket.code,
+        offer: expect.objectContaining({ notified: ['Ana Sitoe', 'Armando Cossa'], round: 1 })
+      })
+    ]);
+    expect((await t.as('ofelia.tembe').get('/api/me/offers')).body).toEqual([]);
+    // Staff of the team may open the offered job before claiming it, and see that they can claim it.
+    expect((await t.as('ana.sitoe').get(`/api/tickets/${ticket.ticketId}`)).body).toMatchObject({
+      allowedActions: ['claim'],
+      offer: { round: 1 }
+    });
+    expect((await t.as('ofelia.tembe').get(`/api/tickets/${ticket.ticketId}`)).status).toBe(404);
   });
 
-  it('does not give jobs to blocked staff, and leaves the ticket for the manager when nobody is left', async () => {
-    await onDuty('armando.cossa');
+  it('gives the job to whoever claims it first; it leaves everyone else’s list', async () => {
+    const { ticketId, code } = await complain('CC-B1');
+    expect((await t.as('helena.mondlane').post(`/api/tickets/${ticketId}/claim`)).status).toBe(403);
+    const otherTeam = await t.as('ofelia.tembe').post(`/api/tickets/${ticketId}/claim`);
+    expect([otherTeam.status, otherTeam.body.code]).toEqual([403, 'NOT_IN_TEAM']);
+
+    const claimed = await t.as('ana.sitoe').post(`/api/tickets/${ticketId}/claim`);
+    expect(claimed.status).toBe(200);
+    expect(claimed.body).toMatchObject({
+      status: 'accepted',
+      assignee: { fullName: 'Ana Sitoe' },
+      offer: null
+    });
+    expect(claimed.body.allowedActions).toEqual(expect.arrayContaining(['start', 'decline']));
+    expect(claimed.body.events.at(-1)).toMatchObject({
+      type: 'claim',
+      actorName: 'Ana Sitoe',
+      data: { from: 'new', to: 'accepted', assigneeName: 'Ana Sitoe' }
+    });
+
+    const late = await t.as('armando.cossa').post(`/api/tickets/${ticketId}/claim`);
+    expect([late.status, late.body.code]).toEqual([409, 'ALREADY_TAKEN']);
+    expect((await t.as('armando.cossa').get('/api/me/offers')).body).toEqual([]);
+    expect((await t.as('ana.sitoe').get('/api/me/jobs')).body.map((j: { code: string }) => j.code)).toEqual([
+      code
+    ]);
+  });
+
+  it('lets only one of two people claiming at the same moment have the job', async () => {
+    const { ticketId } = await complain('CC-B2');
+    const both = await Promise.all([
+      t.as('ana.sitoe').post(`/api/tickets/${ticketId}/claim`),
+      t.as('armando.cossa').post(`/api/tickets/${ticketId}/claim`)
+    ]);
+    expect(both.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(both.find((r) => r.status === 409)!.body.code).toBe('ALREADY_TAKEN');
+    const claims = (await detail(ticketId)).events.filter((e: { type: string }) => e.type === 'claim');
+    expect(claims).toHaveLength(1);
+  });
+
+  it('does not offer jobs to blocked staff, and leaves the ticket for the manager when nobody is left', async () => {
     await block('armando.cossa');
-    expect(await complain('CC-B2')).toMatchObject({ status: 'assigned', assigneeName: 'Ana Sitoe' });
+    const first = await complain('CC-B3');
+    expect((await detail(first.ticketId)).offer).toMatchObject({ notified: ['Ana Sitoe'] });
     await block('ana.sitoe');
-    expect((await complain('CC-B3')).status).toBe('new');
+    const second = await complain('CC-B4');
+    const d = await detail(second.ticketId);
+    expect(d).toMatchObject({ status: 'new', offer: null });
+    expect(d.events.map((e: { type: string }) => e.type)).not.toContain('offered');
     expect(await smsTo(PHONES.helena)).toHaveLength(1);
   });
 
-  it('passes a declined job to someone else, and to the manager once everyone has declined', async () => {
-    await onDuty('armando.cossa');
-    await onDuty('ana.sitoe');
+  it('offers a job given back to the rest of the team, and tells the manager once everyone has given it back', async () => {
     const ticket = await complain('CC-C1');
-    expect(ticket.assigneeName).toBe('Ana Sitoe');
+    await t.as('ana.sitoe').post(`/api/tickets/${ticket.ticketId}/claim`);
 
     expect((await t.as('ana.sitoe').post(`/api/tickets/${ticket.ticketId}/decline`, {})).status).toBe(400);
     const declined = await t
       .as('ana.sitoe')
       .post(`/api/tickets/${ticket.ticketId}/decline`, { reason: 'Vehicle broken down' });
     expect(declined.status).toBe(200);
-    expect(declined.body).toEqual({ id: ticket.ticketId, status: 'assigned' });
-    expect((await t.as('ana.sitoe').get(`/api/tickets/${ticket.ticketId}`)).status).toBe(404);
+    expect(declined.body).toEqual({ id: ticket.ticketId, status: 'new' });
     expect((await t.as('ana.sitoe').get('/api/me/jobs')).body).toEqual([]);
-    expect((await detail(ticket.ticketId)).assignee.fullName).toBe('Armando Cossa');
+    // Ana gave it back: it is not offered to her again.
+    expect((await t.as('ana.sitoe').get('/api/me/offers')).body).toEqual([]);
+    expect((await detail(ticket.ticketId)).offer).toMatchObject({ notified: ['Armando Cossa'] });
+    expect((await t.as('armando.cossa').get('/api/me/offers')).body).toHaveLength(1);
 
-    await t.as('armando.cossa').post(`/api/tickets/${ticket.ticketId}/accept`);
+    await t.as('armando.cossa').post(`/api/tickets/${ticket.ticketId}/claim`);
     const again = await t
       .as('armando.cossa')
       .post(`/api/tickets/${ticket.ticketId}/decline`, { reason: 'Needs a bucket truck' });
@@ -149,38 +197,53 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
     ).toBe(true);
   });
 
-  it('gives waiting tickets to whoever switches duty on, most urgent first, but not jobs they declined', async () => {
-    await block('ana.sitoe');
-    await onDuty('armando.cossa');
-    const declined = await complain('CC-W0');
-    await t.as('armando.cossa').post(`/api/tickets/${declined.ticketId}/decline`, { reason: 'No ladder' });
-    await onDuty('armando.cossa', false);
-    // Nobody is left in the team (Armando is away for a while): tickets wait.
-    await block('armando.cossa');
-    const first = await complain('CC-W1');
-    const second = await complain('CC-W2');
-    expect([first.status, second.status]).toEqual(['new', 'new']);
+  it('tells the team again every 15 minutes until someone claims it; the office can tell them at once', async () => {
+    await register('armando.cossa');
+    const { ticketId } = await complain('CC-R1');
+    const reminders = t.app.get(TicketsService);
+    // Not 15 minutes yet: nothing happens.
+    expect(await reminders.remindOffers()).toBe(0);
+    await t.db
+      .update(tickets)
+      .set({ offeredAt: new Date(Date.now() - 16 * 60_000) })
+      .where(eq(tickets.id, ticketId));
+    expect(await reminders.remindOffers()).toBe(1);
+    expect(await reminders.remindOffers()).toBe(0);
+    expect((await detail(ticketId)).offer).toMatchObject({
+      round: 2,
+      notified: ['Ana Sitoe', 'Armando Cossa']
+    });
+    expect(await pushTitles('armando.cossa')).toEqual([
+      'Novo trabalho para a equipa',
+      'Trabalho ainda sem técnico'
+    ]);
 
-    await t.db.update(users).set({ status: 'active' }).where(eq(users.id, ids['armando.cossa']));
-    await onDuty('armando.cossa');
-    for (const id of [first.ticketId, second.ticketId]) {
-      const d = await detail(id);
-      expect(d).toMatchObject({ status: 'assigned', assignee: { fullName: 'Armando Cossa' } });
-      expect(d.events.at(-1)).toMatchObject({ type: 'assign', data: { auto: true } });
-    }
-    expect(
-      (await smsTo(PHONES.armando)).filter((b) => b.includes(first.code) || b.includes(second.code))
-    ).toHaveLength(2);
-    // Armando declined this one: it keeps waiting for someone else.
-    expect((await detail(declined.ticketId)).status).toBe('new');
+    const path = `/api/tickets/${ticketId}/offer`;
+    expect((await t.as('armando.cossa').post(path)).status).toBe(403);
+    expect((await t.as('joao.matsinhe').post(path)).status).toBe(404);
+    const now = await t.as('helena.mondlane').post(path);
+    expect(now.status).toBe(200);
+    expect(now.body.offer).toMatchObject({ round: 3 });
+    expect(now.body.events.at(-1)).toMatchObject({ type: 'offered', actorName: 'Helena Mondlane' });
+
+    await t.as('ana.sitoe').post(`/api/tickets/${ticketId}/claim`);
+    expect((await t.as('helena.mondlane').post(path)).body.code).toBe('NOT_WAITING');
+    await t.db
+      .update(tickets)
+      .set({ offeredAt: new Date(Date.now() - 60 * 60_000) })
+      .where(eq(tickets.id, ticketId));
+    expect(await reminders.remindOffers()).toBe(0);
   });
 
-  it('takes a job back with a reason, tells that person and gives it to the next one on duty', async () => {
+  it('does not give jobs out when someone switches duty on: they are already offered to everyone', async () => {
+    const { ticketId } = await complain('CC-W1');
     await onDuty('armando.cossa');
-    await onDuty('ana.sitoe');
+    expect(await detail(ticketId)).toMatchObject({ status: 'new', assignee: null });
+  });
+
+  it('takes a job back with a reason, tells that person and offers it to the rest of the team', async () => {
     const { ticketId, code } = await complain('CC-T1');
-    expect((await detail(ticketId)).assignee.fullName).toBe('Ana Sitoe');
-    await t.as('ana.sitoe').post(`/api/tickets/${ticketId}/accept`);
+    await t.as('ana.sitoe').post(`/api/tickets/${ticketId}/claim`);
 
     const path = `/api/tickets/${ticketId}/take-back`;
     expect((await t.as('helena.mondlane').post(path, {})).status).toBe(400);
@@ -188,7 +251,11 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
     expect((await t.as('joao.matsinhe').post(path, { reason: 'Ana is sick' })).status).toBe(404);
     const back = await t.as('helena.mondlane').post(path, { reason: 'Ana is sick' });
     expect(back.status).toBe(200);
-    expect(back.body).toMatchObject({ status: 'assigned', assignee: { fullName: 'Armando Cossa' } });
+    expect(back.body).toMatchObject({
+      status: 'new',
+      assignee: null,
+      offer: { notified: ['Armando Cossa'] }
+    });
     const event = (back.body.events as { type: string; data: object }[]).find((e) => e.type === 'take_back');
     expect(event?.data).toMatchObject({
       reason: 'Ana is sick',
@@ -197,7 +264,8 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
     });
     expect((await smsTo(PHONES.ana)).some((b) => b.includes(code) && b.includes('outro técnico'))).toBe(true);
 
-    // Taken back again with nobody else on duty: it waits, and the manager is told.
+    // Taken back again with nobody else left: it waits, and the manager is told.
+    await t.as('armando.cossa').post(`/api/tickets/${ticketId}/claim`);
     const again = await t.as('carla.manhica').post(path, { reason: 'Armando went home' });
     expect(again.body).toMatchObject({ status: 'new', assignee: null });
     expect((await smsTo(PHONES.helena)).some((b) => b.includes(code))).toBe(true);
@@ -283,17 +351,18 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
     expect(check.status).toBe(409);
   });
 
-  it('gives a reopened ticket straight back to someone on duty', async () => {
-    await onDuty('armando.cossa');
+  it('offers a reopened ticket to the whole team again', async () => {
     const { ticketId } = await complain('CC-H1');
-    await t.as('armando.cossa').post(`/api/tickets/${ticketId}/accept`);
+    await t.as('armando.cossa').post(`/api/tickets/${ticketId}/claim`);
     await t.as('armando.cossa').post(`/api/tickets/${ticketId}/start`);
     await t.as('armando.cossa').post(`/api/tickets/${ticketId}/resolve`, { note: 'Replaced the fuse' });
     const check = await t
       .as('call-center')
       .post('/api/intake/call-center/tickets/CC-H1/check-result', { result: 'not_fixed' });
-    expect(check.body).toMatchObject({ status: 'assigned', assigneeName: 'Armando Cossa' });
-    const types = (await detail(ticketId)).events.map((e: { type: string }) => e.type);
-    expect(types.slice(-2)).toEqual(['reopen', 'assign']);
+    expect(check.body).toMatchObject({ status: 'reopened', assigneeName: null });
+    const d = await detail(ticketId);
+    expect(d.events.map((e: { type: string }) => e.type).slice(-2)).toEqual(['reopen', 'offered']);
+    expect(d.offer).toMatchObject({ notified: ['Ana Sitoe', 'Armando Cossa'], round: 1 });
+    expect((await t.as('armando.cossa').get('/api/me/offers')).body).toHaveLength(1);
   });
 });

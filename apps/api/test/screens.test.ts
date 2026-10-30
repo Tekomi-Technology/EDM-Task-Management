@@ -199,8 +199,7 @@ describe('data for the web screens', () => {
     const messages = (await t.as('helena.mondlane').get(`/api/tickets/${s.working}/messages`)).body;
     expect(messages.map((m: { to: string }) => m.to)).toEqual([
       'Customer',
-      'Armando Cossa (field staff)', // given to him automatically
-      'Armando Cossa (field staff)', // then by the manager
+      'Armando Cossa (field staff)', // named by the manager (the team offer went through the app, not by SMS)
       'Customer',
       'Armando Cossa (field staff)'
     ]);

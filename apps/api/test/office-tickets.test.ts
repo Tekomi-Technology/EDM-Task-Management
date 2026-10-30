@@ -55,7 +55,7 @@ describe('tickets entered by EDM staff', () => {
     expect(res.body).toMatchObject({
       team: { name: 'South 1' },
       areaName: 'Matola',
-      assignee: { fullName: 'Armando Cossa', openJobs: 0 },
+      teamStaff: 2,
       priority: 2,
       slaMinutes: 240,
       incident: null,
@@ -73,7 +73,7 @@ describe('tickets entered by EDM staff', () => {
     expect(other.body).toMatchObject({ priority: 1, slaMinutes: 120 });
   });
 
-  it('creates the ticket, assigns it and texts the caller', async () => {
+  it('creates the ticket, offers it to the team and texts the caller', async () => {
     const res = await t.as('paulo.bo').post('/api/tickets', {
       type: 'customer_complaint',
       customerId: (await rosa()).id,
@@ -81,7 +81,7 @@ describe('tickets entered by EDM staff', () => {
       description: 'Whole house without power since 07:15. Neighbours have power.'
     });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ status: 'assigned', assigneeName: 'Armando Cossa', incident: null });
+    expect(res.body).toMatchObject({ status: 'new', assigneeName: null, incident: null });
     const detail = (await t.as('helena.mondlane').get(`/api/tickets/${res.body.id}`)).body;
     expect(detail).toMatchObject({
       source: 'office',
@@ -195,7 +195,7 @@ describe('tickets entered by EDM staff', () => {
       location: MATOLA
     });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ status: 'assigned', assigneeName: 'Armando Cossa' });
+    expect(res.body).toMatchObject({ status: 'new', assigneeName: null });
     const detail = (await t.as('helena.mondlane').get(`/api/tickets/${res.body.id}`)).body;
     expect(detail).toMatchObject({
       type: 'other',
@@ -205,7 +205,7 @@ describe('tickets entered by EDM staff', () => {
     });
     expect(Date.parse(detail.dueAt) - Date.now()).toBeGreaterThan(239 * 60_000);
 
-    for (const step of ['accept', 'start'])
+    for (const step of ['claim', 'start'])
       await t.as('armando.cossa').post(`/api/tickets/${res.body.id}/${step}`);
     await t.as('armando.cossa').post(`/api/tickets/${res.body.id}/resolve`, { note: 'New door fitted' });
     // Another team's manager cannot check it; the team manager of the area can.
@@ -237,11 +237,15 @@ describe('tickets entered by EDM staff', () => {
       teamReason: 'South 1 is on the big outage'
     });
     expect(res.status).toBe(201);
-    // It goes to Ofélia (South 2, off duty) rather than Armando (South 1, on duty).
-    expect(res.body).toMatchObject({ status: 'assigned', assigneeName: 'Ofélia Tembe' });
+    expect(res.body).toMatchObject({ status: 'new', assigneeName: null });
     const detail = (await t.as('nadia.mussa').get(`/api/tickets/${res.body.id}`)).body;
-    // The team chosen goes; the place stays in its own area.
-    expect(detail).toMatchObject({ teamId: south2, teamName: 'South 2', areaName: 'Matola' });
+    // The team chosen goes (it is offered to South 2, not to South 1); the place stays in its own area.
+    expect(detail).toMatchObject({
+      teamId: south2,
+      teamName: 'South 2',
+      areaName: 'Matola',
+      offer: { teamName: 'South 2', notified: ['Ofélia Tembe'] }
+    });
     const chosen = (detail.events as Event[]).find((e) => e.type === 'team_changed');
     expect(chosen?.data).toMatchObject({
       fromName: 'South 1',
@@ -289,7 +293,7 @@ describe('tickets entered by EDM staff', () => {
   it('moves a ticket someone is working on to another team, with a reason, and tells that staff member', async () => {
     const south2 = await teamId('South 2');
     const id = (await t.as('paulo.bo').post('/api/tickets', otherTicket)).body.id as string;
-    await t.as('armando.cossa').post(`/api/tickets/${id}/accept`);
+    await t.as('armando.cossa').post(`/api/tickets/${id}/claim`);
 
     expect((await t.as('nadia.mussa').post(`/api/tickets/${id}/team`, { teamId: south2 })).status).toBe(422);
     expect(
@@ -305,8 +309,9 @@ describe('tickets entered by EDM staff', () => {
     expect(moved.status).toBe(200);
     expect(moved.body).toMatchObject({
       teamId: south2,
-      status: 'assigned',
-      assignee: { fullName: 'Ofélia Tembe' }
+      status: 'new',
+      assignee: null,
+      offer: { teamName: 'South 2', notified: ['Ofélia Tembe'] }
     });
     const event = (moved.body.events as Event[]).find((e) => e.type === 'team_changed');
     expect(event?.data).toMatchObject({

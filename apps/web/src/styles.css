@@ -1379,6 +1379,13 @@ tr.selected:hover td {
 .responsible-text .meta {
   font-size: 14px;
 }
+.responsible-note {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
 .responsible-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1695,21 +1702,16 @@ td.right,
 .menu-language {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   padding: 6px 10px 8px;
   border-bottom: 1px solid var(--border-soft);
   margin-bottom: 6px;
   color: var(--muted);
 }
-.menu .menu-language button {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 13px;
-}
-.menu .menu-language button[aria-checked='true'] {
-  background: var(--brand-soft);
-  color: var(--brand-text);
-  font-weight: 700;
+.menu-language select {
+  flex: 1;
+  height: 36px;
+  font-size: 14px;
 }
 
 /* API documentation */

@@ -35,6 +35,7 @@ const ticket = (over: Partial<TicketDetail>) =>
     teamName: 'South 1',
     assignee: { id: 's1', fullName: 'Ana Sitoe' },
     incident: null,
+    offer: null,
     allowedActions: ['assign', 'cancel'],
     ...over
   }) as TicketDetail;
@@ -70,5 +71,33 @@ describe('ResponsiblePanel', () => {
     expect(screen.getByText('Nobody on it yet')).toBeInTheDocument();
     expect(screen.getByText(/Nobody is left in team South 1/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Take the job back' })).not.toBeInTheDocument();
+  });
+
+  it('shows who was told while nobody has claimed the job, and lets a manager tell the team again', async () => {
+    const wrapper = signedInAs(['team_manager']);
+    const onChange = vi.fn();
+    render(
+      <ResponsiblePanel
+        t={ticket({
+          status: 'new',
+          assignee: null,
+          offer: {
+            teamName: 'South 1',
+            notified: ['Ana Sitoe', 'Armando Cossa'],
+            round: 2,
+            at: '2026-10-30T12:15:00Z'
+          }
+        })}
+        onChange={onChange}
+      />,
+      { wrapper }
+    );
+    expect(screen.getByText('Waiting for someone to claim it')).toBeInTheDocument();
+    expect(screen.getByText('Told 2 people of team South 1')).toBeInTheDocument();
+    expect(screen.getByText('Told again (time 2) at 14:15 · nobody has claimed it yet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose a person' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tell the team again' }));
+    expect(api).toHaveBeenCalledWith('/tickets/k1/offer', { method: 'POST' });
   });
 });

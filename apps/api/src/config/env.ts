@@ -93,12 +93,17 @@ const envSchema = z.object({
   SALES_WEBHOOK_URL: z.string().url().optional(),
   /** Shared secret; each webhook carries X-EDM-Signature: sha256=HMAC of the body. */
   SALES_WEBHOOK_SECRET: z.string().optional(),
-  /** Set to "false" to run the API without processing background jobs (e.g. a separate worker process). */
-  /** Give new, declined and reopened tickets to the least busy field staff on duty without waiting for a manager. */
+  /**
+   * Offer waiting tickets (new, given back, reopened) to every field staff member of the team through the app;
+   * whoever claims one first has it. "false": the team manager is told and chooses someone.
+   */
   AUTO_ASSIGN: z
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  /** Minutes before a ticket nobody has claimed is offered to its team again. */
+  OFFER_REMIND_MINUTES: z.coerce.number().int().min(1).default(15),
+  /** Set to "false" to run the API without processing background jobs (e.g. a separate worker process). */
   RUN_WORKERS: z
     .enum(['true', 'false'])
     .default('true')

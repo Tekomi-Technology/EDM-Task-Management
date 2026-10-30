@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { pt } from './pt';
 import { vi } from './vi';
 
 /**
@@ -6,10 +7,10 @@ import { vi } from './vi';
  * that text to the translation (missing entries show in English). To add a language: a new dictionary here and in
  * LANGUAGES.
  */
-export const LANGUAGES = { en: 'English', vi: 'Tiếng Việt' } as const;
+export const LANGUAGES = { vi: 'Tiếng Việt', en: 'English', pt: 'Português' } as const;
 export type Language = keyof typeof LANGUAGES;
 
-const DICTIONARIES: Record<Language, Record<string, string>> = { en: {}, vi };
+const DICTIONARIES: Record<Language, Record<string, string>> = { en: {}, vi, pt };
 const STORAGE_KEY = 'edm.language';
 const isLanguage = (v: unknown): v is Language => typeof v === 'string' && v in LANGUAGES;
 
@@ -64,7 +65,7 @@ export function t(text: string, vars?: Record<string, unknown>): string {
 
 /** Locale for dates and numbers in the current language. */
 export function dateLocale(): string {
-  return current === 'vi' ? 'vi-VN' : 'en-GB';
+  return current === 'vi' ? 'vi-VN' : current === 'pt' ? 'pt-MZ' : 'en-GB';
 }
 
 /** A map of labels (status, type…) that answers in the current language. */

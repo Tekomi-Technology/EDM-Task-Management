@@ -65,7 +65,7 @@ describe('new customers from the Sales system: survey, connection, handover, act
     await t.as('ana.sitoe').post('/api/me/duty', { onDuty: true });
     const created = await t.as('sales').post('/api/intake/sales/survey-requests', survey(ref, overrides));
     const id = created.body.ticketId as string;
-    for (const step of ['accept', 'start']) await t.as('ana.sitoe').post(`/api/tickets/${id}/${step}`);
+    for (const step of ['claim', 'start']) await t.as('ana.sitoe').post(`/api/tickets/${id}/${step}`);
     const done = await t.as('ana.sitoe').post(`/api/tickets/${id}/resolve`, {
       note: 'Pole P-77 at 35 m; service cable needed',
       survey: {
@@ -86,7 +86,7 @@ describe('new customers from the Sales system: survey, connection, handover, act
     await t.as('ana.sitoe').post('/api/me/duty', { onDuty: true });
     const first = await t.as('sales').post('/api/intake/sales/survey-requests', survey('S-1'));
     expect(first.status).toBe(201);
-    expect(first.body).toMatchObject({ kind: 'survey', status: 'assigned', assigneeName: 'Ana Sitoe' });
+    expect(first.body).toMatchObject({ kind: 'survey', status: 'new', assigneeName: null });
     expect((await t.as('sales').post('/api/intake/sales/survey-requests', survey('S-1'))).status).toBe(200);
     const d = (await t.as('helena.mondlane').get(`/api/tickets/${first.body.ticketId}`)).body;
     expect(d).toMatchObject({
@@ -106,7 +106,7 @@ describe('new customers from the Sales system: survey, connection, handover, act
     const { id: noReport } = await (async () => {
       await t.as('ana.sitoe').post('/api/me/duty', { onDuty: true });
       const c = await t.as('sales').post('/api/intake/sales/survey-requests', survey('S-0'));
-      for (const step of ['accept', 'start'])
+      for (const step of ['claim', 'start'])
         await t.as('ana.sitoe').post(`/api/tickets/${c.body.ticketId}/${step}`);
       return { id: c.body.ticketId as string };
     })();
@@ -201,7 +201,7 @@ describe('new customers from the Sales system: survey, connection, handover, act
       worksNeeded: 'One new pole',
       surveyedBy: 'Ana Sitoe',
       team: { name: 'South 1' },
-      assignee: { fullName: expect.any(String) },
+      teamStaff: 2,
       depot: { name: expect.any(String) }
     });
     const cable = list[0].materials.find((m: { code: string }) => m.code === 'CAB-216');
@@ -246,7 +246,7 @@ describe('new customers from the Sales system: survey, connection, handover, act
     });
     const id = conn.body.ticketId as string;
     expect((await t.as('armando.cossa').post(`/api/tickets/${id}/handover-code`)).status).toBe(409); // not started yet
-    for (const step of ['accept', 'start']) await t.as('armando.cossa').post(`/api/tickets/${id}/${step}`);
+    for (const step of ['claim', 'start']) await t.as('armando.cossa').post(`/api/tickets/${id}/${step}`);
 
     expect((await t.as('armando.cossa').post(`/api/tickets/${id}/handover-code`)).status).toBe(200);
     expect((await t.as('armando.cossa').post(`/api/tickets/${id}/handover-code`)).body.code).toBe('TOO_SOON');
@@ -288,7 +288,7 @@ describe('new customers from the Sales system: survey, connection, handover, act
     expect(used[0]).toMatchObject({ itemCode: 'MTR-P1', actorName: 'Armando Cossa' });
   });
 
-  it('accepts a signed form photo instead of the code, and sends a failed activation back to the team', async () => {
+  it('asks for a photo of the installed meter, and sends a failed activation back to the team', async () => {
     const conn = await t.as('sales').post('/api/intake/sales/connection-requests', {
       externalRef: 'C-7',
       contractNo: '88220',
@@ -303,30 +303,31 @@ describe('new customers from the Sales system: survey, connection, handover, act
     );
 
     const upload = await t.as('armando.cossa').post(`/api/tickets/${id}/attachments`, {
-      fileName: 'handover.jpg',
+      fileName: 'meter.jpg',
       contentType: 'image/jpeg',
       size: 4
     });
-    const formId = upload.body.attachmentId as string;
-    const notAttached = await t.as('armando.cossa').post(`/api/tickets/${id}/resolve`, {
+    const photoId = upload.body.attachmentId as string;
+    // Without a photo of the meter: refused.
+    const noPhoto = await t.as('armando.cossa').post(`/api/tickets/${id}/resolve`, {
       note: 'Done',
-      installation: { meterNumber: 'MP-1', signedFormAttachmentId: formId }
+      installation: { meterNumber: 'MP-1' }
     });
-    expect(notAttached.body.code).toBe('HANDOVER_NOT_CONFIRMED');
+    expect(noPhoto.body.code).toBe('METER_PHOTO_REQUIRED');
     await fetch(upload.body.uploadUrl, { method: 'PUT', headers: upload.body.headers, body: JPEG });
     // A meter already recorded for another customer (Rosa's) is a typing mistake, not a second home for it.
     const taken = await t.as('armando.cossa').post(`/api/tickets/${id}/resolve`, {
       note: 'Done',
-      attachmentIds: [formId],
-      installation: { meterNumber: '04217735901', signedFormAttachmentId: formId }
+      attachmentIds: [photoId],
+      installation: { meterNumber: '04217735901' }
     });
     expect(taken.body.code).toBe('METER_IN_USE');
     const ok = await t.as('armando.cossa').post(`/api/tickets/${id}/resolve`, {
       note: 'Done',
-      attachmentIds: [formId],
-      installation: { meterNumber: 'MP-1', signedFormAttachmentId: formId }
+      attachmentIds: [photoId],
+      installation: { meterNumber: 'MP-1' }
     });
-    expect(ok.body.newCustomer.installation.confirmedBy).toBe('signed_form');
+    expect(ok.body.newCustomer.installation.confirmedBy).toBe('meter_photo');
     // The meter is now the customer's: shown on their tickets and found by the New ticket screen.
     expect(ok.body.customer).toMatchObject({ fullName: 'Celso Macuácua', meterNumber: 'MP-1' });
 
@@ -334,8 +335,8 @@ describe('new customers from the Sales system: survey, connection, handover, act
       activated: false,
       note: 'Meter not in billing yet'
     });
-    // Back to the team: reopened and given out again straight away.
-    expect(failed.body.status).toBe('assigned');
+    // Back to the team: reopened and offered to its staff again.
+    expect(failed.body.status).toBe('reopened');
   });
 
   it('lets the office send a survey or a connection to another team than the one of the place, with the reason', async () => {
@@ -400,7 +401,7 @@ describe('new customers from the Sales system: survey, connection, handover, act
       customer: { fullName: 'Loja Esperança' }
     });
 
-    for (const step of ['accept', 'start']) await t.as('armando.cossa').post(`/api/tickets/${id}/${step}`);
+    for (const step of ['claim', 'start']) await t.as('armando.cossa').post(`/api/tickets/${id}/${step}`);
     await t.as('armando.cossa').post(`/api/tickets/${id}/handover-code`);
     const code = (await smsTo(PROSPECT_PHONE)).at(-1)!.match(/\b(\d{4})\b/)![1]!;
     const done = await t.as('armando.cossa').post(`/api/tickets/${id}/resolve`, {

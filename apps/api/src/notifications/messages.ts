@@ -11,6 +11,10 @@ export const sms = {
     `EDM Tasks: Novo ticket ${code} (${title}) aguarda atribuição.`,
   staffAssigned: (code: string, title: string) =>
     `EDM Tasks: Novo trabalho ${code} – ${title}. Abra a app EDM Field.`,
+  teamJob: (code: string, title: string) =>
+    `EDM Tasks: Novo trabalho para a equipa ${code} – ${title}. Quem aceitar primeiro na app fica com ele.`,
+  teamJobReminder: (code: string, title: string) =>
+    `EDM Tasks: O trabalho ${code} – ${title} ainda não tem técnico. Aceite-o na app EDM Field.`,
   managerReopened: (code: string) => `EDM Tasks: O ticket ${code} foi reaberto. Por favor atribua novamente.`,
   managerDeclined: (code: string, staffName: string) =>
     `EDM Tasks: ${staffName} recusou o ticket ${code}. Por favor atribua a outra pessoa.`,
@@ -48,6 +52,8 @@ export const sms = {
 /** Titles of push notifications to the EDM Field app; the text is the same as the SMS. */
 export const push = {
   newJob: 'Novo trabalho',
+  teamJob: 'Novo trabalho para a equipa',
+  teamJobReminder: 'Trabalho ainda sem técnico',
   jobMoved: 'Trabalho passado a outro técnico',
   jobCancelled: 'Trabalho cancelado',
   note: 'Mensagem do escritório',

@@ -34,7 +34,7 @@ const rank = (s: TicketStatus) =>
 
 /** The six steps of the progress bar, with the time each was reached (latest occurrence). */
 function steps(t: TicketDetail) {
-  const last = (type: string) => [...t.events].reverse().find((e) => e.type === type);
+  const last = (...types: string[]) => [...t.events].reverse().find((e) => types.includes(e.type));
   const at = (e?: TicketEventView) => (e ? formatTime(e.createdAt) : undefined);
   const r = rank(t.status);
   // Who checks the work, by type: the same split as the Closing checks queues.
@@ -65,12 +65,12 @@ function steps(t: TicketDetail) {
       done: r >= 1,
       note:
         r >= 1
-          ? at(last('assign'))
+          ? at(last('assign', 'claim'))
           : t.status === 'new' || t.status === 'reopened'
             ? tr('waiting for someone')
             : undefined
     },
-    { label: tr('Accepted'), done: r >= 2, note: r >= 2 ? at(last('accept')) : undefined },
+    { label: tr('Accepted'), done: r >= 2, note: r >= 2 ? at(last('accept', 'claim')) : undefined },
     { label: tr('On site'), done: r >= 3, note: r >= 3 ? at(last('start')) : undefined },
     {
       label: t.status === 'on_hold' ? tr('{0} (paused)', { 0: doneLabel }) : doneLabel,
@@ -100,6 +100,12 @@ function describe(e: TicketEventView): string {
     return `${base}: ${String(e.data.alarmType ?? '')} (${String(e.data.elementCode ?? '')})`;
   }
   if (e.type === 'team_changed' && typeof e.data.teamName === 'string') return teamChangeText(e.data);
+  if (e.type === 'offered' && Array.isArray(e.data.notified)) {
+    const vars = { 0: String(e.data.teamName ?? ''), 1: e.data.notified.join(', '), 2: Number(e.data.round) };
+    return Number(e.data.round) > 1
+      ? tr('told team {0} again in the app (time {2}): {1}', vars)
+      : tr('offered the job to team {0} in the app: {1}', vars);
+  }
   if (e.type === 'take_back' && typeof e.data.unassignedName === 'string') {
     return tr('took the job back from {0}', { 0: e.data.unassignedName });
   }
@@ -739,8 +745,15 @@ function NewCustomerCard({ t }: { t: TicketDetail }) {
             {n.installation.sealNumber ? tr(' · seal {0}', { 0: n.installation.sealNumber }) : ''}
           </span>
           <span className="meta">
-            {tr('Customer confirmed')} {formatWhen(n.installation.confirmedAt)} {tr('by')}{' '}
-            {n.installation.confirmedBy === 'sms_code' ? tr('the SMS code') : tr('signing the handover form')}
+            {n.installation.confirmedBy === 'meter_photo'
+              ? tr('Installed {0}; the photo of the meter is under Photos.', {
+                  0: formatWhen(n.installation.confirmedAt)
+                })
+              : `${tr('Customer confirmed')} ${formatWhen(n.installation.confirmedAt)} ${tr('by')} ${
+                  n.installation.confirmedBy === 'sms_code'
+                    ? tr('the SMS code')
+                    : tr('signing the handover form')
+                }`}
           </span>
         </div>
       )}

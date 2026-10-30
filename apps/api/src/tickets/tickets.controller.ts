@@ -19,6 +19,7 @@ import {
   type Lookups,
   type Overview,
   type TicketCounts,
+  type TeamOffer,
   type TicketDetail,
   type TicketMessage,
   type TicketNote,
@@ -47,17 +48,13 @@ export class TicketsController {
     private readonly users: UsersService
   ) {}
 
-  /**
-   * Field staff switch duty on when their shift starts; only staff on duty receive jobs automatically. Tickets of
-   * the team that waited because nobody was on duty are given out then.
-   */
+  /** Field staff switch duty on when their shift starts, so the office sees who is working. */
   @Post('me/duty')
   @HttpCode(200)
   @Roles('field_staff')
   @ApiZodBody(dutySchema)
   async setDuty(@CurrentUser() user: AuthUser, @ZodBody(dutySchema) body: Duty): Promise<CurrentUserView> {
     await this.users.setDuty(user.userId!, body.onDuty);
-    if (body.onDuty) await this.tickets.assignWaiting(user.teamId);
     return {
       id: user.userId!,
       username: user.username,
@@ -104,6 +101,13 @@ export class TicketsController {
     return this.query.myJobs(user);
   }
 
+  /** Jobs offered to the staff member's whole team that nobody has claimed yet, nearest and most urgent first. */
+  @Get('me/offers')
+  @Roles('field_staff')
+  myOffers(@CurrentUser() user: AuthUser): Promise<TeamOffer[]> {
+    return this.query.teamOffers(user);
+  }
+
   @Get('tickets/:id')
   @Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team', 'field_staff')
   detail(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser): Promise<TicketDetail> {
@@ -123,7 +127,17 @@ export class TicketsController {
     return this.query.detail(id, user);
   }
 
-  /** Takes the job back from whoever holds it, saying why; it goes to the next person of the team on duty. */
+  /** Tells the whole team again about a ticket nobody has claimed, without waiting for the reminder. */
+  @Post('tickets/:id/offer')
+  @HttpCode(200)
+  @Roles('team_manager', 'technical_manager', 'admin')
+  async offer(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser): Promise<TicketDetail> {
+    await this.query.detail(id, user);
+    await this.tickets.offerAgain(id, user);
+    return this.query.detail(id, user);
+  }
+
+  /** Takes the job back from whoever holds it, saying why; it is offered to the rest of the team. */
   @Post('tickets/:id/take-back')
   @HttpCode(200)
   @Roles('team_manager', 'technical_manager', 'admin')
@@ -135,6 +149,15 @@ export class TicketsController {
   ): Promise<TicketDetail> {
     await this.query.detail(id, user);
     await this.tickets.takeBack(id, user, body.reason);
+    return this.query.detail(id, user);
+  }
+
+  /** A field staff member takes a job offered to their team; the first one to claim it has it. */
+  @Post('tickets/:id/claim')
+  @HttpCode(200)
+  @Roles('field_staff')
+  async claim(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser): Promise<TicketDetail> {
+    await this.tickets.act(id, 'claim', user);
     return this.query.detail(id, user);
   }
 
@@ -150,7 +173,7 @@ export class TicketsController {
     return this.query.detail(id, user);
   }
 
-  /** The staff member cannot take the job; it goes to someone else on duty, or back to the manager. */
+  /** The staff member cannot do the job; it is offered to the rest of the team, or goes back to the manager. */
   @Post('tickets/:id/decline')
   @HttpCode(200)
   @Roles('field_staff')

@@ -44,6 +44,10 @@ export class EscalationService implements OnModuleInit, OnModuleDestroy {
     if (!this.env.RUN_WORKERS) return;
     this.timer = setInterval(() => {
       this.run().catch((err: Error) => this.logger.warn(`Time-limit check failed: ${err.message}`));
+      // Jobs nobody has claimed are offered to the team again (every OFFER_REMIND_MINUTES).
+      this.tickets
+        .remindOffers()
+        .catch((err: Error) => this.logger.warn(`Offer reminder failed: ${err.message}`));
     }, this.env.ESCALATION_CHECK_SECONDS * 1000).unref();
   }
 

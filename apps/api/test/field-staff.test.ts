@@ -95,21 +95,21 @@ describe('field staff: positions, distance, time limits and performance', () => 
     expect((await t.as('armando.cossa').get('/api/live')).status).toBe(403);
   });
 
-  it('gives a new job to the nearest of equally busy staff, and suggests by distance', async () => {
+  it('shows each staff member how far an offered job is, and suggests by distance', async () => {
     await onDuty('armando.cossa');
     await onDuty('ana.sitoe');
     await at('armando.cossa', NEAR);
     await at('ana.sitoe', FAR);
-    // By name Ana would come first; Armando is much closer.
     const first = await complain('CC-2');
-    expect(first.assigneeName).toBe('Armando Cossa');
-    const history = (await t.as('helena.mondlane').get(`/api/tickets/${first.ticketId}`)).body.events;
-    expect(history.at(-1).data.distanceM).toBeLessThan(500);
+    const distance = async (who: 'armando.cossa' | 'ana.sitoe') =>
+      (await t.as(who).get('/api/me/offers')).body[0].distanceM as number;
+    expect(await distance('armando.cossa')).toBeLessThan(500);
+    expect(await distance('ana.sitoe')).toBeGreaterThan(5000);
+    await t.as('armando.cossa').post(`/api/tickets/${first.ticketId}/claim`);
 
     const south1 = (await t.as('helena.mondlane').get('/api/me')).body.teamId;
-    // Fewer unfinished jobs comes before distance: the next job goes to Ana, although she is far.
     const second = await complain('CC-3');
-    expect(second.assigneeName).toBe('Ana Sitoe');
+    await t.as('ana.sitoe').post(`/api/tickets/${second.ticketId}/claim`);
     // Now both have one job: the nearest one is suggested first.
     const s = (
       await t.as('helena.mondlane').get(`/api/teams/${south1}/suggestions?ticketId=${second.ticketId}`)
@@ -207,9 +207,8 @@ describe('field staff: positions, distance, time limits and performance', () => 
     };
     await work('CC-7', 'fixed');
     await work('CC-8', 'not_fixed');
-    // Ana has the reopened job, so this one goes to Armando automatically.
     const declined = await complain('CC-9');
-    expect(declined.assigneeName).toBe('Armando Cossa');
+    await t.as('armando.cossa').post(`/api/tickets/${declined.ticketId}/claim`);
     await t
       .as('armando.cossa')
       .post(`/api/tickets/${declined.ticketId}/decline`, { reason: 'Too far today' });

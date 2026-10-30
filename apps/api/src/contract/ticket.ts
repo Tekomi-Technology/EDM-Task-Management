@@ -80,6 +80,7 @@ export const OUTAGE_PROBLEM_TYPES: readonly string[] = ['no_power_single', 'no_p
 
 export const TICKET_ACTIONS = [
   'assign',
+  'claim',
   'accept',
   'decline',
   'start',
@@ -106,7 +107,8 @@ interface ActionRule {
 /**
  * Ticket state machine:
  * new → assigned → accepted → in_progress ⇄ on_hold → resolved → closed
- * - staff can decline an assigned job (back to new, for someone else);
+ * - a waiting ticket is offered to the whole team; whoever claims it first has it (new → accepted);
+ * - staff can decline an assigned job (back to new, offered to the rest of the team);
  * - a failed check reopens the ticket (resolved → reopened → assigned);
  * - any unfinished ticket can be cancelled (duplicate, customer withdrew, reported by mistake).
  */
@@ -116,6 +118,8 @@ export const ACTION_RULES: Record<TicketAction, ActionRule> = {
     to: 'assigned',
     roles: ['team_manager', 'technical_manager', 'admin']
   },
+  /** Field staff of the ticket's team take a waiting job; nobody may be holding it (checked in the service). */
+  claim: { from: ['new', 'reopened'], to: 'accepted', roles: ['field_staff'] },
   accept: { from: ['assigned'], to: 'accepted', roles: ['field_staff'], assigneeOnly: true },
   decline: { from: ['assigned', 'accepted'], to: 'new', roles: ['field_staff'], assigneeOnly: true },
   start: { from: ['accepted'], to: 'in_progress', roles: ['field_staff'], assigneeOnly: true },

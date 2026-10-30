@@ -116,24 +116,11 @@ export class OfficeTicketsService {
         linkedCustomers: Number(row!.linked)
       };
     }
-    // Who automatic assignment would pick, if the caller's problem is not part of the incident.
-    let assignee: TicketPreview['assignee'] = null;
-    const pick = where.assignee;
-    if (pick) {
-      const [row] = await this.db
-        .select({
-          openJobs: sql<number>`(select count(*)::int from tickets o where o.assignee_id = ${users.id}
-            and o.status in ('assigned', 'accepted', 'in_progress', 'on_hold'))`
-        })
-        .from(users)
-        .where(eq(users.id, pick.id));
-      assignee = { ...pick, openJobs: Number(row?.openJobs ?? 0) };
-    }
     return {
       team,
       autoTeam: await this.team(where.placeTeamId),
       areaName,
-      assignee,
+      teamStaff: where.teamStaff,
       priority: what.priority,
       slaMinutes: what.slaMinutes,
       dueAt: new Date(Date.now() + what.slaMinutes * 60_000).toISOString(),

@@ -120,6 +120,13 @@
       "when": 1793347952140,
       "tag": "0016_team_receives_new",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793363397666,
+      "tag": "0017_ticket_offers",
+      "breakpoints": true
     }
   ]
 }

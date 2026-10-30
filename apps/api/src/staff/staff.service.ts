@@ -141,7 +141,8 @@ export class StaffService {
         where e.created_at >= now() - make_interval(days => ${days})
       ),
       assigned as (
-        select (data->>'assigneeId')::uuid as user_id, count(*)::int as n from ev where type = 'assign' group by 1
+        select (data->>'assigneeId')::uuid as user_id, count(*)::int as n from ev
+        where type in ('assign', 'claim') group by 1
       ),
       done as (
         select ev.actor_user_id as user_id, count(*)::int as n,
@@ -154,7 +155,7 @@ export class StaffService {
         from ev s
         join lateral (
           select coalesce((x.data->>'occurredAt')::timestamptz, x.created_at) as at from ticket_events x
-          where x.ticket_id = s.ticket_id and x.type = 'assign'
+          where x.ticket_id = s.ticket_id and x.type in ('assign', 'claim')
             and x.data->>'assigneeId' = s.actor_user_id::text and x.created_at <= s.created_at
           order by x.created_at desc limit 1
         ) a on true

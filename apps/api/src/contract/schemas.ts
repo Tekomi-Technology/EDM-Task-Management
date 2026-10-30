@@ -81,23 +81,19 @@ export const surveyReportSchema = z.object({
 export type SurveyReport = z.infer<typeof surveyReportSchema>;
 
 /** A new connection handed over to the customer. */
-export const installationReportSchema = z
-  .object({
-    meterNumber: z.string().trim().min(3).max(40),
-    sealNumber: z.string().trim().max(40).optional(),
-    /** The code the customer received by SMS and read out to the staff member. */
-    handoverCode: z
-      .string()
-      .trim()
-      .regex(/^\d{4}$/)
-      .optional(),
-    /** Without signal: a photo of the handover form signed by the customer (attachment id). */
-    signedFormAttachmentId: z.string().uuid().optional()
-  })
-  .refine((v) => !!v.handoverCode || !!v.signedFormAttachmentId, {
-    message: 'The customer must confirm: enter the SMS code, or attach the signed handover form',
-    path: ['handoverCode']
-  });
+/** New connections: the meter installed. A photo of it goes with the job (checked when the job is reported done). */
+export const installationReportSchema = z.object({
+  meterNumber: z.string().trim().min(3).max(40),
+  sealNumber: z.string().trim().max(40).optional(),
+  /** Older apps: the code the customer received by SMS and read out to the staff member. */
+  handoverCode: z
+    .string()
+    .trim()
+    .regex(/^\d{4}$/)
+    .optional(),
+  /** Older apps: a photo of the handover form signed by the customer (attachment id). */
+  signedFormAttachmentId: z.string().uuid().optional()
+});
 export type InstallationReport = z.infer<typeof installationReportSchema>;
 
 export const resolveTicketSchema = z.object({

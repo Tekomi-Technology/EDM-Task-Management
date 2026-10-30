@@ -222,13 +222,13 @@ export function HelpButton() {
           <dl>
             {(
               [
-                ['new', t('Nobody has the job yet.')],
+                ['new', t('Offered to the team; nobody has claimed it yet.')],
                 ['assigned', t('Sent to a staff member, who has not accepted yet.')],
                 ['accepted', t('The staff member is on the way.')],
                 ['in_progress', t('Being fixed on site.')],
                 ['on_hold', t('Work stopped for a reason given by the staff member.')],
                 ['resolved', t('Reported fixed; the Call Center or NOC checks with the customer.')],
-                ['reopened', t('The check found it not fixed; it needs someone again.')],
+                ['reopened', t('The check found it not fixed; it is offered to the team again.')],
                 ['closed', t('Checked and finished.')]
               ] as const
             ).map(([status, text]) => (

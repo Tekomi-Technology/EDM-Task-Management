@@ -150,7 +150,6 @@ export class NetworkController {
         customerPhone: null,
         location: body.location ?? null,
         teamId: body.teamId,
-        autoAssign: false,
         elementName: body.element,
         scheduledStart: start,
         scheduledEnd: end,

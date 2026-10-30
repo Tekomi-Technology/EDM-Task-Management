@@ -55,6 +55,8 @@ export const ROLE_HELP: Record<string, string> = translated({
 export const EVENT_LABEL: Record<string, string> = translated({
   created: 'created the ticket',
   assign: 'assigned the ticket',
+  claim: 'claimed the job in the app',
+  offered: 'offered the job to the team',
   accept: 'accepted the job',
   decline: 'declined the job',
   start: 'arrived and started work',

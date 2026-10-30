@@ -9,6 +9,8 @@ import {
   type NetworkInfo,
   type NewCustomerInfo,
   type SurveyResult,
+  type TeamOffer,
+  type TicketOffer,
   type PlannedWorkItem,
   type Overview,
   type ProblemType,
@@ -55,6 +57,7 @@ import {
   users,
   type NewCustomerDetails
 } from '../db/schema';
+import { LocationService } from '../location/location.service';
 import { StockService } from '../stock/stock.service';
 import { StorageService } from '../storage/storage.service';
 
@@ -121,6 +124,11 @@ function toSummary(r: SummaryRow): TicketSummary {
   };
 }
 
+function toOffer(data: unknown, at: Date): TicketOffer {
+  const d = (data ?? {}) as { teamName?: string; notified?: string[]; round?: number };
+  return { teamName: d.teamName ?? '', notified: d.notified ?? [], round: d.round ?? 1, at: at.toISOString() };
+}
+
 const ACTIVE = inArray(tickets.status, [
   'new',
   'assigned',
@@ -140,6 +148,8 @@ const NOT_FIXED = inArray(tickets.status, [
 ]);
 /** Waiting for someone; tickets linked to a network incident are handled by the incident's crew. */
 const UNASSIGNED = and(inArray(tickets.status, ['new', 'reopened']), isNull(tickets.incidentId))!;
+/** Waiting for one of the team's field staff to claim it. */
+const OFFERED = and(UNASSIGNED, isNull(tickets.assigneeId))!;
 const LATE_OR_NEARLY = and(
   NOT_FIXED,
   isNull(tickets.incidentId),
@@ -165,7 +175,8 @@ export class TicketsQuery {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly storage: StorageService,
-    private readonly stock: StockService
+    private readonly stock: StockService,
+    private readonly locations: LocationService
   ) {}
 
   /** Condition limiting tickets to the caller's scope; `null` means the caller sees nothing. */
@@ -182,7 +193,13 @@ export class TicketsQuery {
   scope(user: AuthUser): SQL | undefined | null {
     if (user.roles.some((r) => (SEE_ALL_ROLES as readonly string[]).includes(r))) return undefined;
     if (user.roles.includes('team_manager')) return user.teamId ? eq(tickets.teamId, user.teamId) : null;
-    if (user.roles.includes('field_staff')) return user.userId ? eq(tickets.assigneeId, user.userId) : null;
+    if (user.roles.includes('field_staff')) {
+      if (!user.userId) return null;
+      // Their own jobs, and the jobs offered to their team that nobody has claimed yet.
+      return user.teamId
+        ? or(eq(tickets.assigneeId, user.userId), and(eq(tickets.teamId, user.teamId), OFFERED))
+        : eq(tickets.assigneeId, user.userId);
+    }
     return null;
   }
 
@@ -553,6 +570,56 @@ export class TicketsQuery {
     return rows.map((r) => toSummary(r as SummaryRow));
   }
 
+  /**
+   * Jobs offered to the staff member's team that nobody has claimed: most urgent first, then nearest. Jobs they
+   * gave back or had taken back from them are left out (they were not told about them again).
+   */
+  async teamOffers(user: AuthUser): Promise<TeamOffer[]> {
+    if (!user.userId || !user.teamId) return [];
+    const here = (await this.locations.latest([user.userId])).get(user.userId);
+    const distance = here?.fresh
+      ? sql<number | null>`round(ST_Distance(${tickets.location}::geography, ST_SetSRID(ST_MakePoint(${here.lng}, ${here.lat}), 4326)::geography))::int`
+      : sql<null>`null::int`;
+    const rows = await this.db
+      .select({ ...summaryColumns, distanceM: distance })
+      .from(tickets)
+      .leftJoin(areas, eq(areas.id, tickets.areaId))
+      .leftJoin(teams, eq(teams.id, tickets.teamId))
+      .leftJoin(assignee, eq(assignee.id, tickets.assigneeId))
+      .leftJoin(customers, eq(customers.id, tickets.customerId))
+      .where(
+        and(
+          eq(tickets.teamId, user.teamId),
+          OFFERED,
+          sql`not exists (select 1 from ticket_events e where e.ticket_id = ${tickets.id}
+            and ((e.type = 'decline' and e.actor_user_id = ${user.userId})
+              or (e.type = 'take_back' and e.data->>'unassignedId' = ${user.userId})))`
+        )
+      )
+      .orderBy(asc(tickets.priority), sql`${distance} asc nulls last`, asc(tickets.dueAt));
+    const offers = await this.lastOffers(rows.map((r) => r.id));
+    return rows.map((r) => ({
+      ...toSummary(r as SummaryRow),
+      distanceM: r.distanceM ?? null,
+      offer: offers.get(r.id) ?? null
+    }));
+  }
+
+  /** The latest "offered" entry of each ticket's history, for showing who was told and when. */
+  private async lastOffers(ids: string[]): Promise<Map<string, TicketOffer>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .selectDistinctOn([ticketEvents.ticketId], {
+        ticketId: ticketEvents.ticketId,
+        data: ticketEvents.data,
+        createdAt: ticketEvents.createdAt
+      })
+      .from(ticketEvents)
+      .where(and(inArray(ticketEvents.ticketId, ids), eq(ticketEvents.type, 'offered')))
+      .orderBy(ticketEvents.ticketId, desc(ticketEvents.createdAt));
+    return new Map(rows.map((r) => [r.ticketId, toOffer(r.data, r.createdAt)]));
+  }
+
   async detail(id: string, user: AuthUser): Promise<TicketDetail> {
     const scope = this.scope(user);
     if (scope === null) throw notFound('Ticket');
@@ -632,6 +699,9 @@ export class TicketsQuery {
       summary.assignee?.id ?? null
     );
     if (!mayCheck(summary.type, user.roles)) actions = actions.filter((a) => a !== 'close' && a !== 'reopen');
+    const waiting = !summary.assignee && !row.incidentId && (summary.status === 'new' || summary.status === 'reopened');
+    if (!waiting || summary.teamId !== user.teamId) actions = actions.filter((a) => a !== 'claim');
+    const lastOffer = waiting ? [...events].reverse().find((e) => e.type === 'offered') : undefined;
     const isManagerOnly = user.roles.includes('team_manager') && !user.roles.includes('admin');
     if (isManagerOnly && summary.teamId !== user.teamId) {
       actions = actions.filter(
@@ -687,6 +757,7 @@ export class TicketsQuery {
           : null,
       incident,
       escalationLevel: row.escalationLevel,
+      offer: lastOffer ? toOffer(lastOffer.data, lastOffer.createdAt) : null,
       materials: stock.materials,
       reservations: stock.reservations,
       newCustomer

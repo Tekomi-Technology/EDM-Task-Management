@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { alarms, notificationOutbox, tickets } from '../src/db/schema';
+import { TicketsService } from '../src/tickets/tickets.service';
 import { createTestApp, ids, resetData, type TestContext } from './helpers';
 
 const NADIA_NOC = '+258840000003';
@@ -64,8 +65,8 @@ describe('network incidents from the NMS and the public, and planned work', () =
       network: { elementCode: 'F-12', severity: 'critical', activeAlarms: 1 }
     });
     expect((await smsTo(NADIA_NOC)).some((b) => b.includes(r!.code!))).toBe(true);
-    // Nobody on duty: it still goes straight to someone of the team, and the manager is not bothered.
-    expect(d.assignee).not.toBeNull();
+    // Offered to the whole team, on duty or not; the manager is not bothered.
+    expect(d).toMatchObject({ status: 'new', offer: { notified: ['Ana Sitoe', 'Armando Cossa'] } });
     expect(await smsTo(HELENA)).toHaveLength(0);
     expect((await t.as('call-center').post('/api/intake/nms/alarms', { alarms: [alarm()] })).status).toBe(
       403
@@ -141,9 +142,8 @@ describe('network incidents from the NMS and the public, and planned work', () =
   });
 
   it('links no-power complaints near an incident instead of sending someone, and closes them with it', async () => {
-    await t.as('armando.cossa').post('/api/me/duty', { onDuty: true });
     const [inc] = await send(alarm());
-    expect((await detail(inc!.ticketId!)).assignee.fullName).toBe('Armando Cossa');
+    expect((await t.as('armando.cossa').post(`/api/tickets/${inc!.ticketId}/claim`)).status).toBe(200);
 
     const complaint = await t.as('call-center').post('/api/intake/call-center/complaints', {
       externalRef: 'CC-L1',
@@ -214,10 +214,11 @@ describe('network incidents from the NMS and the public, and planned work', () =
       problemType: 'no_power_street',
       description: 'Street dark'
     });
-    await t.as('ana.sitoe').post('/api/me/duty', { onDuty: true });
+    expect((await detail(complaint.body.ticketId)).offer).toBeNull();
     await t.as('nadia.mussa').post(`/api/tickets/${inc!.ticketId}/cancel`, { reason: 'NMS false alarm' });
     const d = await detail(complaint.body.ticketId);
-    expect(d).toMatchObject({ incident: null, status: 'assigned', assignee: { fullName: 'Ana Sitoe' } });
+    // Freed from the incident, it needs someone of its own: offered to the team.
+    expect(d).toMatchObject({ incident: null, status: 'new', assignee: null, offer: { round: 1 } });
   });
 
   it('lets NOC link and unlink by hand, acknowledge, and text the linked customers', async () => {
@@ -270,14 +271,14 @@ describe('network incidents from the NMS and the public, and planned work', () =
 
     const teams = (await t.as('nadia.mussa').get('/api/lookups')).body.teams;
     const south1 = teams.find((x: { name: string }) => x.name === 'South 1').id;
-    await t.as('armando.cossa').post('/api/me/duty', { onDuty: true });
     const routed = await t
       .as('nadia.mussa')
       .post(`/api/tickets/${report.body.ticketId}/team`, { teamId: south1 });
     expect(routed.body).toMatchObject({
       teamName: 'South 1',
-      status: 'assigned',
-      assignee: { fullName: 'Armando Cossa' }
+      status: 'new',
+      assignee: null,
+      offer: { teamName: 'South 1', notified: ['Ana Sitoe', 'Armando Cossa'] }
     });
     // Already in that team (moving it to another team is tested in office-tickets.test.ts).
     const again = await t
@@ -291,7 +292,7 @@ describe('network incidents from the NMS and the public, and planned work', () =
     ).toBe(403);
   });
 
-  it('lets the network team plan work for a team, not assigned until the manager does, and tells the Call Center', async () => {
+  it('lets the network team plan work for a team, offered to its staff, and tells the Call Center', async () => {
     const teams = (await t.as('nadia.mussa').get('/api/lookups')).body.teams;
     const south2 = teams.find((x: { name: string }) => x.name === 'South 2').id;
     await t.as('ofelia.tembe').post('/api/me/duty', { onDuty: true });
@@ -317,12 +318,11 @@ describe('network incidents from the NMS and the public, and planned work', () =
       planned: { kind: 'maintenance', outage: true, customersAffected: 240, element: 'PT-1180 · Liberdade' }
     });
 
-    // Switching duty on does not pick up planned work: the manager gives it out closer to the date.
-    await t.as('ofelia.tembe').post('/api/me/duty', { onDuty: false });
-    await t.as('ofelia.tembe').post('/api/me/duty', { onDuty: true });
+    // Offered to the team at once, like any ticket.
     expect((await t.as('nadia.mussa').get(`/api/tickets/${created.body.id}`)).body).toMatchObject({
       status: 'new',
-      assignee: null
+      assignee: null,
+      offer: { teamName: 'South 2', notified: ['Ofélia Tembe'] }
     });
 
     const week = (
@@ -333,6 +333,20 @@ describe('network incidents from the NMS and the public, and planned work', () =
     expect(week.map((w: { title: string }) => w.title)).toEqual(['Replace transformer PT-1180']);
     const outages = (await t.as('call-center').get('/api/intake/call-center/planned-outages')).body;
     expect(outages[0]).toMatchObject({ code: created.body.code, customersAffected: 240 });
+
+    // Nobody has claimed it after an hour: the team is only told again from the day before it starts.
+    const remind = async (startsInHours: number) => {
+      await t.db
+        .update(tickets)
+        .set({
+          offeredAt: new Date(Date.now() - 3600_000),
+          scheduledStart: new Date(Date.now() + startsInHours * 3600_000)
+        })
+        .where(eq(tickets.id, created.body.id));
+      return t.app.get(TicketsService).remindOffers();
+    };
+    expect(await remind(72)).toBe(0);
+    expect(await remind(12)).toBe(1);
 
     expect((await t.as('armando.cossa').post('/api/planned-work', work)).status).toBe(403);
     const backwards = await t

@@ -85,7 +85,7 @@ const SALES_WEBHOOKS: IntegrationDocWebhook[] = [
       data: {
         meterNumber: '04188210377',
         sealNumber: 'S-55120',
-        confirmedBy: 'sms_code',
+        confirmedBy: 'meter_photo',
         installedAt: '2026-11-02T15:04:10.000Z'
       }
     }

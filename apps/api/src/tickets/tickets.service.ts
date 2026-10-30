@@ -15,9 +15,9 @@ import {
   type TicketStatus,
   type TicketType
 } from '../contract';
-import { and, eq, inArray, isNull, ne, notInArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne, notInArray, sql } from 'drizzle-orm';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
-import { actorLabel, AUTO_ASSIGN_ACTOR, SYSTEM_ACTOR, type AuthUser } from '../auth/auth-user';
+import { actorLabel, SYSTEM_ACTOR, type AuthUser } from '../auth/auth-user';
 import { AppError, notFound } from '../common/errors';
 import { ENV, type Env } from '../config/env';
 import { DB, type Db, type Tx } from '../db/db.module';
@@ -61,8 +61,6 @@ export interface NewTicket {
   teamId?: string;
   /** Why another team than the one covering the place goes: the place keeps its area, and the choice is recorded. */
   teamReason?: string;
-  /** Planned work is assigned by the team manager, not automatically. Default true. */
-  autoAssign?: boolean;
   elementCode?: string | null;
   elementName?: string | null;
   severity?: 'critical' | 'major' | 'minor' | null;
@@ -212,7 +210,6 @@ export class TicketsService {
         });
       }
       const messages: OutgoingSms[] = [];
-      let status: TicketStatus = ticket.status;
 
       if (incident) {
         // The crew on the incident fixes this too: nobody else is sent, and the customer is told it is known.
@@ -233,18 +230,13 @@ export class TicketsService {
           ticketId: ticket.id
         });
         if (route?.teamId) {
-          const auto =
-            input.autoAssign === false
-              ? null
-              : await this.autoAssign(
-                  tx,
-                  { id: ticket.id, code, title: input.title, location: input.location },
-                  route.teamId,
-                  'new',
-                  messages
-                );
-          if (auto) status = auto;
-          else {
+          const offered = await this.offerToTeam(
+            tx,
+            { id: ticket.id, code, title: input.title },
+            route.teamId,
+            messages
+          );
+          if (!offered) {
             messages.push(
               ...toOffice(
                 await this.users.teamManagers(route.teamId, tx),
@@ -278,14 +270,13 @@ export class TicketsService {
         );
       }
       outboxIds.push(...(await this.notifications.record(tx, messages)));
-      return { ticket: { ...ticket, status, incidentId: incident?.id ?? null }, outboxIds };
+      return { ticket: { ...ticket, incidentId: incident?.id ?? null }, outboxIds };
     }
   }
 
   /**
    * Where a ticket at this point would go now, without creating it: area and team, an open incident nearby
-   * (for outages), and who automatic assignment would pick if the ticket is not joined to that incident. For the
-   * New ticket screen.
+   * (for outages), and how many field staff of the team would be offered it. For the New ticket screen.
    */
   async whereTo(
     location: { lng: number; lat: number } | null,
@@ -295,7 +286,8 @@ export class TicketsService {
     /** The team covering the place, whatever team was chosen. */
     placeTeamId: string | null;
     incident: { id: string; code: string } | null;
-    assignee: { id: string; fullName: string; distanceM: number | null; onDuty: boolean } | null;
+    /** Field staff of the team who would be told (0 when offers are off: the manager chooses). */
+    teamStaff: number;
   }> {
     return this.db.transaction(async (tx) => {
       const place = location ? await this.route(tx, location) : null;
@@ -303,17 +295,8 @@ export class TicketsService {
       const route = chosen ? { areaId: place?.areaId ?? chosen.areaId, teamId: chosen.teamId } : place;
       const incident = opts.outage && location ? await this.nearbyIncident(tx, location) : null;
       const staff =
-        route?.teamId && this.env.AUTO_ASSIGN
-          ? await this.users.pickAutoAssignee(tx, route.teamId, [], location)
-          : undefined;
-      return {
-        route,
-        placeTeamId: place?.teamId ?? null,
-        incident,
-        assignee: staff
-          ? { id: staff.id, fullName: staff.fullName, distanceM: staff.distanceM, onDuty: staff.onDuty }
-          : null
-      };
+        route?.teamId && this.env.AUTO_ASSIGN ? await this.users.teamFieldStaff(route.teamId, [], tx) : [];
+      return { route, placeTeamId: place?.teamId ?? null, incident, teamStaff: staff.length };
     });
   }
 
@@ -409,6 +392,16 @@ export class TicketsService {
         );
       }
 
+      // Whoever claims a waiting job first has it; the others are told it is taken.
+      if (action === 'claim') {
+        if (ticket.teamId !== actor.teamId) {
+          throw new AppError(HttpStatus.FORBIDDEN, 'NOT_IN_TEAM', 'This job is for another team');
+        }
+        if (ticket.assigneeId || ticket.incidentId || !['new', 'reopened'].includes(ticket.status)) {
+          throw new AppError(HttpStatus.CONFLICT, 'ALREADY_TAKEN', 'Someone else has already taken this job');
+        }
+      }
+
       let to = nextStatus(
         ticket.status,
         action,
@@ -421,7 +414,7 @@ export class TicketsService {
       if (input.reason) data.reason = input.reason.trim();
       if (input.occurredAt) data.occurredAt = input.occurredAt.toISOString();
       const messages: OutgoingSms[] = [];
-      let autoAssignAfter = false;
+      let offerAfter = false;
       let unlinkAfter = false;
       let consumeAfter = false;
 
@@ -430,6 +423,8 @@ export class TicketsService {
           const staff = await this.users.findById(input.assigneeId ?? '', tx);
           this.users.assertTeamMember(staff, ticket.teamId);
           changes.assigneeId = staff.id;
+          changes.offeredAt = null;
+          changes.offerRound = 0;
           Object.assign(data, { assigneeId: staff.id, assigneeName: staff.fullName });
           await this.users.markAssigned(tx, staff.id);
           messages.push({
@@ -449,9 +444,16 @@ export class TicketsService {
           }
           break;
         }
+        case 'claim':
+          changes.assigneeId = actor.userId;
+          changes.offeredAt = null;
+          changes.offerRound = 0;
+          Object.assign(data, { assigneeId: actor.userId, assigneeName: actor.fullName });
+          await this.users.markAssigned(tx, actor.userId!);
+          break;
         case 'decline':
           changes.assigneeId = null;
-          autoAssignAfter = true;
+          offerAfter = true;
           break;
         case 'start':
           messages.push({
@@ -484,17 +486,18 @@ export class TicketsService {
               throw new AppError(
                 HttpStatus.UNPROCESSABLE_ENTITY,
                 'INSTALLATION_REQUIRED',
-                'Give the meter number and the customer’s confirmation'
+                'Give the meter number of the connection'
               );
             }
-            if (
-              !inst.handoverCode &&
-              !(input.attachmentIds ?? []).includes(inst.signedFormAttachmentId ?? '')
-            ) {
+            // Proof of the job: a photo of the installed meter. (Older apps confirm with the customer's SMS code
+            // or a photo of the signed form instead; both are still taken.)
+            const photos = data.attachmentIds as string[];
+            const signedForm = !!inst.signedFormAttachmentId && photos.includes(inst.signedFormAttachmentId);
+            if (!inst.handoverCode && !signedForm && photos.length === 0) {
               throw new AppError(
                 HttpStatus.UNPROCESSABLE_ENTITY,
-                'HANDOVER_NOT_CONFIRMED',
-                'Attach the photo of the signed handover form with the job'
+                'METER_PHOTO_REQUIRED',
+                'Take a photo of the installed meter'
               );
             }
             if (inst.handoverCode) {
@@ -506,7 +509,11 @@ export class TicketsService {
             const installation = {
               meterNumber: inst.meterNumber,
               sealNumber: inst.sealNumber,
-              confirmedBy: inst.handoverCode ? ('sms_code' as const) : ('signed_form' as const),
+              confirmedBy: inst.handoverCode
+                ? ('sms_code' as const)
+                : signedForm
+                  ? ('signed_form' as const)
+                  : ('meter_photo' as const),
               confirmedAt: (input.occurredAt ?? new Date()).toISOString()
             };
             changes.details = { ...ticket.details, installation };
@@ -553,8 +560,10 @@ export class TicketsService {
           break;
         }
         case 'reopen':
+          // Fixing it again is offered to the whole team, like a new ticket.
           changes.reopenCount = ticket.reopenCount + 1;
-          autoAssignAfter = true;
+          changes.assigneeId = null;
+          offerAfter = true;
           break;
         case 'cancel':
           changes.closedAt = new Date();
@@ -621,12 +630,12 @@ export class TicketsService {
         });
       }
 
-      if (autoAssignAfter && ticket.teamId) {
-        // Whoever declined this ticket or had it taken back is not asked again.
-        const decliners = await this.decliners(tx, ticketId);
-        const auto = await this.autoAssign(tx, ticket, ticket.teamId, to, messages, decliners);
-        if (auto) to = auto;
-        else {
+      if (offerAfter && ticket.teamId && !ticket.incidentId) {
+        // Whoever gave this ticket back or had it taken back is not asked again.
+        const offered = await this.offerToTeam(tx, ticket, ticket.teamId, messages, {
+          exclude: await this.decliners(tx, ticketId)
+        });
+        if (!offered) {
           const [body, title] =
             action === 'decline'
               ? [
@@ -646,48 +655,44 @@ export class TicketsService {
   }
 
   /**
-   * Gives the ticket to a field staff member of the team (on duty first, then the least busy), recording it as done
-   * by the system. Returns the new status, or null when auto-assignment is off or nobody is left in the team.
+   * Offers a waiting ticket to every active field staff member of the team, on duty or not, through the app:
+   * whoever claims it first has it. Recorded in the history with who was told. Returns how many were told: 0 when
+   * offers are off or nobody is left in the team, and the caller tells the team managers instead.
    */
-  private async autoAssign(
+  private async offerToTeam(
     tx: Tx,
-    ticket: {
-      id: string;
-      code: string;
-      title: string;
-      type?: string;
-      location: { lat: number; lng: number } | null;
-    },
+    ticket: { id: string; code: string; title: string },
     teamId: string,
-    current: TicketStatus,
     messages: OutgoingSms[],
-    excludeIds: string[] = []
-  ): Promise<TicketStatus | null> {
-    // Planned work is given out by the team manager closer to the date, never automatically.
-    if (!this.env.AUTO_ASSIGN || ticket.type === 'planned_work') return null;
-    const staff = await this.users.pickAutoAssignee(tx, teamId, excludeIds, ticket.location);
-    if (!staff) return null;
-    const to = nextStatus(current, 'assign', AUTO_ASSIGN_ACTOR, null);
-    await tx
+    opts: { exclude?: string[]; reminder?: boolean; actor?: AuthUser } = {}
+  ): Promise<number> {
+    if (!this.env.AUTO_ASSIGN) return 0;
+    const staff = await this.users.teamFieldStaff(teamId, opts.exclude ?? [], tx);
+    // Set even when nobody was told, so the reminder waits its turn before looking again.
+    const [row] = await tx
       .update(tickets)
-      .set({ status: to, assigneeId: staff.id, updatedAt: new Date() })
-      .where(eq(tickets.id, ticket.id));
-    await this.users.markAssigned(tx, staff.id);
-    await this.addEvent(tx, ticket.id, 'assign', AUTO_ASSIGN_ACTOR, {
-      from: current,
-      to,
-      assigneeId: staff.id,
-      assigneeName: staff.fullName,
-      auto: true,
-      distanceM: staff.distanceM
+      .set({
+        offeredAt: new Date(),
+        offerRound: opts.reminder ? sql`${tickets.offerRound} + 1` : 1,
+        updatedAt: new Date()
+      })
+      .where(eq(tickets.id, ticket.id))
+      .returning({ round: tickets.offerRound });
+    if (staff.length === 0) return 0;
+    await this.addEvent(tx, ticket.id, 'offered', opts.actor ?? SYSTEM_ACTOR, {
+      teamId,
+      teamName: (await this.teamRoute(tx, teamId)).teamName,
+      notified: staff.map((p) => p.fullName),
+      round: row!.round
     });
-    messages.push({
-      recipient: staff.phone,
-      body: sms.staffAssigned(ticket.code, ticket.title),
-      ticketId: ticket.id,
-      staff: { userId: staff.id, title: push.newJob }
-    });
-    return to;
+    const [body, title] = opts.reminder
+      ? [sms.teamJobReminder(ticket.code, ticket.title), push.teamJobReminder]
+      : [sms.teamJob(ticket.code, ticket.title), push.teamJob];
+    // App only (no SMS): staff without the app see the job when they next open it.
+    for (const p of staff) {
+      messages.push({ recipient: null, body, ticketId: ticket.id, staff: { userId: p.id, title } });
+    }
+    return staff.length;
   }
 
   /**
@@ -742,8 +747,8 @@ export class TicketsService {
         incidentCode: incident.code
       });
       if (t.teamId && (t.status === 'new' || t.status === 'reopened')) {
-        const auto = await this.autoAssign(tx, t, t.teamId, t.status, messages);
-        if (!auto) {
+        const offered = await this.offerToTeam(tx, t, t.teamId, messages);
+        if (!offered) {
           messages.push(
             ...toOffice(
               await this.users.teamManagers(t.teamId, tx),
@@ -776,7 +781,7 @@ export class TicketsService {
   /**
    * Moves an unfinished ticket to another team (a ticket outside every area, a place marked wrongly, a closer or
    * less busy team). Once it has a team, the reason is needed and kept. Whoever was holding it is told and freed, and
-   * the ticket is assigned in the new team like a new one.
+   * the ticket is offered to the new team like a new one.
    */
   async setTeam(ticketId: string, teamId: string, actor: AuthUser, reason?: string): Promise<void> {
     const outboxIds: string[] = [];
@@ -818,6 +823,8 @@ export class TicketsService {
           areaId: ticket.areaId ?? route.areaId,
           assigneeId: null,
           status,
+          offeredAt: null,
+          offerRound: 0,
           updatedAt: new Date()
         })
         .where(eq(tickets.id, ticketId));
@@ -839,8 +846,8 @@ export class TicketsService {
         });
       }
       if (!ticket.incidentId) {
-        const auto = await this.autoAssign(tx, ticket, teamId, status, messages);
-        if (!auto) {
+        const offered = await this.offerToTeam(tx, ticket, teamId, messages);
+        if (!offered) {
           messages.push(
             ...toOffice(
               await this.users.teamManagers(teamId, tx),
@@ -858,7 +865,7 @@ export class TicketsService {
 
   /**
    * Takes a job back from the staff member holding it (sick, phone off, cannot be reached), saying why. They are told,
-   * and the ticket goes to the next person of the team, or waits and the team managers are told.
+   * and the ticket is offered to the rest of the team, or waits and the team managers are told.
    */
   async takeBack(ticketId: string, actor: AuthUser, reason: string): Promise<void> {
     const outboxIds: string[] = [];
@@ -896,15 +903,10 @@ export class TicketsService {
         }
       ];
       if (ticket.teamId && !ticket.incidentId) {
-        const auto = await this.autoAssign(
-          tx,
-          ticket,
-          ticket.teamId,
-          'new',
-          messages,
-          await this.decliners(tx, ticketId)
-        );
-        if (!auto) {
+        const offered = await this.offerToTeam(tx, ticket, ticket.teamId, messages, {
+          exclude: await this.decliners(tx, ticketId)
+        });
+        if (!offered) {
           messages.push(
             ...toOffice(
               await this.users.teamManagers(ticket.teamId, tx),
@@ -920,35 +922,82 @@ export class TicketsService {
     await this.notifications.dispatch(outboxIds);
   }
 
-  /**
-   * A field staff member has switched duty on: the team's tickets still waiting for someone (nobody was left to give
-   * them to) are given out now, most urgent first.
-   */
-  async assignWaiting(teamId: string | null): Promise<void> {
-    if (!teamId || !this.env.AUTO_ASSIGN) return;
+  /** The office tells the team again about a ticket nobody has claimed yet, without waiting for the reminder. */
+  async offerAgain(ticketId: string, actor: AuthUser): Promise<void> {
     const outboxIds: string[] = [];
     await this.db.transaction(async (tx) => {
-      const waiting = await tx
-        .select()
-        .from(tickets)
-        .where(
-          and(
-            eq(tickets.teamId, teamId),
-            inArray(tickets.status, ['new', 'reopened']),
-            isNull(tickets.assigneeId),
-            isNull(tickets.incidentId),
-            ne(tickets.type, 'planned_work')
-          )
-        )
-        .orderBy(tickets.priority, sql`${tickets.dueAt} asc nulls last`, tickets.createdAt)
-        .for('update', { skipLocked: true });
+      const [ticket] = await tx.select().from(tickets).where(eq(tickets.id, ticketId)).for('update');
+      if (!ticket) throw notFound('Ticket');
+      if (
+        !ticket.teamId ||
+        ticket.assigneeId ||
+        ticket.incidentId ||
+        !['new', 'reopened'].includes(ticket.status)
+      ) {
+        throw new AppError(HttpStatus.CONFLICT, 'NOT_WAITING', 'This ticket is not waiting for someone');
+      }
+      if (
+        actor.roles.includes('team_manager') &&
+        !actor.roles.some((r) => r === 'admin' || r === 'technical_manager') &&
+        ticket.teamId !== actor.teamId
+      ) {
+        throw new AppError(HttpStatus.FORBIDDEN, 'NOT_IN_TEAM', 'This ticket belongs to another team');
+      }
       const messages: OutgoingSms[] = [];
-      for (const t of waiting) {
-        await this.autoAssign(tx, t, teamId, t.status, messages, await this.decliners(tx, t.id));
+      const told = await this.offerToTeam(tx, ticket, ticket.teamId, messages, {
+        exclude: await this.decliners(tx, ticketId),
+        reminder: true,
+        actor
+      });
+      if (!told) {
+        throw new AppError(
+          HttpStatus.UNPROCESSABLE_ENTITY,
+          'NOBODY_TO_TELL',
+          'Nobody in the team can be told: choose a person or move the ticket to another team'
+        );
       }
       outboxIds.push(...(await this.notifications.record(tx, messages)));
     });
     await this.notifications.dispatch(outboxIds);
+  }
+
+  /**
+   * Tells the team again about tickets nobody has claimed for OFFER_REMIND_MINUTES (and offers the ones waiting
+   * from before offers existed). Planned work is only repeated from the day before it starts. Returns how many
+   * tickets were offered.
+   */
+  async remindOffers(): Promise<number> {
+    if (!this.env.AUTO_ASSIGN) return 0;
+    const outboxIds: string[] = [];
+    const count = await this.db.transaction(async (tx) => {
+      const due = await tx
+        .select()
+        .from(tickets)
+        .where(
+          and(
+            inArray(tickets.status, ['new', 'reopened']),
+            isNull(tickets.assigneeId),
+            isNull(tickets.incidentId),
+            isNotNull(tickets.teamId),
+            sql`(${tickets.offeredAt} is null or ${tickets.offeredAt} < now() - make_interval(mins => ${this.env.OFFER_REMIND_MINUTES}))`,
+            sql`(${tickets.type} <> 'planned_work' or ${tickets.scheduledStart} is null or ${tickets.scheduledStart} < now() + interval '1 day')`
+          )
+        )
+        .orderBy(tickets.priority, sql`${tickets.dueAt} asc nulls last`)
+        .limit(100)
+        .for('update', { skipLocked: true });
+      const messages: OutgoingSms[] = [];
+      for (const t of due) {
+        await this.offerToTeam(tx, t, t.teamId!, messages, {
+          exclude: await this.decliners(tx, t.id),
+          reminder: t.offeredAt !== null
+        });
+      }
+      outboxIds.push(...(await this.notifications.record(tx, messages)));
+      return due.length;
+    });
+    await this.notifications.dispatch(outboxIds);
+    return count;
   }
 
   /** NOC confirms it has seen a network incident (shown to everyone on the incident). */

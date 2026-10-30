@@ -58,8 +58,7 @@ function SurveyDetails({ s }: { s: WaitingSurvey }) {
           <dt>{t('Who goes')}</dt>
           <dd>
             {s.team ? s.team.name : t('No team yet: NOC sends it to the right team.')}
-            {s.assignee &&
-              ` · ${t('expected: {0}', { 0: s.assignee.fullName })}${s.assignee.onDuty ? '' : ` (${t('off duty')})`}`}
+            {s.team && s.teamStaff > 0 && ` · ${t('offered to {0} field staff', { 0: s.teamStaff })}`}
           </dd>
         </div>
       </dl>
@@ -124,12 +123,13 @@ export function SurveyPicker({
     queryFn: () => api<WaitingSurvey[]>('/new-customers/surveys/waiting')
   });
   const words = search.trim().toLowerCase();
-  const list = (surveys.data ?? []).filter(
-    (s) =>
-      !words ||
-      [s.code, s.customer?.fullName, s.customer?.phone, s.customer?.address]
-        .filter(Boolean)
-        .some((x) => x!.toLowerCase().includes(words))
+  // Nothing is listed until something is typed; the survey already chosen stays in view.
+  const list = (surveys.data ?? []).filter((s) =>
+    words
+      ? [s.code, s.customer?.fullName, s.customer?.phone, s.customer?.address]
+          .filter(Boolean)
+          .some((x) => x!.toLowerCase().includes(words))
+      : s.ticketId === value?.ticketId
   );
   if (surveys.isLoading) return <div className="meta">{t('Loading…')}</div>;
   if (!surveys.data?.length)
@@ -184,7 +184,13 @@ export function SurveyPicker({
             </div>
           );
         })}
-        {list.length === 0 && <div className="meta">{t('No survey matches.')}</div>}
+        {list.length === 0 && (
+          <div className="meta">
+            {words
+              ? t('No survey matches.')
+              : t('Type a ticket code, customer name or phone to find the survey.')}
+          </div>
+        )}
       </div>
     </div>
   );

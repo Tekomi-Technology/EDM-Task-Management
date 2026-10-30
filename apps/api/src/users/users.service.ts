@@ -114,8 +114,8 @@ export class UsersService {
   }
 
   /**
-   * Field staff who can take a ticket of this team, best choice first: the same order automatic assignment uses
-   * (on duty, fewest unfinished jobs, longest since last assignment).
+   * Field staff who can take a ticket of this team, for the office naming someone, best choice first (on duty,
+   * fewest unfinished jobs, longest since last assignment).
    */
   async suggestions(
     teamId: string,
@@ -187,19 +187,14 @@ export class UsersService {
     await this.db.update(users).set({ onDuty, updatedAt: new Date() }).where(eq(users.id, userId));
   }
 
-  /**
-   * Who should get a job automatically: active field staff of the team, those on duty first (someone off duty gets
-   * it when nobody is on duty, and sees it on their next shift), then fewest unfinished jobs, nearest, and whoever
-   * has waited longest since their last assignment.
-   */
-  async pickAutoAssignee(
-    tx: Tx,
+  /** Active field staff of a team, on duty or not: a waiting ticket is offered to all of them. */
+  teamFieldStaff(
     teamId: string,
-    excludeIds: string[],
-    near: { lat: number; lng: number } | null = null
-  ): Promise<(UserRow & { distanceM: number | null }) | undefined> {
-    const rows = await tx
-      .select({ ...columns, openJobs, lastAssignedAt: users.lastAssignedAt })
+    excludeIds: string[] = [],
+    db: Db | Tx = this.db
+  ): Promise<{ id: string; fullName: string }[]> {
+    return db
+      .select({ id: users.id, fullName: users.fullName })
       .from(users)
       .where(
         and(
@@ -208,36 +203,8 @@ export class UsersService {
           arrayContains(users.roles, ['field_staff']),
           excludeIds.length ? notInArray(users.id, excludeIds) : undefined
         )
-      );
-    if (rows.length === 0) return undefined;
-    const distances = near
-      ? await this.distances(
-          tx,
-          rows.map((r) => r.id),
-          near
-        )
-      : new Map<string, number>();
-    const ranked = rows
-      .map((r) => ({ ...r, distanceM: distances.get(r.id) ?? null }))
-      .sort(
-        (a, b) =>
-          Number(b.onDuty) - Number(a.onDuty) ||
-          a.openJobs - b.openJobs ||
-          (a.distanceM ?? Infinity) - (b.distanceM ?? Infinity) ||
-          (a.lastAssignedAt?.getTime() ?? 0) - (b.lastAssignedAt?.getTime() ?? 0) ||
-          a.fullName.localeCompare(b.fullName)
-      );
-    const best = ranked[0]!;
-    return {
-      id: best.id,
-      fullName: best.fullName,
-      teamId: best.teamId,
-      phone: best.phone,
-      roles: best.roles,
-      status: best.status,
-      onDuty: best.onDuty,
-      distanceM: best.distanceM
-    };
+      )
+      .orderBy(users.fullName);
   }
 
   /**

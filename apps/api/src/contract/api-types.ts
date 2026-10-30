@@ -79,12 +79,30 @@ export interface TicketDetail extends TicketSummary {
   incident: { id: string; code: string; title: string; status: TicketStatus } | null;
   /** 0 = on time; 1 = staff reminded; 2 = late, team manager and NOC told; 3 = badly late, technical manager told. */
   escalationLevel: number;
+  /** While nobody has claimed it: the last time the team was told, and who. */
+  offer: TicketOffer | null;
   /** Materials recorded on the job; deducted from stock when the ticket closes. */
   materials: TicketMaterialView[];
   /** Materials set aside in a depot for this ticket. */
   reservations: ReservationView[];
   /** Surveys and connections for new customers. */
   newCustomer: NewCustomerInfo | null;
+}
+
+export interface TicketOffer {
+  teamName: string;
+  /** Field staff told the last time (everyone of the team except those who gave it back). */
+  notified: string[];
+  /** 1 the first time, then one more each time the team is told again. */
+  round: number;
+  at: string;
+}
+
+/** A job offered to the staff member's team that nobody has claimed yet (top of the app's job list). */
+export interface TeamOffer extends TicketSummary {
+  /** Metres from the staff member's last known position, when both are known. */
+  distanceM: number | null;
+  offer: TicketOffer | null;
 }
 
 export interface TicketMaterialView {
@@ -126,9 +144,10 @@ export interface WaitingSurvey {
   worksNeeded: string | null;
   surveyedBy: string | null;
   surveyedAt: string | null;
-  /** Who the connection would go to: the team of the place and the person automatic assignment would pick. */
+  /** Who the connection would go to: the team of the place, offered to its field staff. */
   team: { id: string; name: string } | null;
-  assignee: { id: string; fullName: string; onDuty: boolean } | null;
+  /** How many field staff of the team would be told. */
+  teamStaff: number;
   /** The depot of the area, and for each estimated material how much is free there now. */
   depot: { id: string; name: string } | null;
   materials: {
@@ -159,7 +178,7 @@ export interface NewCustomerInfo {
   installation: {
     meterNumber: string;
     sealNumber: string | null;
-    confirmedBy: 'sms_code' | 'signed_form';
+    confirmedBy: 'sms_code' | 'signed_form' | 'meter_photo';
     confirmedAt: string;
   } | null;
   /** When the Sales system activated the service. */
@@ -323,7 +342,7 @@ export interface StaffSuggestion extends StaffMember {
   locationAt: string | null;
   /** Jobs they reported done today. */
   doneToday: number;
-  /** The person automatic assignment would choose. */
+  /** The best choice when the office names someone: on duty, fewest unfinished jobs, nearest. */
   bestMatch: boolean;
 }
 
@@ -669,15 +688,8 @@ export interface TicketPreview {
   /** The team covering the place, whatever was chosen. */
   autoTeam: { id: string; name: string } | null;
   areaName: string | null;
-  /** Who automatic assignment would pick now; null when nobody of the team is on duty (the manager is told). */
-  /** Who automatic assignment would pick: someone on duty first, else someone off duty (sees it on their next shift). */
-  assignee: {
-    id: string;
-    fullName: string;
-    distanceM: number | null;
-    openJobs: number;
-    onDuty: boolean;
-  } | null;
+  /** How many field staff of the team are told about it; 0: nobody is left, the team manager chooses someone. */
+  teamStaff: number;
   priority: number;
   slaMinutes: number;
   dueAt: string;

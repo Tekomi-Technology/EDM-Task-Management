@@ -1,9 +1,9 @@
 import type { Lookups, StaffSuggestion, TicketDetail } from '../types';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeftRight, Undo2, UserRoundCog } from 'lucide-react';
+import { ArrowLeftRight, BellRing, Undo2, UserRoundCog, UsersRound } from 'lucide-react';
 import { useState } from 'react';
 import { api, ApiRequestError } from '../api';
-import { firstName } from '../format';
+import { firstName, formatTime } from '../format';
 import { t as tr } from '../i18n';
 import { Avatar, CHOOSE_TEAM_ROLES, hasRole, useMe } from './ui';
 
@@ -13,9 +13,9 @@ const HOLDING = ['assigned', 'accepted', 'in_progress', 'on_hold'];
 type Mode = 'team' | 'takeBack' | 'person' | null;
 
 /**
- * "Who is on it": the team and the person holding the ticket, in one place. Jobs are given out automatically; from
- * here NOC, technical managers and administrators move a ticket to another team, and managers take a job back or
- * name the person who goes.
+ * "Who is on it": the team and the person holding the ticket, in one place. A waiting ticket is offered to the whole
+ * team in the app, and whoever claims it first goes; from here NOC, technical managers and administrators move a
+ * ticket to another team, and managers tell the team again, take a job back or name the person who goes.
  */
 export function ResponsiblePanel({
   t,
@@ -34,11 +34,16 @@ export function ResponsiblePanel({
     setMode(null);
     onChange(updated);
   };
+  const offer = !t.assignee && unfinished ? t.offer : null;
+  const tellAgain = useMutation({
+    mutationFn: () => api<TicketDetail>(`/tickets/${t.id}/offer`, { method: 'POST' }),
+    onSuccess: onChange
+  });
 
   const state = !t.assignee
     ? unfinished
-      ? t.type === 'planned_work'
-        ? { text: 'To be given out', tone: 'blue' }
+      ? offer
+        ? { text: 'Waiting for someone to claim it', tone: 'warn' }
         : { text: 'Nobody yet', tone: 'late' }
       : null
     : PERSON_STATE[t.status];
@@ -51,27 +56,57 @@ export function ResponsiblePanel({
         {state && <span className={`chip chip-${state.tone}`}>{tr(state.text)}</span>}
       </div>
 
-      <div className="responsible-person">
-        {t.assignee ? (
-          <Avatar name={t.assignee.fullName} size="lg" />
-        ) : (
-          <Avatar name="?" size="lg" kind="nobody" />
-        )}
-        <div className="responsible-text">
-          <strong>{t.assignee ? t.assignee.fullName : unfinished ? tr('Nobody on it yet') : '—'}</strong>
-          <span className="meta">
-            {!t.teamId
-              ? tr('No team yet')
-              : t.assignee || !unfinished
-                ? tr('Team {0}', { 0: t.teamName ?? '' })
-                : t.incident
-                  ? tr('Nobody is sent: it closes with network incident {0}.', { 0: t.incident.code })
-                  : t.type === 'planned_work'
-                    ? tr('The team manager chooses who goes before the planned date.')
-                    : tr('Nobody is left in team {0} to give it to.', { 0: t.teamName ?? '' })}
-          </span>
+      {offer ? (
+        <>
+          <div className="responsible-person">
+            <span className="avatar lg nobody" aria-hidden="true">
+              <UsersRound size={20} />
+            </span>
+            <div className="responsible-text">
+              <strong>
+                {tr('Told {0} people of team {1}', { 0: offer.notified.length, 1: offer.teamName })}
+              </strong>
+              <span className="meta" title={offer.notified.join(', ')}>
+                {offer.round > 1
+                  ? tr('Told again (time {0}) at {1} · nobody has claimed it yet', {
+                      0: offer.round,
+                      1: formatTime(offer.at)
+                    })
+                  : tr('Told at {0} · nobody has claimed it yet', { 0: formatTime(offer.at) })}
+              </span>
+            </div>
+          </div>
+          <div className="responsible-note">
+            {t.type === 'planned_work'
+              ? tr(
+                  'Whoever presses "Claim the job" in the app first goes. Until then the team is told again every 15 minutes, from the day before the work.'
+                )
+              : tr(
+                  'Whoever presses "Claim the job" in the app first goes. Until then the team is told again every 15 minutes.'
+                )}
+          </div>
+        </>
+      ) : (
+        <div className="responsible-person">
+          {t.assignee ? (
+            <Avatar name={t.assignee.fullName} size="lg" />
+          ) : (
+            <Avatar name="?" size="lg" kind="nobody" />
+          )}
+          <div className="responsible-text">
+            <strong>{t.assignee ? t.assignee.fullName : unfinished ? tr('Nobody on it yet') : '—'}</strong>
+            <span className="meta">
+              {!t.teamId
+                ? tr('No team yet')
+                : t.assignee || !unfinished
+                  ? tr('Team {0}', { 0: t.teamName ?? '' })
+                  : t.incident
+                    ? tr('Nobody is sent: it closes with network incident {0}.', { 0: t.incident.code })
+                    : tr('Nobody is left in team {0} to tell.', { 0: t.teamName ?? '' })}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {mode === null && canAssign && holding && (
         <div className="responsible-actions">
@@ -83,7 +118,23 @@ export function ResponsiblePanel({
           </button>
         </div>
       )}
-      {mode === null && canAssign && unfinished && !t.assignee && t.teamId && !t.incident && (
+      {mode === null && canAssign && offer && (
+        <div className="responsible-actions">
+          <button type="button" className="btn" onClick={() => setMode('person')}>
+            <UserRoundCog size={16} /> {tr('Choose a person')}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={tellAgain.isPending}
+            onClick={() => tellAgain.mutate()}
+          >
+            <BellRing size={16} /> {tr('Tell the team again')}
+          </button>
+        </div>
+      )}
+      {tellAgain.error && <div className="error">{(tellAgain.error as ApiRequestError).message}</div>}
+      {mode === null && canAssign && unfinished && !t.assignee && !offer && t.teamId && !t.incident && (
         <button type="button" className="btn btn-primary" onClick={() => setMode('person')}>
           <UserRoundCog size={16} /> {tr('Choose a person')}
         </button>
@@ -173,7 +224,7 @@ function TeamForm({ t, onDone, onCancel }: FormProps) {
       )}
       {t.assignee && (
         <div className="meta" style={{ fontSize: 14 }}>
-          {tr('{0} no longer has the job and is told; the new team gets it like a new ticket.', {
+          {tr('{0} no longer has the job and is told; the new team is told like for a new ticket.', {
             0: t.assignee.fullName
           })}
         </div>
@@ -219,7 +270,7 @@ function TakeBackForm({ t, onDone, onCancel }: FormProps) {
         />
       </div>
       <div className="meta" style={{ fontSize: 14 }}>
-        {tr('{0} no longer has the job and is told. It goes to the next person of the team.', {
+        {tr('{0} no longer has the job and is told. The rest of the team is told in the app.', {
           0: t.assignee!.fullName
         })}
       </div>

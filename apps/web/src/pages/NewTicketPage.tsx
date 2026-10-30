@@ -194,8 +194,6 @@ function PriorityPicker({ value, onChange }: { value: number | null; onChange: (
 
 const hours = (minutes: number) =>
   minutes < 60 ? t('{0} min', { 0: minutes }) : `${Math.round(minutes / 60)} h`;
-const km = (m: number | null) =>
-  m === null ? null : m < 1000 ? `${Math.round(m)} m` : t('{0} km', { 0: (m / 1000).toFixed(1) });
 /** "by 12:51 today" in Maputo time, like every other time in the app. */
 const byTime = (iso: string) => {
   const day = (d: Date) => d.toLocaleDateString(dateLocale(), { timeZone: 'Africa/Maputo' });
@@ -743,22 +741,13 @@ export function NewTicketPage() {
                         {t('The crew on the incident fixes it; nobody else is sent.')}
                       </div>
                     </>
-                  ) : p.assignee ? (
+                  ) : p.team && p.teamStaff > 0 ? (
                     <>
-                      <strong>
-                        {t('Sent to')} {p.assignee.fullName}
-                      </strong>
+                      <strong>{t('Offered to team {0}', { 0: p.team.name })}</strong>
                       <div className="meta">
-                        {[
-                          p.team && t('Team {0}', { 0: p.team.name }),
-                          !p.assignee.onDuty && t('off duty, sees it on the next shift'),
-                          km(p.assignee.distanceM) && t('nearest, {0}', { 0: km(p.assignee.distanceM) }),
-                          p.assignee.openJobs === 0
-                            ? t('free now')
-                            : t('{0} jobs open', { 0: p.assignee.openJobs })
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
+                        {t('{0} field staff are told in the app; whoever claims it first goes.', {
+                          0: p.teamStaff
+                        })}
                       </div>
                     </>
                   ) : p.team ? (

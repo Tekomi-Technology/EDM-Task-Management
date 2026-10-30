@@ -25,14 +25,7 @@ describe('sample flow: Call Center complaint to closed ticket', () => {
   }
 
   async function workUntilResolved(ticketId: string, withPhoto = true) {
-    expect(
-      (
-        await t
-          .as('helena.mondlane')
-          .post(`/api/tickets/${ticketId}/assign`, { assigneeId: ids['armando.cossa'] })
-      ).status
-    ).toBe(200);
-    expect((await t.as('armando.cossa').post(`/api/tickets/${ticketId}/accept`)).status).toBe(200);
+    expect((await t.as('armando.cossa').post(`/api/tickets/${ticketId}/claim`)).status).toBe(200);
     expect((await t.as('armando.cossa').post(`/api/tickets/${ticketId}/start`)).status).toBe(200);
     const attachmentIds: string[] = [];
     if (withPhoto) {
@@ -61,8 +54,8 @@ describe('sample flow: Call Center complaint to closed ticket', () => {
   it('creates a ticket routed to the team covering the customer, with a TK-YY-NNNNN code', async () => {
     const created = await newTicket();
     expect(created.code).toMatch(/^TK-\d{2}-00001$/);
-    // Nobody is on duty: it still goes straight to someone of the team, who sees it on their next shift.
-    expect(created.status).toBe('assigned');
+    // Offered to every field staff member of the team: whoever claims it first goes.
+    expect(created.status).toBe('new');
 
     const detail = await t.as('helena.mondlane').get(`/api/tickets/${created.ticketId}`);
     expect(detail.status).toBe(200);
@@ -74,8 +67,12 @@ describe('sample flow: Call Center complaint to closed ticket', () => {
       customer: { contractNo: '40217735', fullName: 'Rosa Chissano' },
       allowedActions: ['assign', 'cancel']
     });
-    expect(detail.body.assignee.fullName).toBe('Ana Sitoe');
-    expect(detail.body.events.map((e: { type: string }) => e.type)).toEqual(['created', 'assign']);
+    expect(detail.body.assignee).toBeNull();
+    expect(detail.body.offer).toMatchObject({
+      teamName: 'South 1',
+      notified: ['Ana Sitoe', 'Armando Cossa']
+    });
+    expect(detail.body.events.map((e: { type: string }) => e.type)).toEqual(['created', 'offered']);
     expect(detail.body.events[0].actorName).toBe('Call Center system');
   });
 
@@ -103,9 +100,8 @@ describe('sample flow: Call Center complaint to closed ticket', () => {
     const detail = await t.as('nadia.mussa').get(`/api/tickets/${ticketId}`);
     expect(detail.body.events.map((e: { type: string }) => e.type)).toEqual([
       'created',
-      'assign',
-      'assign',
-      'accept',
+      'offered',
+      'claim',
       'start',
       'resolve',
       'close'
@@ -113,15 +109,15 @@ describe('sample flow: Call Center complaint to closed ticket', () => {
     expect(detail.body.allowedActions).toEqual([]);
   });
 
-  it('reopens the ticket when the customer says it is not fixed, and gives it out again', async () => {
+  it('reopens the ticket when the customer says it is not fixed, and offers it to the team again', async () => {
     const { ticketId } = await newTicket();
     await workUntilResolved(ticketId, false);
     const check = await t
       .as('call-center')
       .post('/api/intake/call-center/tickets/CC-1001/check-result', { result: 'not_fixed' });
-    expect(check.body.status).toBe('assigned');
+    expect(check.body.status).toBe('reopened');
     const detail = (await t.as('helena.mondlane').get(`/api/tickets/${ticketId}`)).body;
-    expect(detail.events.map((e: { type: string }) => e.type).slice(-2)).toEqual(['reopen', 'assign']);
+    expect(detail.events.map((e: { type: string }) => e.type).slice(-2)).toEqual(['reopen', 'offered']);
 
     // The manager can still name the person.
     const again = await t
@@ -141,12 +137,10 @@ describe('sample flow: Call Center complaint to closed ticket', () => {
           .from(notificationOutbox)
           .where(eq(notificationOutbox.ticketId, ticketId))
           .orderBy(asc(notificationOutbox.createdAt)),
-      (r) => r.length === 2 && r.every((x) => x.status === 'sent')
+      (r) => r.length === 1 && r.every((x) => x.status === 'sent')
     );
-    expect(rows.map((r) => [r.recipient, r.status])).toEqual([
-      ['+258841110001', 'sent'], // customer: request received
-      ['+258840000009', 'sent'] // Ana: new job
-    ]);
+    // Only the customer gets an SMS: the team is told through the app, and nobody here has it installed.
+    expect(rows.map((r) => [r.recipient, r.status])).toEqual([['+258841110001', 'sent']]);
     expect(rows[0].body).toContain('Recebemos o seu pedido');
   });
 

@@ -311,7 +311,6 @@ export const vi: Record<string, string> = {
     'Nếu gặp vấn đề về tài khoản hoặc quyền truy cập, hãy liên hệ quản trị viên EDM Tasks.',
   'found the van short of material': 'phát hiện xe thiếu vật tư',
   Free: 'Rảnh',
-  'free now': 'đang rảnh',
   From: 'Từ',
   'From → to': 'Từ → đến',
   'From Sales, waiting for a visit': 'Từ Sales, đang chờ khảo sát',
@@ -399,7 +398,6 @@ export const vi: Record<string, string> = {
   'My tickets': 'Phiếu của tôi',
   Name: 'Tên',
   'Name, username or phone': 'Tên, tên đăng nhập hoặc số điện thoại',
-  'nearest, {0}': 'gần nhất, {0}',
   'Neighbours have power': 'Hàng xóm vẫn có điện',
   network: 'sự cố lưới',
   Network: 'Lưới điện',
@@ -458,7 +456,6 @@ export const vi: Record<string, string> = {
   'Nobody assigned': 'Chưa giao cho ai',
   'Nobody assigned yet': 'Chưa giao cho ai',
   'Nobody fixed a job in this period.': 'Không ai sửa xong việc nào trong khoảng thời gian này.',
-  'Nobody has the job yet.': 'Chưa ai nhận việc này.',
   'Nobody here.': 'Không có ai.',
   'Nobody in the team is on duty.': 'Trong đội không ai đang trực.',
   'Nobody matches.': 'Không có ai khớp.',
@@ -639,7 +636,6 @@ export const vi: Record<string, string> = {
   'Send to this team': 'Gửi cho đội này',
   'sent an SMS to the affected customers': 'đã gửi SMS cho khách hàng bị ảnh hưởng',
   'sent the customer a handover code': 'đã gửi mã bàn giao cho khách hàng',
-  'Sent to': 'Đã gửi cho',
   'Sent to a staff member, who has not accepted yet.': 'Đã gửi cho nhân viên nhưng người đó chưa nhận việc.',
   'Set aside': 'Giữ lại',
   'set material aside in the depot': 'đã giữ vật tư trong kho',
@@ -694,9 +690,6 @@ export const vi: Record<string, string> = {
   'System (time limits)': 'Hệ thống (theo dõi hạn)',
   'Survey report sent to Sales': 'Đã gửi kết quả khảo sát cho Sales',
   'Survey report kept for the connection': 'Đã lưu kết quả khảo sát để làm đấu nối',
-  'The team manager chooses who goes before the planned date.':
-    'Quản lý đội chọn người làm trước ngày thực hiện.',
-  'To be given out': 'Chờ phân công',
   'Target {0}%': 'Mục tiêu {0}%',
   Team: 'Đội',
   'team {0}': 'đội {0}',
@@ -710,7 +703,6 @@ export const vi: Record<string, string> = {
     'Call Center thấy các lần cắt điện theo kế hoạch qua kết nối của mình để trả lời cuộc gọi. Muốn nhắn tin cho từng khách hàng bị ảnh hưởng thì cần danh sách khách hàng theo từng máy biến áp của EDM (sẽ nạp sau).',
   'The Call Center system normally sends this result after calling the customer.':
     'Hệ thống Call Center thường gửi kết quả này sau khi gọi cho khách hàng.',
-  'The check found it not fixed; it needs someone again.': 'Kiểm tra thấy chưa sửa xong; cần cử người lại.',
   'The count matches the books.': 'Số lượng khớp với sổ sách.',
   'The crew on the incident fixes it; nobody else is sent.':
     'Người đang xử lý sự cố sẽ sửa; không cử thêm ai.',
@@ -1214,8 +1206,6 @@ export const vi: Record<string, string> = {
   'Why it moves': 'Lý do chuyển đội',
   'Why it moves, e.g. place marked wrongly, closer team':
     'Lý do chuyển, VD: đánh dấu nhầm vị trí, đội gần hơn',
-  '{0} no longer has the job and is told; the new team gets it like a new ticket.':
-    '{0} sẽ không còn giữ việc này và được báo; đội mới nhận phiếu như phiếu mới.',
   'Move to this team': 'Chuyển sang đội này',
   'Keep this team': 'Giữ đội hiện tại',
   'Who is on it': 'Ai phụ trách',
@@ -1232,8 +1222,6 @@ export const vi: Record<string, string> = {
     'Đang chờ: đội không còn ai để tự giao. Hãy chọn người hoặc chuyển đội.',
   'Why the job is taken back': 'Lý do thu lại việc',
   'Why, e.g. sick, phone off, cannot be reached': 'Lý do, ví dụ: ốm, tắt máy, không liên lạc được',
-  '{0} no longer has the job and is told. It goes to the next person of the team.':
-    '{0} sẽ không còn giữ việc này và được báo. Phiếu tự giao cho người tiếp theo trong đội.',
   'Keep it with {0}': 'Để {0} làm tiếp',
   'Nobody else in team {0}.': 'Đội {0} không còn ai khác.',
   'on duty, {0} unfinished job': 'đang trực, {0} việc dở',
@@ -1245,12 +1233,11 @@ export const vi: Record<string, string> = {
   'Give the job': 'Giao việc',
   'took the job back from {0}': 'đã thu lại việc từ {0}',
   'took the job back': 'đã thu lại việc',
-  'waiting for someone': 'đang chờ giao',
+  'waiting for someone': 'đang chờ người nhận',
   'Time left to survey': 'Thời gian còn lại để khảo sát',
   'Time left to connect': 'Thời gian còn lại để đấu nối',
   'Nobody was left in the team to give these to. Open one to choose a person.':
     'Đội không còn ai để tự giao các phiếu này. Mở phiếu để chọn người.',
-  'off duty, sees it on the next shift': 'đang nghỉ trực, sẽ thấy việc khi vào ca',
   'Has not accepted the job yet': 'Chưa nhận việc',
   'Accepted, on the way': 'Đã nhận, đang đến',
   'Working on site': 'Đang làm tại hiện trường',
@@ -1262,7 +1249,6 @@ export const vi: Record<string, string> = {
   'e.g. sick, phone off': 'Ví dụ: ốm, tắt máy',
   'Who goes': 'Ai sẽ làm',
   'Nobody on it yet': 'Chưa có ai làm',
-  'Nobody is left in team {0} to give it to.': 'Đội {0} không còn ai để tự giao.',
   'Wrong team?': 'Sai đội?',
   'No team yet.': 'Chưa có đội.',
   Contact: 'Liên hệ',
@@ -1270,7 +1256,6 @@ export const vi: Record<string, string> = {
   '{0} m to the network': '{0} m tới lưới',
   'Surveyed by': 'Khảo sát bởi',
   'No team yet: NOC sends it to the right team.': 'Chưa có đội: NOC sẽ chuyển cho đúng đội.',
-  'expected: {0}': 'dự kiến {0}',
   'Estimated material · {0}': 'Vật tư ước tính · {0}',
   'Estimated material': 'Vật tư ước tính',
   'No depot in this area': 'Khu vực chưa có kho',
@@ -1287,6 +1272,9 @@ export const vi: Record<string, string> = {
   '{0} finished survey is waiting for a connection': '{0} khảo sát đã xong đang chờ đấu nối',
   '{0} finished surveys are waiting for a connection': '{0} khảo sát đã xong đang chờ đấu nối',
   'No survey matches.': 'Không có khảo sát nào khớp.',
+  'Installed {0}; the photo of the meter is under Photos.': 'Lắp xong {0}; ảnh công tơ ở tab Ảnh.',
+  'Type a ticket code, customer name or phone to find the survey.':
+    'Nhập mã phiếu, tên khách hoặc số điện thoại để tìm khảo sát.',
   'Who is the connection for?': 'Đấu nối cho khách nào?',
   'e.g. HD-2026-0153': 'Ví dụ: HD-2026-0153',
   'Premises and supply': 'Công trình và nguồn điện',
@@ -1319,5 +1307,30 @@ export const vi: Record<string, string> = {
   'Give it to the person directly. They sign in at {0} and choose a new password the first time.':
     'Đưa tận tay cho người này. Họ đăng nhập tại {0} và phải đặt mật khẩu mới ngay lần đầu.',
   'Once closed it cannot be seen again.': 'Đóng hộp này là không xem lại được.',
-  'I have written down or passed on this password': 'Tôi đã ghi lại hoặc đã gửi mật khẩu này'
+  'I have written down or passed on this password': 'Tôi đã ghi lại hoặc đã gửi mật khẩu này',
+  'Waiting for someone to claim it': 'Đang chờ người nhận',
+  'Told {0} people of team {1}': 'Đã báo {0} người đội {1}',
+  'Told again (time {0}) at {1} · nobody has claimed it yet': 'Báo lần {0} lúc {1} · chưa ai nhận',
+  'Told at {0} · nobody has claimed it yet': 'Đã báo lúc {0} · chưa ai nhận',
+  'Whoever presses "Claim the job" in the app first goes. Until then the team is told again every 15 minutes, from the day before the work.':
+    'Ai bấm "Nhận việc" trên app trước sẽ làm. Chưa ai nhận thì cứ 15 phút báo lại cả đội, bắt đầu từ ngày trước ngày làm.',
+  'Whoever presses "Claim the job" in the app first goes. Until then the team is told again every 15 minutes.':
+    'Ai bấm "Nhận việc" trên app trước sẽ làm. Chưa ai nhận thì cứ 15 phút báo lại cả đội.',
+  'Nobody is left in team {0} to tell.': 'Đội {0} không còn ai để báo.',
+  'Tell the team again': 'Báo lại cả đội',
+  '{0} no longer has the job and is told. The rest of the team is told in the app.':
+    '{0} không còn giữ việc và sẽ được báo. Những người còn lại trong đội được báo trên app.',
+  '{0} no longer has the job and is told; the new team is told like for a new ticket.':
+    '{0} không còn giữ việc và sẽ được báo; đội mới được báo như một phiếu mới.',
+  'Offered to team {0}': 'Báo cả đội {0}',
+  '{0} field staff are told in the app; whoever claims it first goes.':
+    '{0} nhân viên hiện trường được báo trên app; ai nhận trước sẽ đi.',
+  'offered to {0} field staff': 'báo {0} nhân viên trong đội',
+  'told team {0} again in the app (time {2}): {1}': 'báo lại đội {0} trên app (lần {2}): {1}',
+  'offered the job to team {0} in the app: {1}': 'báo việc cho đội {0} trên app: {1}',
+  'claimed the job in the app': 'đã nhận việc trên app',
+  'offered the job to the team': 'đã báo việc cho cả đội',
+  'Offered to the team; nobody has claimed it yet.': 'Đã báo cả đội; chưa ai nhận.',
+  'The check found it not fixed; it is offered to the team again.':
+    'Kiểm tra thấy chưa xử lý xong; báo lại cả đội.'
 };

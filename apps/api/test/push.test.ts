@@ -70,14 +70,20 @@ describe('push notifications to the EDM Field app', () => {
 
     const rows = await waitFor(outbox, (r) => r.filter((x) => x.status === 'sent').length === r.length);
     expect(rows.filter((r) => r.recipient === ARMANDO_PHONE)).toEqual([]);
-    expect(rows.find((r) => r.channel === 'push')).toMatchObject({
-      recipient: 'ExponentPushToken[armando-phone]',
-      status: 'sent',
-      payload: { title: 'Novo trabalho', data: { ticketId: id }, fallbackPhone: ARMANDO_PHONE }
-    });
+    const pushes = rows.filter((r) => r.channel === 'push');
+    // First the job offered to the whole team (app only, never by SMS), then the manager naming him.
+    expect(pushes.map((r) => r.payload)).toEqual([
+      { title: 'Novo trabalho para a equipa', data: { ticketId: id }, fallbackPhone: null },
+      { title: 'Novo trabalho', data: { ticketId: id }, fallbackPhone: ARMANDO_PHONE }
+    ]);
+    expect(
+      pushes.every((r) => r.recipient === 'ExponentPushToken[armando-phone]' && r.status === 'sent')
+    ).toBe(true);
     expect(rows.some((r) => r.channel === 'sms' && r.recipient === CUSTOMER_PHONE)).toBe(true);
 
-    const [sent] = JSON.parse(expo.received[0]!.body);
+    const sent = expo.received
+      .map((r) => JSON.parse(r.body)[0])
+      .find((m: { title: string }) => m.title === 'Novo trabalho');
     expect(sent).toMatchObject({
       to: 'ExponentPushToken[armando-phone]',
       title: 'Novo trabalho',
@@ -93,7 +99,7 @@ describe('push notifications to the EDM Field app', () => {
     t.app.get<Env>(ENV).STAFF_ALERTS = 'push_and_sms';
     await assignedTicket('CC-P2');
     let rows = await outbox();
-    expect(rows.filter((r) => r.channel === 'push')).toHaveLength(1);
+    expect(rows.filter((r) => r.channel === 'push')).toHaveLength(2);
     expect(rows.filter((r) => r.recipient === ARMANDO_PHONE)).toHaveLength(1);
 
     await resetData(t.db);
