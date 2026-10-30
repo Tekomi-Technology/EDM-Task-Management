@@ -15,7 +15,7 @@ import {
   type TicketStatus,
   type TicketType
 } from '../contract';
-import { and, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, notInArray, sql } from 'drizzle-orm';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 import { actorLabel, SYSTEM_ACTOR, type AuthUser } from '../auth/auth-user';
 import { AppError, notFound } from '../common/errors';
@@ -617,7 +617,7 @@ export class TicketsService {
       }
 
       if (autoAssignAfter && ticket.teamId) {
-        // Whoever declined this ticket before is not asked again.
+        // Whoever declined this ticket or had it taken back is not asked again.
         const decliners = await this.decliners(tx, ticketId);
         const auto = await this.autoAssign(tx, ticket, ticket.teamId, to, messages, decliners);
         if (auto) to = auto;
@@ -762,10 +762,6 @@ export class TicketsService {
   }
 
   /**
-   * Moves a ticket to another team (tickets outside every area, or sent to the wrong team). Only while nobody is
-   * working on it; it is then assigned like a new ticket.
-   */
-  /**
    * Moves an unfinished ticket to another team (a ticket outside every area, a place marked wrongly, a closer or
    * less busy team). Once it has a team, the reason is needed and kept. Whoever was holding it is told and freed, and
    * the ticket is assigned in the new team like a new one.
@@ -842,6 +838,100 @@ export class TicketsService {
             )
           );
         }
+      }
+      outboxIds.push(...(await this.notifications.record(tx, messages)));
+    });
+    await this.notifications.dispatch(outboxIds);
+  }
+
+  /**
+   * Takes a job back from the staff member holding it (sick, phone off, cannot be reached), saying why. They are told,
+   * and the ticket goes to the next person of the team on duty, or waits and the team managers are told.
+   */
+  async takeBack(ticketId: string, actor: AuthUser, reason: string): Promise<void> {
+    const outboxIds: string[] = [];
+    await this.db.transaction(async (tx) => {
+      const [ticket] = await tx.select().from(tickets).where(eq(tickets.id, ticketId)).for('update');
+      if (!ticket) throw notFound('Ticket');
+      if (!ticket.assigneeId || !['assigned', 'accepted', 'in_progress', 'on_hold'].includes(ticket.status)) {
+        throw new AppError(HttpStatus.CONFLICT, 'INVALID_TRANSITION', 'Nobody is holding this ticket');
+      }
+      if (
+        actor.roles.includes('team_manager') &&
+        !actor.roles.some((r) => r === 'admin' || r === 'technical_manager') &&
+        ticket.teamId !== actor.teamId
+      ) {
+        throw new AppError(HttpStatus.FORBIDDEN, 'NOT_IN_TEAM', 'This ticket belongs to another team');
+      }
+      const previous = await this.users.findById(ticket.assigneeId, tx);
+      await tx
+        .update(tickets)
+        .set({ status: 'new', assigneeId: null, updatedAt: new Date() })
+        .where(eq(tickets.id, ticketId));
+      await this.addEvent(tx, ticketId, 'take_back', actor, {
+        from: ticket.status,
+        to: 'new',
+        reason: reason.trim(),
+        unassignedId: ticket.assigneeId,
+        unassignedName: previous?.fullName ?? null
+      });
+      const messages: OutgoingSms[] = [
+        {
+          recipient: previous?.phone ?? null,
+          body: sms.staffUnassigned(ticket.code),
+          ticketId,
+          staff: { userId: ticket.assigneeId, title: push.jobMoved }
+        }
+      ];
+      if (ticket.teamId && !ticket.incidentId) {
+        const auto = await this.autoAssign(
+          tx,
+          ticket,
+          ticket.teamId,
+          'new',
+          messages,
+          await this.decliners(tx, ticketId)
+        );
+        if (!auto) {
+          messages.push(
+            ...toOffice(
+              await this.users.teamManagers(ticket.teamId, tx),
+              sms.managerNewTicket(ticket.code, ticket.title),
+              inbox.newTicket(ticket.code, ticket.title),
+              ticketId
+            )
+          );
+        }
+      }
+      outboxIds.push(...(await this.notifications.record(tx, messages)));
+    });
+    await this.notifications.dispatch(outboxIds);
+  }
+
+  /**
+   * A field staff member has switched duty on: the team's tickets that waited because nobody was on duty are given
+   * out now, most urgent first, to whoever on duty is least busy (usually the person who just started).
+   */
+  async assignWaiting(teamId: string | null): Promise<void> {
+    if (!teamId || !this.env.AUTO_ASSIGN) return;
+    const outboxIds: string[] = [];
+    await this.db.transaction(async (tx) => {
+      const waiting = await tx
+        .select()
+        .from(tickets)
+        .where(
+          and(
+            eq(tickets.teamId, teamId),
+            inArray(tickets.status, ['new', 'reopened']),
+            isNull(tickets.assigneeId),
+            isNull(tickets.incidentId)
+          )
+        )
+        .orderBy(tickets.priority, sql`${tickets.dueAt} asc nulls last`, tickets.createdAt)
+        .for('update', { skipLocked: true });
+      const messages: OutgoingSms[] = [];
+      for (const t of waiting) {
+        await this.autoAssign(tx, t, teamId, t.status, messages, await this.decliners(tx, t.id));
       }
       outboxIds.push(...(await this.notifications.record(tx, messages)));
     });
@@ -1075,13 +1165,16 @@ export class TicketsService {
       });
   }
 
-  /** People who declined this ticket, from its history. */
+  /** People who declined this ticket or had it taken back from them, from its history: not asked again. */
   private async decliners(tx: Tx, ticketId: string): Promise<string[]> {
     const rows = await tx
-      .select({ userId: ticketEvents.actorUserId })
+      .select({ type: ticketEvents.type, userId: ticketEvents.actorUserId, data: ticketEvents.data })
       .from(ticketEvents)
-      .where(and(eq(ticketEvents.ticketId, ticketId), eq(ticketEvents.type, 'decline')));
-    return [...new Set(rows.map((r) => r.userId).filter((id): id is string => !!id))];
+      .where(and(eq(ticketEvents.ticketId, ticketId), inArray(ticketEvents.type, ['decline', 'take_back'])));
+    const ids = rows.map((r) =>
+      r.type === 'take_back' ? (r.data as { unassignedId?: string }).unassignedId : r.userId
+    );
+    return [...new Set(ids.filter((id): id is string => !!id))];
   }
 
   /** NOC, admins and the Call Center may cancel any ticket; team managers only their own team's. */

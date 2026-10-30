@@ -270,14 +270,12 @@ describe('tickets entered by EDM staff', () => {
       autoTeam: { name: 'South 1' },
       areaName: 'Matola'
     });
-    const chosen = await t
-      .as('nadia.mussa')
-      .post('/api/tickets/preview', {
-        type: 'other',
-        priority: 2,
-        location: MATOLA,
-        teamId: await teamId('South 2')
-      });
+    const chosen = await t.as('nadia.mussa').post('/api/tickets/preview', {
+      type: 'other',
+      priority: 2,
+      location: MATOLA,
+      teamId: await teamId('South 2')
+    });
     expect(chosen.body).toMatchObject({
       team: { name: 'South 2' },
       autoTeam: { name: 'South 1' },

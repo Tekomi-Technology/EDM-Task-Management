@@ -4,6 +4,7 @@ import {
   areaFilterSchema,
   assignTicketSchema,
   attachmentUploadSchema,
+  dutySchema,
   reasonSchema,
   resolveTicketSchema,
   ticketNoteSchema,
@@ -11,6 +12,8 @@ import {
   type AreaFilter,
   type AssignTicket,
   type AttachmentUpload,
+  type CurrentUser as CurrentUserView,
+  type Duty,
   type Reason,
   type ResolveTicket,
   type Lookups,
@@ -29,6 +32,7 @@ import { CurrentUser, Roles } from '../auth/decorators';
 import { ApiZodBody, ZodBody, ZodQuery } from '../common/zod';
 import { OccurredAt } from './occurred-at';
 import { TicketsQuery } from './tickets.query';
+import { UsersService } from '../users/users.service';
 import { TicketsService } from './tickets.service';
 
 const noteSchema = z.object({ note: z.string().trim().max(1000).optional() });
@@ -39,8 +43,31 @@ const noteSchema = z.object({ note: z.string().trim().max(1000).optional() });
 export class TicketsController {
   constructor(
     private readonly tickets: TicketsService,
-    private readonly query: TicketsQuery
+    private readonly query: TicketsQuery,
+    private readonly users: UsersService
   ) {}
+
+  /**
+   * Field staff switch duty on when their shift starts; only staff on duty receive jobs automatically. Tickets of
+   * the team that waited because nobody was on duty are given out then.
+   */
+  @Post('me/duty')
+  @HttpCode(200)
+  @Roles('field_staff')
+  @ApiZodBody(dutySchema)
+  async setDuty(@CurrentUser() user: AuthUser, @ZodBody(dutySchema) body: Duty): Promise<CurrentUserView> {
+    await this.users.setDuty(user.userId!, body.onDuty);
+    if (body.onDuty) await this.tickets.assignWaiting(user.teamId);
+    return {
+      id: user.userId!,
+      username: user.username,
+      fullName: user.fullName,
+      roles: user.roles,
+      teamId: user.teamId,
+      teamName: await this.users.teamName(user.teamId),
+      onDuty: body.onDuty
+    };
+  }
 
   @Get('tickets')
   @Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team', 'field_staff')
@@ -93,6 +120,21 @@ export class TicketsController {
     @ZodBody(assignTicketSchema) body: AssignTicket
   ): Promise<TicketDetail> {
     await this.tickets.act(id, 'assign', user, { assigneeId: body.assigneeId });
+    return this.query.detail(id, user);
+  }
+
+  /** Takes the job back from whoever holds it, saying why; it goes to the next person of the team on duty. */
+  @Post('tickets/:id/take-back')
+  @HttpCode(200)
+  @Roles('team_manager', 'technical_manager', 'admin')
+  @ApiZodBody(reasonSchema)
+  async takeBack(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+    @ZodBody(reasonSchema) body: Reason
+  ): Promise<TicketDetail> {
+    await this.query.detail(id, user);
+    await this.tickets.takeBack(id, user, body.reason);
     return this.query.detail(id, user);
   }
 

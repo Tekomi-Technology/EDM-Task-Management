@@ -33,7 +33,6 @@ import { ROLE_LABEL } from './format';
 import { ApiDocsPage } from './pages/ApiDocsPage';
 import { ApiKeysPage } from './pages/ApiKeysPage';
 import { AreasPage } from './pages/AreasPage';
-import { AssignPage } from './pages/AssignPage';
 import { ClosingChecksPage } from './pages/ClosingChecksPage';
 import { FieldStaffPage } from './pages/FieldStaffPage';
 import { HelpRequestsPage } from './pages/HelpRequestsPage';
@@ -331,7 +330,6 @@ export function App() {
         <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/tickets/new" element={<NewTicketPage />} />
         <Route path="/tickets/:id" element={<TicketDetailPage />} />
-        <Route path="/tickets/:id/assign" element={<AssignPage />} />
         <Route path="/checks" element={<ClosingChecksPage />} />
         <Route path="/incidents" element={<NetworkIncidentsPage />} />
         <Route path="/planned" element={<PlannedWorkPage />} />

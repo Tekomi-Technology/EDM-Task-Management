@@ -1,10 +1,11 @@
-import type { Lookups, TicketDetail, TicketEventView, TicketMessage, TicketStatus } from '../types';
+import type { TicketDetail, TicketEventView, TicketMessage, TicketStatus } from '../types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, MapPin, Phone, UserPlus, XCircle } from 'lucide-react';
+import { Eye, MapPin, Phone, XCircle } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { api, ApiRequestError } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
+import { ResponsiblePanel } from '../components/ResponsiblePanel';
 import { TicketMap } from '../components/TicketMap';
 import { Avatar, hasRole, OFFICE_ROLES, useCrumbs, useMe } from '../components/ui';
 import {
@@ -59,7 +60,16 @@ function steps(t: TicketDetail) {
       : tr('Checked and closed');
   return [
     { label: tr('Created'), done: r >= 0 || t.status === 'reopened', note: at(last('created')) },
-    { label: tr('Assigned'), done: r >= 1, note: r >= 1 ? at(last('assign')) : undefined },
+    {
+      label: tr('Assigned'),
+      done: r >= 1,
+      note:
+        r >= 1
+          ? at(last('assign'))
+          : t.status === 'new' || t.status === 'reopened'
+            ? tr('waiting for someone')
+            : undefined
+    },
     { label: tr('Accepted'), done: r >= 2, note: r >= 2 ? at(last('accept')) : undefined },
     { label: tr('On site'), done: r >= 3, note: r >= 3 ? at(last('start')) : undefined },
     {
@@ -90,6 +100,9 @@ function describe(e: TicketEventView): string {
     return `${base}: ${String(e.data.alarmType ?? '')} (${String(e.data.elementCode ?? '')})`;
   }
   if (e.type === 'team_changed' && typeof e.data.teamName === 'string') return teamChangeText(e.data);
+  if (e.type === 'take_back' && typeof e.data.unassignedName === 'string') {
+    return tr('took the job back from {0}', { 0: e.data.unassignedName });
+  }
   if (e.type === 'escalate') {
     const told =
       Array.isArray(e.data.notified) && e.data.notified.length
@@ -144,7 +157,6 @@ export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const me = useMe();
   const office = hasRole(me.data, ...OFFICE_ROLES);
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<'activity' | 'photos' | 'messages'>('activity');
   const [note, setNote] = useState('');
@@ -213,9 +225,7 @@ export function TicketDetailPage() {
   const t = ticket.data!;
   const left = timeLeft(t.dueAt, t.status);
   const error = (act.error ?? post.error) as ApiRequestError | null;
-  const canAssign = t.allowedActions.includes('assign');
   const canCheck = t.allowedActions.includes('close');
-  const canRoute = hasRole(me.data, 'noc', 'admin', 'technical_manager');
   const assigneeHasJob =
     !!t.assignee && ['assigned', 'accepted', 'in_progress', 'on_hold'].includes(t.status);
   const cancelEvent =
@@ -242,21 +252,15 @@ export function TicketDetailPage() {
             <h1>{ticketTitle(t.title)}</h1>
             <div className="subtitle">
               {t.code} {tr('· Opened')} {created ? formatWhen(created.createdAt) : formatWhen(t.createdAt)}{' '}
-              {tr('by')} {SOURCE_LABEL[t.source]}
+              {tr('by')}{' '}
+              {t.source === 'office' && created?.actorName
+                ? `${created.actorName} (${SOURCE_LABEL.office})`
+                : SOURCE_LABEL[t.source]}
               {t.externalRef ? tr(' (ref {0})', { 0: t.externalRef }) : ''} ·{' '}
               {t.teamName ? tr('Team {0}', { 0: t.teamName }) : tr('not in any team area')}
             </div>
           </div>
           <div className="btn-row">
-            {canAssign && (
-              <button
-                type="button"
-                className="btn btn-lg"
-                onClick={() => navigate(`/tickets/${t.id}/assign`)}
-              >
-                <UserPlus size={18} /> {t.assignee ? tr('Reassign') : tr('Assign')}
-              </button>
-            )}
             {t.allowedActions.includes('cancel') && !cancelling && (
               <button type="button" className="btn btn-lg btn-danger" onClick={() => setCancelling(true)}>
                 <XCircle size={18} /> {tr('Cancel ticket')}
@@ -453,6 +457,7 @@ export function TicketDetailPage() {
         </section>
 
         <aside className="stack">
+          <ResponsiblePanel t={t} onChange={done} />
           {t.network && <NetworkCard t={t} onChange={done} />}
           {t.newCustomer && <NewCustomerCard t={t} />}
           {(t.materials.length > 0 || t.reservations.length > 0) && <MaterialsCard t={t} />}
@@ -476,13 +481,14 @@ export function TicketDetailPage() {
               </span>
             </section>
           )}
-          {canRoute && !['resolved', 'closed', 'cancelled'].includes(t.status) && (
-            <TeamPanel t={t} onChange={done} />
-          )}
           {left ? (
             <section className="card card-pad">
               <span className="label" style={{ fontSize: 15 }}>
-                {tr('Time left to fix')}
+                {t.type === 'new_customer_survey'
+                  ? tr('Time left to survey')
+                  : t.type === 'new_connection'
+                    ? tr('Time left to connect')
+                    : tr('Time left to fix')}
               </span>
               <div>
                 <span style={{ fontSize: 32, fontWeight: 700, color: left.late ? 'var(--late)' : undefined }}>
@@ -575,27 +581,6 @@ export function TicketDetailPage() {
               )}
             </section>
           )}
-
-          <section className="card card-pad">
-            <span className="label" style={{ fontSize: 15 }}>
-              {tr('Assigned to')}
-            </span>
-            {t.assignee ? (
-              <div className="person">
-                <Avatar name={t.assignee.fullName} size="lg" />
-                <div>
-                  <strong>{t.assignee.fullName}</strong>
-                  <div className="meta" style={{ fontSize: 14 }}>
-                    {t.teamName ? tr('Team {0}', { 0: t.teamName }) : ''}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <span className="meta" style={{ fontSize: 14 }}>
-                {tr('Nobody yet')}
-              </span>
-            )}
-          </section>
 
           {t.location && (
             <section className="card" style={{ overflow: 'hidden' }}>
@@ -696,94 +681,6 @@ function NetworkCard({ t, onChange }: { t: TicketDetail; onChange: (updated: Tic
  * in one; an unfinished ticket can move to another team, saying why. Whoever holds it is told and freed, and the new
  * team gets it like a new ticket.
  */
-function TeamPanel({ t, onChange }: { t: TicketDetail; onChange: (updated: TicketDetail) => void }) {
-  const [open, setOpen] = useState(!t.teamId);
-  const [teamId, setTeamId] = useState('');
-  const [reason, setReason] = useState('');
-  const lookups = useQuery({ queryKey: ['lookups'], queryFn: () => api<Lookups>('/lookups'), enabled: open });
-  const move = useMutation({
-    mutationFn: () =>
-      api<TicketDetail>(`/tickets/${t.id}/team`, {
-        method: 'POST',
-        body: { teamId, reason: reason.trim() || undefined }
-      }),
-    onSuccess: (updated) => {
-      setOpen(false);
-      setTeamId('');
-      setReason('');
-      onChange(updated);
-    }
-  });
-  const needsReason = !!t.teamId;
-  if (!open) {
-    return (
-      <section className="card card-pad" aria-label={tr('Team')}>
-        <span className="label" style={{ fontSize: 15 }}>
-          {tr('Team')}
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between' }}>
-          <strong>{t.teamName}</strong>
-          <button type="button" className="btn btn-sm" onClick={() => setOpen(true)}>
-            {tr('Move to another team')}
-          </button>
-        </div>
-      </section>
-    );
-  }
-  return (
-    <section className="card card-pad" aria-label={tr('Choose a team')}>
-      <h2>{t.teamId ? tr('Move to another team') : tr('No team yet')}</h2>
-      <span className="meta" style={{ fontSize: 14 }}>
-        {t.teamId
-          ? tr('Now with team {0}.', { 0: t.teamName ?? '' })
-          : tr('The place is outside every team area. Choose the team that should go.')}
-      </span>
-      <select aria-label={tr('Team')} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-        <option value="">{tr('Choose a team…')}</option>
-        {lookups.data?.teams
-          .filter((x) => x.id !== t.teamId)
-          .map((x) => (
-            <option key={x.id} value={x.id}>
-              {x.name} · {x.areaName}
-            </option>
-          ))}
-      </select>
-      {needsReason && (
-        <input
-          aria-label={tr('Why it moves')}
-          value={reason}
-          maxLength={300}
-          placeholder={tr('Why it moves, e.g. place marked wrongly, closer team')}
-          onChange={(e) => setReason(e.target.value)}
-        />
-      )}
-      {t.assignee && (
-        <div className="notice" style={{ margin: 0 }}>
-          {tr('{0} no longer has the job and is told; the new team gets it like a new ticket.', {
-            0: t.assignee.fullName
-          })}
-        </div>
-      )}
-      {move.error && <div className="error">{(move.error as ApiRequestError).message}</div>}
-      <div className="btn-row">
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={!teamId || (needsReason && reason.trim().length < 3) || move.isPending}
-          onClick={() => move.mutate()}
-        >
-          {t.teamId ? tr('Move to this team') : tr('Send to this team')}
-        </button>
-        {t.teamId && (
-          <button type="button" className="btn" onClick={() => setOpen(false)}>
-            {tr('Keep this team')}
-          </button>
-        )}
-      </div>
-    </section>
-  );
-}
-
 /** Survey report or installation of a new customer. */
 function NewCustomerCard({ t }: { t: TicketDetail }) {
   const n = t.newCustomer!;

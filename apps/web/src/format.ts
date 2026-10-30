@@ -74,6 +74,7 @@ export const EVENT_LABEL: Record<string, string> = translated({
   acknowledge: 'acknowledged the incident (NOC)',
   customers_notified: 'sent an SMS to the affected customers',
   team_changed: 'moved it to another team',
+  take_back: 'took the job back',
   escalate: 'raised the alarm on the time limit',
   reserved: 'set material aside in the depot',
   stock_short: 'found the van short of material',

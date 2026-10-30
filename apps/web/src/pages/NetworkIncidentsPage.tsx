@@ -117,7 +117,7 @@ function IncidentPanel({ id }: { id: string }) {
             </button>
           )}
           {t.allowedActions.includes('assign') && (
-            <button type="button" className="btn" onClick={() => navigate(`/tickets/${t.id}/assign`)}>
+            <button type="button" className="btn" onClick={() => navigate(`/tickets/${t.id}`)}>
               <UserPlus size={16} /> {t.assignee ? tr('Change crew') : tr('Send a crew')}
             </button>
           )}

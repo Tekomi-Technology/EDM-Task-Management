@@ -142,6 +142,58 @@ describe('full ticket lifecycle: auto-assignment, decline, pause, cancel', () =>
     ).toBe(true);
   });
 
+  it('gives waiting tickets to whoever switches duty on, most urgent first, but not jobs they declined', async () => {
+    await onDuty('armando.cossa');
+    const declined = await complain('CC-W0');
+    await t.as('armando.cossa').post(`/api/tickets/${declined.ticketId}/decline`, { reason: 'No ladder' });
+    await onDuty('armando.cossa', false);
+    const first = await complain('CC-W1');
+    const second = await complain('CC-W2');
+    expect([first.status, second.status]).toEqual(['new', 'new']);
+
+    await onDuty('armando.cossa');
+    for (const id of [first.ticketId, second.ticketId]) {
+      const d = await detail(id);
+      expect(d).toMatchObject({ status: 'assigned', assignee: { fullName: 'Armando Cossa' } });
+      expect(d.events.at(-1)).toMatchObject({ type: 'assign', data: { auto: true } });
+    }
+    expect(
+      (await smsTo(PHONES.armando)).filter((b) => b.includes(first.code) || b.includes(second.code))
+    ).toHaveLength(2);
+    // Armando declined this one: it keeps waiting for someone else.
+    expect((await detail(declined.ticketId)).status).toBe('new');
+  });
+
+  it('takes a job back with a reason, tells that person and gives it to the next one on duty', async () => {
+    await onDuty('armando.cossa');
+    await onDuty('ana.sitoe');
+    const { ticketId, code } = await complain('CC-T1');
+    expect((await detail(ticketId)).assignee.fullName).toBe('Ana Sitoe');
+    await t.as('ana.sitoe').post(`/api/tickets/${ticketId}/accept`);
+
+    const path = `/api/tickets/${ticketId}/take-back`;
+    expect((await t.as('helena.mondlane').post(path, {})).status).toBe(400);
+    expect((await t.as('paulo.bo').post(path, { reason: 'Ana is sick' })).status).toBe(403);
+    expect((await t.as('joao.matsinhe').post(path, { reason: 'Ana is sick' })).status).toBe(404);
+    const back = await t.as('helena.mondlane').post(path, { reason: 'Ana is sick' });
+    expect(back.status).toBe(200);
+    expect(back.body).toMatchObject({ status: 'assigned', assignee: { fullName: 'Armando Cossa' } });
+    const event = (back.body.events as { type: string; data: object }[]).find((e) => e.type === 'take_back');
+    expect(event?.data).toMatchObject({
+      reason: 'Ana is sick',
+      unassignedName: 'Ana Sitoe',
+      from: 'accepted'
+    });
+    expect((await smsTo(PHONES.ana)).some((b) => b.includes(code) && b.includes('outro técnico'))).toBe(true);
+
+    // Taken back again with nobody else on duty: it waits, and the manager is told.
+    const again = await t.as('carla.manhica').post(path, { reason: 'Armando went home' });
+    expect(again.body).toMatchObject({ status: 'new', assignee: null });
+    expect((await smsTo(PHONES.helena)).some((b) => b.includes(code))).toBe(true);
+    // Nobody holds it now.
+    expect((await t.as('carla.manhica').post(path, { reason: 'Once more' })).status).toBe(409);
+  });
+
   it('pauses and resumes work; a paused job cannot be reported done', async () => {
     const ticket = await complain('CC-D1');
     const id = ticket.ticketId;

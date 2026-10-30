@@ -90,7 +90,6 @@ async function exportCsv(params: URLSearchParams): Promise<void> {
 export function TicketsPage() {
   const me = useMe();
   const office = hasRole(me.data, ...OFFICE_ROLES);
-  const canAssign = hasRole(me.data, 'team_manager', 'admin');
   useCrumbs([
     { label: tr('Tickets'), to: '/tickets' },
     { label: office ? tr('All tickets') : tr('My tickets') }
@@ -300,8 +299,6 @@ export function TicketsPage() {
                 <tbody>
                   {list.data.items.map((t) => {
                     const cell = timeCell(t);
-                    const needsSomeone =
-                      canAssign && (t.status === 'new' || t.status === 'reopened') && !!t.teamId;
                     return (
                       <tr key={t.id} className="clickable" onClick={() => navigate(`/tickets/${t.id}`)}>
                         <td className="wrap">
@@ -327,22 +324,9 @@ export function TicketsPage() {
                         </td>
                         <td className={['right', cell.className].filter(Boolean).join(' ')}>{cell.text}</td>
                         <td className="right">
-                          {needsSomeone ? (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-soft"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/tickets/${t.id}/assign`);
-                              }}
-                            >
-                              {tr('Assign')}
-                            </button>
-                          ) : (
-                            <button type="button" className="btn btn-sm">
-                              {tr('View')}
-                            </button>
-                          )}
+                          <button type="button" className="btn btn-sm">
+                            {tr('View')}
+                          </button>
                         </td>
                       </tr>
                     );

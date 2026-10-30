@@ -1,12 +1,12 @@
-import type { LiveMap, Overview, StaffSuggestion, TicketSummary } from '../types';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { LiveMap, Overview } from '../types';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
-import { api, ApiRequestError } from '../api';
+import { api } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
 import { MAP_COLORS, TicketMap } from '../components/TicketMap';
-import { AssigneeCell, hasRole, useCrumbs, useMe } from '../components/ui';
-import { firstName, greeting, longDate, timeCell, timeLeft, TYPE_LABEL, ticketTitle } from '../format';
+import { AssigneeCell, useCrumbs, useMe } from '../components/ui';
+import { firstName, greeting, longDate, timeCell, TYPE_LABEL, ticketTitle } from '../format';
 import { useRegion } from '../components/topbar';
 import { t as tr } from '../i18n';
 
@@ -27,70 +27,6 @@ function Kpi({ title, value, note, alert }: { title: string; value: number; note
   );
 }
 
-/** The first unassigned ticket with the person automatic assignment would pick, and a one-click assign. */
-function Suggestion({ ticket }: { ticket: TicketSummary }) {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const staff = useQuery({
-    queryKey: ['suggestions', ticket.teamId],
-    queryFn: () => api<StaffSuggestion[]>(`/teams/${ticket.teamId}/suggestions`),
-    enabled: !!ticket.teamId
-  });
-  const best = staff.data?.find((s) => s.bestMatch);
-  const assign = useMutation({
-    mutationFn: (assigneeId: string) =>
-      api(`/tickets/${ticket.id}/assign`, { method: 'POST', body: { assigneeId } }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['overview'] });
-      void queryClient.invalidateQueries({ queryKey: ['ticket-counts'] });
-    }
-  });
-  const left = timeLeft(ticket.dueAt, ticket.status);
-  return (
-    <div className="unassigned-item">
-      <Link className="ticket-title" to={`/tickets/${ticket.id}`}>
-        {ticketTitle(ticket.title)}
-      </Link>
-      <span className="meta" style={{ fontSize: 14 }}>
-        {ticket.areaName ?? tr('Outside the team areas')}
-        {left && (
-          <>
-            {' · '}
-            <span className={left.late ? 'late' : undefined}>
-              {left.late ? left.text : tr('{0} left', { 0: left.text })}
-            </span>
-          </>
-        )}
-      </span>
-      {best ? (
-        <span>
-          {tr('Suggested:')} <strong>{best.fullName}</strong>
-          {tr(', on duty ·')}{' '}
-          {tr(best.openJobs === 1 ? '{0} open job' : '{0} open jobs', { 0: best.openJobs })}
-        </span>
-      ) : (
-        ticket.teamId && <span className="meta">{tr('Nobody in the team is on duty.')}</span>
-      )}
-      {assign.error && <div className="error">{(assign.error as ApiRequestError).message}</div>}
-      <div className="btn-row" style={{ marginTop: 6 }}>
-        {best && (
-          <button
-            type="button"
-            className="btn btn-soft"
-            disabled={assign.isPending}
-            onClick={() => assign.mutate(best.id)}
-          >
-            {tr('Assign to')} {firstName(best.fullName)}
-          </button>
-        )}
-        <button type="button" className="btn" onClick={() => navigate(`/tickets/${ticket.id}/assign`)}>
-          {best ? tr('Other') : tr('Choose someone')}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export function OverviewPage() {
   const { areaId, name: areaName, withArea } = useRegion();
   useCrumbs([{ label: tr('Overview'), to: '/' }, { label: tr('Today') }]);
@@ -103,7 +39,6 @@ export function OverviewPage() {
     placeholderData: keepPreviousData,
     refetchInterval: 30_000
   });
-  const canAssign = hasRole(me.data, 'team_manager', 'technical_manager', 'admin');
   const live = useQuery({
     queryKey: ['live', areaId],
     queryFn: () => api<LiveMap>(withArea('/live')),
@@ -221,19 +156,10 @@ export function OverviewPage() {
                   </div>
                 ) : (
                   <>
-                    {canAssign ? (
-                      <Suggestion ticket={data.unassigned[0]!} />
-                    ) : (
-                      <div className="unassigned-item">
-                        <Link className="ticket-title" to={`/tickets/${data.unassigned[0]!.id}`}>
-                          {ticketTitle(data.unassigned[0]!.title)}
-                        </Link>
-                        <span className="meta">
-                          {data.unassigned[0]!.areaName ?? tr('Outside the team areas')}
-                        </span>
-                      </div>
-                    )}
-                    {data.unassigned.slice(1).map((t) => (
+                    <div className="meta" style={{ fontSize: 14, padding: '0 24px 12px' }}>
+                      {tr('Each goes to the first one of its team who switches duty on.')}
+                    </div>
+                    {data.unassigned.map((t) => (
                       <div key={t.id} className="unassigned-item">
                         <Link className="ticket-title" to={`/tickets/${t.id}`}>
                           {ticketTitle(t.title)}

@@ -10,6 +10,9 @@ describe('data for the web screens', () => {
     t = await createTestApp();
   });
   afterAll(() => t.close());
+
+  const onDuty = (who: 'ana.sitoe' | 'armando.cossa') =>
+    t.db.update(users).set({ onDuty: true }).where(eq(users.id, ids[who]));
   beforeEach(() => resetData(t.db));
 
   async function complain(ref: string, contractNo = '40217735', problemType = 'no_power_single') {
@@ -115,7 +118,8 @@ describe('data for the web screens', () => {
 
   it('gives the Overview figures, the tickets needing attention and the map, within the caller’s scope', async () => {
     const s = await scenario();
-    await t.as('armando.cossa').post('/api/me/duty', { onDuty: true });
+    // Set directly: switching duty on in the app would also give out the waiting tickets.
+    await onDuty('armando.cossa');
     const all = (await t.as('nadia.mussa').get('/api/overview')).body;
     expect(all).toMatchObject({
       open: 4,
@@ -148,8 +152,8 @@ describe('data for the web screens', () => {
       (x: { name: string }) => x.name === 'South 1'
     ).id;
     await scenario();
-    await t.as('ana.sitoe').post('/api/me/duty', { onDuty: true });
-    await t.as('armando.cossa').post('/api/me/duty', { onDuty: true });
+    await onDuty('ana.sitoe');
+    await onDuty('armando.cossa');
 
     const res = await t.as('helena.mondlane').get(`/api/teams/${south1}/suggestions`);
     expect(

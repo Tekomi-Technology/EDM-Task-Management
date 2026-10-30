@@ -1,11 +1,9 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
-  dutySchema,
   pushDeviceSchema,
   removePushDeviceSchema,
   type CurrentUser as CurrentUserView,
-  type Duty,
   type PushDevice,
   type StaffMember
 } from '../contract';
@@ -45,16 +43,6 @@ export class UsersController {
   @Roles('field_staff')
   async today(@CurrentUser() user: AuthUser): Promise<{ done: number }> {
     return { done: await this.users.doneToday(user.userId!) };
-  }
-
-  /** Field staff switch duty on when their shift starts; only staff on duty receive jobs automatically. */
-  @Post('me/duty')
-  @HttpCode(200)
-  @Roles('field_staff')
-  @ApiZodBody(dutySchema)
-  async setDuty(@CurrentUser() user: AuthUser, @ZodBody(dutySchema) body: Duty): Promise<CurrentUserView> {
-    await this.users.setDuty(user.userId!, body.onDuty);
-    return this.me({ ...user, onDuty: body.onDuty });
   }
 
   /** The app registers its push token after sign-in, so new jobs arrive as notifications. */

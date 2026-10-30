@@ -1215,5 +1215,37 @@ export const vi: Record<string, string> = {
   '{0} no longer has the job and is told; the new team gets it like a new ticket.':
     '{0} sẽ không còn giữ việc này và được báo; đội mới nhận phiếu như phiếu mới.',
   'Move to this team': 'Chuyển sang đội này',
-  'Keep this team': 'Giữ đội hiện tại'
+  'Keep this team': 'Giữ đội hiện tại',
+  'Who is on it': 'Ai phụ trách',
+  Person: 'Người làm',
+  'Take the job back': 'Thu lại việc',
+  'Change person': 'Đổi người',
+  'Choose a person': 'Chọn người',
+  'Choose a person…': 'Chọn người…',
+  'Nobody is sent: it closes with network incident {0}.':
+    'Không cử người riêng: phiếu đóng cùng sự cố lưới {0}.',
+  'Choose a team first; the job is then given out automatically.':
+    'Chọn đội trước; sau đó việc sẽ được tự giao.',
+  'Nobody in the team is on duty to take it. It goes to the first one who switches duty on.':
+    'Đang chờ: chưa ai trong đội đang trực để nhận. Phiếu sẽ tự giao cho người đầu tiên bật trực.',
+  'Why the job is taken back': 'Lý do thu lại việc',
+  'Why, e.g. sick, phone off, cannot be reached': 'Lý do, ví dụ: ốm, tắt máy, không liên lạc được',
+  '{0} no longer has the job and is told. It goes to the next person of the team on duty.':
+    '{0} sẽ không còn giữ việc này và được báo. Phiếu tự giao cho người tiếp theo của đội đang trực.',
+  'Keep it with {0}': 'Để {0} làm tiếp',
+  'Nobody else in team {0}.': 'Đội {0} không còn ai khác.',
+  'on duty, {0} unfinished job': 'đang trực, {0} việc dở',
+  'on duty, {0} unfinished jobs': 'đang trực, {0} việc dở',
+  '{0} is off duty and sees the job when back on the app; an SMS is sent now.':
+    '{0} đang nghỉ trực: sẽ thấy việc khi mở app; tin nhắn SMS được gửi ngay.',
+  '{0} no longer has the job and is told.': '{0} sẽ không còn giữ việc này và được báo.',
+  'Give it to {0}': 'Giao cho {0}',
+  'Give the job': 'Giao việc',
+  'took the job back from {0}': 'đã thu lại việc từ {0}',
+  'took the job back': 'đã thu lại việc',
+  'waiting for someone': 'đang chờ giao',
+  'Time left to survey': 'Thời gian còn lại để khảo sát',
+  'Time left to connect': 'Thời gian còn lại để đấu nối',
+  'Each goes to the first one of its team who switches duty on.':
+    'Mỗi phiếu sẽ tự giao cho người đầu tiên của đội bật trực.'
 };
