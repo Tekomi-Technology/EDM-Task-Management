@@ -30,7 +30,23 @@ describe('clean-up of short-lived records', () => {
       { userId: ids['helena.mondlane'], title: 'New' }
     ] as never);
 
-    expect(await t.app.get(RetentionService).run()).toEqual({ integration_calls: 1, user_notifications: 1 });
+    // Partitions only start at last month, so the old point needs its own.
+    await t.db.execute(sql`
+      create table if not exists staff_locations_retention_test partition of staff_locations
+      for values from ('2000-01-01') to ('2000-02-01')`);
+    await t.db.execute(sql`
+      insert into staff_locations (user_id, recorded_at, location) values
+        (${ids['helena.mondlane']}, '2000-01-15', ST_SetSRID(ST_MakePoint(32.5, -25.9), 4326)),
+        (${ids['helena.mondlane']}, now(), ST_SetSRID(ST_MakePoint(32.5, -25.9), 4326))`);
+
+    expect(await t.app.get(RetentionService).run()).toEqual({
+      integration_calls: 1,
+      user_notifications: 1,
+      staff_locations: 1
+    });
+    const left = await t.db.execute(sql`select recorded_at from staff_locations`);
+    expect(left.rows).toHaveLength(1);
+    expect(new Date(left.rows[0]!.recorded_at as string).getFullYear()).toBeGreaterThan(2000);
     expect((await t.db.select().from(userNotifications)).map((n) => n.title)).toEqual(['New']);
     expect(await t.db.select().from(integrationCalls)).toHaveLength(1);
   });

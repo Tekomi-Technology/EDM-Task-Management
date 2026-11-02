@@ -83,6 +83,8 @@ const envSchema = z.object({
   INTEGRATION_LOG_DAYS: z.coerce.number().int().min(1).default(90),
   /** Days the alerts under the bell in the web app are kept. */
   NOTIFICATION_DAYS: z.coerce.number().int().min(1).default(90),
+  /** Days the history of where field staff have been is kept. The app's privacy policy states this number. */
+  LOCATION_HISTORY_DAYS: z.coerce.number().int().min(1).default(90),
   /** No-power complaints within this distance of an open network incident are linked to it (metres). */
   INCIDENT_LINK_RADIUS_M: z.coerce.number().int().min(0).default(2000),
   /** A staff member on duty whose last position is older than this is shown as offline (minutes). */
