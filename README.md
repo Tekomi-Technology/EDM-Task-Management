@@ -9,7 +9,7 @@ Phases 1 to 5 are done: tickets, network incidents, field staff, stock, new cust
 | Path       | What it is                                                                                                                                     |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/api` | Backend: NestJS API (Drizzle ORM, BullMQ), its Docker Compose (with Postgres, Redis, photo storage) and backup scripts. Swagger at `/api/docs` |
-| `apps/web` | React + Vite web app for team managers, NOC, BO and admins, and its Docker Compose                                                             |
+| `apps/web` | React + Vite web app for team managers, operations supervisors and admins, and its Docker Compose                                              |
 
 ## Run it on your machine
 
@@ -29,16 +29,15 @@ Ports are offset to avoid clashes: Postgres 55432, Redis 56379, S3 storage 59000
 
 ### Sample accounts (development only, password `Edm@2026`)
 
-| Username                     | Role          | Team                     |
-| ---------------------------- | ------------- | ------------------------ |
-| `helena.mondlane`            | Team manager  | South 1 (Matola)         |
-| `joao.matsinhe`              | Team manager  | South 2 (Maputo Central) |
-| `armando.cossa`, `ana.sitoe` | Field staff   | South 1                  |
-| `ofelia.tembe`               | Field staff   | South 2                  |
-| `nadia.mussa`                | NOC           | —                        |
-| `paulo.bo`                   | BO support    | —                        |
-| `carlos.nhantumbo`           | Network team  | —                        |
-| `admin.edm`                  | Administrator | —                        |
+| Username                     | Role                  | Team                     |
+| ---------------------------- | --------------------- | ------------------------ |
+| `helena.mondlane`            | Team manager          | South 1 (Matola)         |
+| `joao.matsinhe`              | Team manager          | South 2 (Maputo Central) |
+| `armando.cossa`, `ana.sitoe` | Field staff           | South 1                  |
+| `ofelia.tembe`               | Field staff           | South 2                  |
+| `nadia.mussa`                | Operations supervisor | —                        |
+| `carla.manhica`              | Operations supervisor | —                        |
+| `admin.edm`                  | Administrator         | —                        |
 
 The Call Center system signs in with the `call-center-system` client (client credentials, dev secret `call-center-dev-secret`).
 
@@ -47,7 +46,7 @@ The Call Center system signs in with the `call-center-system` client (client cre
 1. Sign in to the web as helena.mondlane and add a complaint on the New ticket screen (contract 40217735 is in
    Matola, team South 1), then assign it to Armando.
 2. Sign in to the app as armando.cossa: accept, start, take a photo, "Problem fixed".
-3. Sign in to the web as nadia.mussa (NOC) and close the ticket on the Closing checks screen.
+3. Sign in to the web as nadia.mussa (operations supervisor) and close the ticket on the Closing checks screen.
 
 ### The mobile app
 
