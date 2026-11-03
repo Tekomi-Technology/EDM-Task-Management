@@ -1359,5 +1359,7 @@ export const pt: Record<string, string> = {
     'Ainda sem equipa: um supervisor de operações envia-o para a equipa certa.',
   'Maintenance and network changes planned for the teams.':
     'Manutenção e alterações da rede planeadas para as equipas.',
-  'No role': 'Sem função'
+  'No role': 'Sem função',
+  'Your account has no role yet. Ask an administrator.':
+    'A sua conta ainda não tem função. Fale com um administrador.'
 };

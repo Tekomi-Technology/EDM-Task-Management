@@ -76,6 +76,15 @@ describe('signing in', () => {
     expect(row!.failedSignIns).toBe(0);
   });
 
+  it('ends the session of an account that has no role left, at its next renewal', async () => {
+    const res = await signIn('ana.sitoe', SEED_PASSWORD);
+    await t.db.update(users).set({ roles: [] }).where(eq(users.id, ids['ana.sitoe']));
+    const renewed = await server().post('/api/auth/refresh').send({ refreshToken: res.body.refreshToken });
+    expect([renewed.status, renewed.body.code]).toEqual([401, 'SESSION_ENDED']);
+    const again = await signIn('ana.sitoe', SEED_PASSWORD);
+    expect([again.status, again.body.code]).toEqual([403, 'NO_ROLE']);
+  });
+
   it('makes a person with a temporary password choose their own before anything else', async () => {
     const temp = (await t.as('admin.edm').post(`/api/admin/users/${ids['ana.sitoe']}/reset-password`)).body
       .temporaryPassword as string;

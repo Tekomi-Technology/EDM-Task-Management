@@ -31,6 +31,12 @@ const signedOut = () =>
  * Signing in with a username and password. People stay signed in through a session: a renewal token (kept by
  * the browser in a cookie, by the phone app itself) that buys new short access tokens until it expires.
  */
+/** Has at least one role people sign in with. */
+const hasRole = (roles: readonly string[]) =>
+  roles.some((r) => (USER_ROLES as readonly string[]).includes(r));
+const noRole = () =>
+  new AppError(HttpStatus.FORBIDDEN, 'NO_ROLE', 'Your account has no role yet. Ask an administrator.');
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -72,13 +78,7 @@ export class AuthService {
     }
 
     // Right password but no role left (e.g. a role that was removed): say so instead of a puzzling empty app.
-    if (!user.roles.some((r) => (USER_ROLES as readonly string[]).includes(r))) {
-      throw new AppError(
-        HttpStatus.FORBIDDEN,
-        'NO_ROLE',
-        'Your account has no role yet. Ask an administrator.'
-      );
-    }
+    if (!hasRole(user.roles)) throw noRole();
 
     await this.db
       .update(users)
@@ -96,7 +96,8 @@ export class AuthService {
         client: sessions.client,
         userId: sessions.userId,
         status: users.status,
-        mustChangePassword: users.mustChangePassword
+        mustChangePassword: users.mustChangePassword,
+        roles: users.roles
       })
       .from(sessions)
       .innerJoin(users, eq(users.id, sessions.userId))
@@ -108,6 +109,9 @@ export class AuthService {
         )
       );
     if (!row || row.status !== 'active') throw signedOut();
+    // A role removed since signing in (e.g. the four-roles change): the session ends. 401 like any ended session,
+    // so apps already on phones sign out; signing in again then says why (NO_ROLE).
+    if (!hasRole(row.roles)) throw signedOut();
 
     // Signed in for as long as the session is used: each renewal moves the end forward.
     const token = randomToken();

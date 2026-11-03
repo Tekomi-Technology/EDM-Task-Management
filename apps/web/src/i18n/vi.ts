@@ -1336,5 +1336,6 @@ export const vi: Record<string, string> = {
     'Chưa có đội: Giám sát vận hành sẽ chuyển cho đúng đội.',
   'Maintenance and network changes planned for the teams.':
     'Bảo trì và thay đổi lưới điện được lên lịch cho các đội.',
-  'No role': 'Chưa có quyền'
+  'No role': 'Chưa có quyền',
+  'Your account has no role yet. Ask an administrator.': 'Tài khoản của bạn chưa có quyền. Hãy liên hệ Admin.'
 };

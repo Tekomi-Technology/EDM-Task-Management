@@ -79,7 +79,7 @@ function PasswordField({
 }
 
 /** The API's refusal in the person's words. */
-function message(err: unknown): string {
+export function signInErrorText(err: unknown): string {
   if (!(err instanceof AuthError)) return t('Cannot reach the server. Please try again later.');
   const {
     code,
@@ -91,6 +91,7 @@ function message(err: unknown): string {
     message: string;
   };
   if (code === 'INVALID_CREDENTIALS') return t('Wrong username or password.');
+  if (code === 'NO_ROLE') return t('Your account has no role yet. Ask an administrator.');
   if (code === 'WEAK_PASSWORD') {
     if (details?.reason === 'too_short')
       return t('The password needs at least {0} characters.', { 0: details.minLength });
@@ -117,7 +118,7 @@ export function SignInPage() {
     try {
       await signIn(username.trim(), password);
     } catch (err) {
-      setError(message(err));
+      setError(signInErrorText(err));
       setBusy(false);
     }
   };
@@ -180,7 +181,7 @@ export function ChangePasswordPage() {
     try {
       await changePassword(current, next);
     } catch (err) {
-      setError(message(err));
+      setError(signInErrorText(err));
       setBusy(false);
     }
   };
