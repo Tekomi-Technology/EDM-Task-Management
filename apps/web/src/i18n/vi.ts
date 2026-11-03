@@ -84,10 +84,7 @@ export const vi: Record<string, string> = {
   Accepted: 'Đã nhận',
   'accepted the job': 'đã nhận việc',
   Accounts: 'Tài khoản',
-  Acknowledge: 'Xác nhận',
-  'Acknowledge (NOC)': 'Xác nhận (NOC)',
   'Acknowledged by': 'Đã xác nhận bởi',
-  'acknowledged the incident (NOC)': 'đã xác nhận sự cố (NOC)',
   Actions: 'Thao tác',
   'Activated and closed': 'Đã kích hoạt và đóng',
   'activated by Sales': 'Sales kích hoạt',
@@ -99,7 +96,6 @@ export const vi: Record<string, string> = {
   'added a note': 'đã thêm ghi chú',
   'added a note, also sent to the staff member': 'đã thêm ghi chú, đồng thời gửi cho nhân viên',
   Address: 'Địa chỉ',
-  Administrator: 'Quản trị viên',
   Advice: 'Tư vấn',
   'Alarms from the network management system (NMS) and network problems reported by the public. Alarms with the same cause are grouped into one incident.':
     'Cảnh báo từ hệ thống quản lý lưới điện (NMS) và sự cố do người dân báo. Các cảnh báo cùng nguyên nhân được gộp thành một sự cố.',
@@ -142,8 +138,6 @@ export const vi: Record<string, string> = {
   'Back to the ticket': 'Quay lại phiếu',
   'Back to tickets': 'Quay lại danh sách phiếu',
   'badly late': 'trễ nặng',
-  'Badly late: technical managers, team manager and NOC have been told.':
-    'Trễ nặng: đã báo quản lý kỹ thuật, quản lý đội và NOC.',
   'Being connected': 'Đang đấu nối',
   'Being fixed': 'Đang sửa',
   'Being fixed now': 'Đang được sửa',
@@ -162,14 +156,12 @@ export const vi: Record<string, string> = {
   'by {0} today': 'trước {0} hôm nay',
   'by Call Center': 'do Call Center',
   'by itself': 'tự động',
-  'by NOC': 'do NOC',
   'By staff member': 'Theo nhân viên',
   'By team': 'Theo đội',
   'Cable down or danger': 'Dây đứt hoặc nguy hiểm',
   'Cable down or hanging low': 'Dây đứt hoặc võng thấp',
   Call: 'Gọi',
   'Call Center': 'Call Center',
-  'Call Center {0} · NOC {1}': 'Call Center {0} · NOC {1}',
   'Call Center checks': 'Call Center kiểm tra',
   'Call now': 'Gọi ngay',
   'Call the customer': 'Gọi khách hàng',
@@ -291,11 +283,8 @@ export const vi: Record<string, string> = {
   Feasible: 'Khả thi',
   'Feasible with works': 'Khả thi nếu thi công thêm',
   Field: 'Hiện trường',
-  'Field staff': 'Nhân viên hiện trường',
   'Field staff ·': 'Nhân viên hiện trường ·',
   'Field staff and team managers need a team.': 'Nhân viên hiện trường và quản lý đội phải thuộc một đội.',
-  'Field staff ask the back-office (BO) team for help from the app. Answer here.':
-    'Nhân viên hiện trường nhờ đội hỗ trợ (BO) qua app. Trả lời tại đây.',
   'Field staff on duty, open tickets and the team areas.':
     'Nhân viên đang trực, phiếu đang mở và khu vực của các đội.',
   'Find the customer and choose the problem first.': 'Hãy tìm khách hàng và chọn vấn đề trước.',
@@ -372,8 +361,6 @@ export const vi: Record<string, string> = {
   'm to the network': 'm tới lưới điện',
   Main: 'Chính',
   Maintenance: 'Bảo trì',
-  'Maintenance and network changes planned by the network team.':
-    'Bảo trì và thay đổi lưới điện do đội lưới điện lên kế hoạch.',
   'Map of tickets and field staff': 'Bản đồ phiếu và nhân viên hiện trường',
   'Map: click where the problem is': 'Bản đồ: bấm vào chỗ xảy ra sự cố',
   'Maputo region': 'Vùng Maputo',
@@ -434,8 +421,6 @@ export const vi: Record<string, string> = {
   'no outage': 'không cắt điện',
   'No photos yet. Field staff add them when they finish the job.':
     'Chưa có ảnh. Nhân viên hiện trường sẽ thêm ảnh khi làm xong việc.',
-  'No place marked, or outside the team areas: NOC will route it.':
-    'Chưa đánh dấu vị trí, hoặc nằm ngoài khu vực các đội: NOC sẽ điều phối.',
   'no position yet': 'chưa có vị trí',
   'No power cut': 'Không cắt điện',
   'No power, one home': 'Mất điện, một hộ',
@@ -449,8 +434,6 @@ export const vi: Record<string, string> = {
   'No tickets closed or fixed in this period.':
     'Không có phiếu nào đóng hoặc sửa xong trong khoảng thời gian này.',
   'No tickets here.': 'Không có phiếu nào.',
-  'No-power calls from nearby are linked automatically. They are closed together when NOC closes the incident, and every caller gets an SMS.':
-    'Các cuộc gọi báo mất điện ở gần được tự động gộp vào. Chúng sẽ được đóng cùng lúc khi NOC đóng sự cố, và mọi người gọi đều nhận SMS.',
   'No, it is different': 'Không, đây là vấn đề khác',
   Nobody: 'Không ai',
   'Nobody assigned': 'Chưa giao cho ai',
@@ -462,17 +445,11 @@ export const vi: Record<string, string> = {
   'Nobody is left in the team to give it to; the manager gets an SMS.':
     'Đội không còn ai để giao; quản lý đội sẽ nhận SMS.',
   'Nobody yet': 'Chưa có ai',
-  NOC: 'NOC',
-  'NOC and administrators record the result.': 'NOC và quản trị viên ghi nhận kết quả.',
-  'NOC checks': 'NOC kiểm tra',
   'NOC operator': 'Nhân viên NOC',
-  'NOC sends it to the right team.': 'NOC sẽ chuyển cho đúng đội.',
-  'NOC:': 'NOC:',
   'None closed': 'Chưa đóng phiếu nào',
   'None in the {0} days before': 'Không có trong {0} ngày trước đó',
   'Normally the Call Center system records this after calling the customer.':
     'Thông thường hệ thống Call Center sẽ ghi nhận việc này sau khi gọi cho khách hàng.',
-  'Not acknowledged by NOC': 'NOC chưa xác nhận',
   'not delivered': 'chưa gửi được',
   'Not feasible': 'Không khả thi',
   'Not assigned': 'Chưa giao',
@@ -484,7 +461,6 @@ export const vi: Record<string, string> = {
   'Not signed in yet': 'Chưa đăng nhập lần nào',
   Note: 'Ghi chú',
   'Note (optional)': 'Ghi chú (không bắt buộc)',
-  'Note (what the customer or NOC said)': 'Ghi chú (khách hàng hoặc NOC nói gì)',
   'Notes for the team (optional)': 'Ghi chú cho đội (không bắt buộc)',
   'Nothing checked yet': 'Chưa kiểm tra gì',
   'Nothing finished this week.': 'Tuần này chưa hoàn thành việc nào.',
@@ -524,7 +500,6 @@ export const vi: Record<string, string> = {
   'Outside the team areas': 'Ngoài khu vực các đội',
   Overview: 'Tổng quan',
   'past the time limit': 'đã quá hạn',
-  'Past the time limit: the team manager and NOC have been told.': 'Đã quá hạn: đã báo quản lý đội và NOC.',
   'Past their time limit and not fixed': 'Đã quá hạn mà chưa sửa xong',
   Paused: 'Tạm dừng',
   'paused work': 'đã tạm dừng việc',
@@ -537,7 +512,6 @@ export const vi: Record<string, string> = {
   Place: 'Địa điểm',
   'Plan new work': 'Lên kế hoạch việc mới',
   'Planned job': 'Việc theo kế hoạch',
-  'Planned maintenance': 'Bảo trì theo kế hoạch',
   'Planned network change': 'Thay đổi lưới điện theo kế hoạch',
   'Planned work': 'Kế hoạch công tác',
   'position unknown': 'không rõ vị trí',
@@ -581,8 +555,6 @@ export const vi: Record<string, string> = {
   'Reported by phone': 'Báo qua điện thoại',
   'Reported by phone, no NMS alarms.': 'Báo qua điện thoại, không có cảnh báo NMS.',
   'reported every alarm cleared': 'báo mọi cảnh báo đã hết',
-  'Reported fixed; the Call Center or NOC checks with the customer.':
-    'Đã báo sửa xong; Call Center hoặc NOC sẽ kiểm tra lại với khách hàng.',
   'reported the job done': 'đã báo xong việc',
   'reported the job done with {0} photo': 'đã báo xong việc kèm {0} ảnh',
   'reported the job done with {0} photos': 'đã báo xong việc kèm {0} ảnh',
@@ -625,10 +597,6 @@ export const vi: Record<string, string> = {
     'Xem mọi phiếu để hỗ trợ nhân viên hiện trường và thêm ghi chú.',
   'Sees every ticket, checks network jobs and closes or reopens them, cancels tickets.':
     'Xem mọi phiếu, kiểm tra việc lưới điện rồi đóng hoặc mở lại, hủy phiếu.',
-  'Sees every ticket, team and field staff member, assigns in any team, and is told when tickets are badly late.':
-    'Xem mọi phiếu, mọi đội và nhân viên hiện trường, giao việc trong bất kỳ đội nào, và được báo khi phiếu trễ nặng.',
-  'Sees the tickets of their team, assigns them to field staff and cancels duplicates.':
-    'Xem phiếu của đội mình, giao cho nhân viên hiện trường và hủy phiếu trùng.',
   'Selected staff': 'Nhân viên đã chọn',
   Send: 'Gửi',
   'Send a crew': 'Cử người',
@@ -695,7 +663,6 @@ export const vi: Record<string, string> = {
   'team {0}': 'đội {0}',
   'Team {0}': 'Đội {0}',
   'Team {0} · nobody assigned yet': 'Đội {0} · chưa giao cho ai',
-  'Team manager': 'Quản lý đội',
   'Technical manager': 'Quản lý kỹ thuật',
   'The area next to the search narrows lists, maps and reports to that area.':
     'Ô khu vực cạnh thanh tìm kiếm sẽ lọc danh sách, bản đồ và báo cáo theo khu vực đó.',
@@ -706,7 +673,6 @@ export const vi: Record<string, string> = {
   'The count matches the books.': 'Số lượng khớp với sổ sách.',
   'The crew on the incident fixes it; nobody else is sent.':
     'Người đang xử lý sự cố sẽ sửa; không cử thêm ai.',
-  'The crew says it is fixed: NOC check': 'Người làm báo đã sửa xong: NOC kiểm tra',
   'The end must be after the start.': 'Thời điểm kết thúc phải sau thời điểm bắt đầu.',
   'the job in the app (or by SMS); the customer was told when the ticket was opened.':
     'việc trên app (hoặc qua SMS); khách hàng đã được báo khi phiếu được mở.',
@@ -768,8 +734,6 @@ export const vi: Record<string, string> = {
   'Waits for the manager of team': 'Chờ quản lý của đội',
   Warning: 'Cảnh báo',
   Watch: 'Cần theo dõi',
-  'We asked NOC to switch the line off; wait for their call.':
-    'Đã yêu cầu NOC cắt điện tuyến này; hãy chờ NOC gọi lại.',
   Week: 'Tuần',
   What: 'Nội dung',
   'What happens next': 'Bước tiếp theo',
@@ -998,10 +962,6 @@ export const vi: Record<string, string> = {
   'Short title': 'Tiêu đề ngắn',
   'Shown here once the steps on the left are filled in.': 'Sẽ hiện ở đây khi đã điền các bước bên trái.',
   Supply: 'Nguồn điện',
-  'Team managers, technical managers, NOC and administrators record the result.':
-    'Quản lý đội, quản lý kỹ thuật, NOC và quản trị viên ghi nhận kết quả.',
-  'The team of the area builds the connection. Then the Call Center, NOC or an administrator checks it with the customer and closes it in Closing checks.':
-    'Đội của khu vực sẽ lắp đặt. Sau đó Call Center, NOC hoặc Admin kiểm tra với khách và đóng phiếu ở mục Nghiệm thu.',
   'The team of the area surveys the premises. The survey closes when the report is sent; nothing is sent to the Sales system.':
     'Đội phụ trách khu vực sẽ đến khảo sát. Phiếu tự đóng khi có biên bản khảo sát; không gửi gì sang hệ thống Sales.',
   'The work is done': 'Việc đã làm xong',
@@ -1023,7 +983,6 @@ export const vi: Record<string, string> = {
   'Anything else that comes up': 'Việc phát sinh khác',
   'The team manager assigns it to a staff member.': 'Quản lý đội giao việc cho nhân viên.',
   'The time limit is the end of the planned work.': 'Hạn xử lý là giờ kết thúc theo kế hoạch.',
-  'NOC checks the network and closes it.': 'NOC kiểm tra lưới điện rồi đóng phiếu.',
   'The team of the area gets it and visits the premises.': 'Đội phụ trách khu vực nhận việc và đến khảo sát.',
   'The customer gets an SMS.': 'Khách hàng nhận SMS.',
   'The survey closes when the report is sent.': 'Phiếu khảo sát tự đóng khi có biên bản.',
@@ -1031,8 +990,6 @@ export const vi: Record<string, string> = {
     'Đội phụ trách khu vực nhận việc; vật tư dự kiến của khảo sát được giữ sẵn trong kho.',
   'The customer confirms the handover with an SMS code or a signed form.':
     'Khách xác nhận bàn giao bằng mã SMS hoặc biên bản có chữ ký.',
-  'The Call Center, NOC or an administrator checks with the customer, then closes it in Closing checks.':
-    'Call Center, NOC hoặc Admin kiểm tra với khách, rồi đóng phiếu ở mục Nghiệm thu.',
   'Maintenance / network change': 'Bảo dưỡng / thay đổi lưới',
   'by the office': 'do văn phòng',
   'Finding the address of the point…': 'Đang tìm địa chỉ của điểm đã chọn…',
@@ -1142,8 +1099,6 @@ export const vi: Record<string, string> = {
   'New team in {0}': 'Đội mới trong {0}',
   'New team name': 'Tên đội mới',
   'No areas yet. Add the first one.': 'Chưa có khu vực nào. Hãy thêm khu vực đầu tiên.',
-  'No team yet: tickets here wait for NOC to send them to a team.':
-    'Chưa có đội: phiếu ở đây sẽ chờ NOC chuyển cho một đội.',
   'People, tickets or vans belong to this team, so it is kept. Move its people to another team instead.':
     'Đội này đã có người, phiếu hoặc xe nên được giữ lại. Hãy chuyển người của đội sang đội khác.',
   'Read the boundary from a GeoJSON file': 'Lấy ranh giới từ file GeoJSON',
@@ -1255,7 +1210,6 @@ export const vi: Record<string, string> = {
   'Asked for': 'Yêu cầu',
   '{0} m to the network': '{0} m tới lưới',
   'Surveyed by': 'Khảo sát bởi',
-  'No team yet: NOC sends it to the right team.': 'Chưa có đội: NOC sẽ chuyển cho đúng đội.',
   'Estimated material · {0}': 'Vật tư ước tính · {0}',
   'Estimated material': 'Vật tư ước tính',
   'No depot in this area': 'Khu vực chưa có kho',
@@ -1332,5 +1286,55 @@ export const vi: Record<string, string> = {
   'offered the job to the team': 'đã báo việc cho cả đội',
   'Offered to the team; nobody has claimed it yet.': 'Đã báo cả đội; chưa ai nhận.',
   'The check found it not fixed; it is offered to the team again.':
-    'Kiểm tra thấy chưa xử lý xong; báo lại cả đội.'
+    'Kiểm tra thấy chưa xử lý xong; báo lại cả đội.',
+  Administrator: 'Admin',
+  'Operations supervisor': 'Giám sát vận hành',
+  'Team manager': 'Trưởng nhóm',
+  'Field staff': 'Nhân viên kỹ thuật',
+  'Planned maintenance': 'Bảo trì theo kế hoạch',
+  'No role yet: choose one and save.': 'Chưa có quyền: hãy chọn một quyền rồi lưu.',
+  'Runs the field staff of one team: sees its tickets, assigns them or offers them to the team, answers help requests, plans maintenance for the team and cancels duplicates.':
+    'Điều phối nhân viên kỹ thuật của một đội: xem ticket của đội, giao việc hoặc mời cả đội nhận, trả lời yêu cầu hỗ trợ, lên lịch bảo trì cho đội và hủy ticket trùng.',
+  'Sees every ticket, team and field staff member, assigns in any team, handles network incidents, checks finished jobs and closes or reopens them, answers help requests, and is told when tickets are late.':
+    'Xem mọi ticket, mọi đội và nhân viên, giao việc cho bất kỳ đội nào, xử lý sự cố lưới, kiểm tra việc đã xong rồi đóng hoặc mở lại, trả lời yêu cầu hỗ trợ, và được báo khi ticket bị trễ.',
+  'acknowledged the incident': 'đã xác nhận sự cố',
+  'No team yet: tickets here wait for an operations supervisor to send them to a team.':
+    'Chưa có đội: ticket ở đây chờ Giám sát vận hành chuyển cho một đội.',
+  'by an operations supervisor': 'bởi Giám sát vận hành',
+  'Badly late: the team manager and the operations supervisors have been told.':
+    'Trễ nặng: đã báo trưởng nhóm và Giám sát vận hành.',
+  'Past the time limit: the team manager and the operations supervisors have been told.':
+    'Quá hạn: đã báo trưởng nhóm và Giám sát vận hành.',
+  Acknowledge: 'Xác nhận',
+  'Operations supervisor checks': 'Giám sát vận hành kiểm tra',
+  'Note (what the customer or the supervisor said)': 'Ghi chú (khách hàng hoặc người giám sát nói gì)',
+  'Team managers, operations supervisors and administrators record the result.':
+    'Trưởng nhóm, Giám sát vận hành và Admin ghi kết quả.',
+  'Operations supervisors and administrators record the result.': 'Giám sát vận hành và Admin ghi kết quả.',
+  'Acknowledged:': 'Đã xác nhận:',
+  'Not acknowledged yet': 'Chưa được xác nhận',
+  'No-power calls from nearby are linked automatically. They are closed together when an operations supervisor closes the incident, and every caller gets an SMS.':
+    'Các cuộc gọi báo mất điện ở gần được gộp tự động. Chúng được đóng cùng lúc khi Giám sát vận hành đóng sự cố, và mỗi người gọi đều nhận SMS.',
+  'The crew says it is fixed: supervisor check': 'Đội báo đã sửa xong: chờ giám sát kiểm tra',
+  'Call Center {0} · supervisors {1}': 'Tổng đài {0} · giám sát {1}',
+  'We asked an operations supervisor to switch the line off; wait for their call.':
+    'Chúng tôi đã nhờ Giám sát vận hành cắt điện đường dây; chờ họ gọi lại.',
+  'Field staff ask for help from the app. Team managers and operations supervisors answer here.':
+    'Nhân viên kỹ thuật gửi yêu cầu hỗ trợ từ app. Trưởng nhóm và Giám sát vận hành trả lời ở đây.',
+  'Reported fixed; the Call Center or an operations supervisor checks it.':
+    'Đã báo sửa xong; Tổng đài hoặc Giám sát vận hành kiểm tra.',
+  'An operations supervisor checks the network and closes it.':
+    'Giám sát vận hành kiểm tra lưới điện và đóng ticket.',
+  'The Call Center, an operations supervisor or an administrator checks with the customer, then closes it in Closing checks.':
+    'Tổng đài, Giám sát vận hành hoặc Admin kiểm tra với khách hàng, rồi đóng ticket ở mục Kiểm tra trước khi đóng.',
+  'No place marked, or outside the team areas: an operations supervisor will route it.':
+    'Chưa đánh dấu vị trí, hoặc nằm ngoài khu vực các đội: Giám sát vận hành sẽ chuyển cho đội phù hợp.',
+  'An operations supervisor sends it to the right team.': 'Giám sát vận hành chuyển cho đúng đội.',
+  'The team of the area builds the connection. Then the Call Center, an operations supervisor or an administrator checks it with the customer and closes it in Closing checks.':
+    'Đội của khu vực thực hiện đấu nối. Sau đó Tổng đài, Giám sát vận hành hoặc Admin kiểm tra với khách hàng và đóng ở mục Kiểm tra trước khi đóng.',
+  'No team yet: an operations supervisor sends it to the right team.':
+    'Chưa có đội: Giám sát vận hành sẽ chuyển cho đúng đội.',
+  'Maintenance and network changes planned for the teams.':
+    'Bảo trì và thay đổi lưới điện được lên lịch cho các đội.',
+  'No role': 'Chưa có quyền'
 };

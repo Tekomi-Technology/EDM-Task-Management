@@ -83,7 +83,7 @@ function IncidentPanel({ id }: { id: string }) {
   if (!t) return <section className="card empty">{tr('Loading…')}</section>;
   const net = t.network!;
   const left = timeLeft(t.dueAt, t.status);
-  const isNoc = hasRole(me.data, 'noc', 'admin', 'technical_manager');
+  const isNoc = hasRole(me.data, 'admin', 'technical_manager');
   const error = (ack.error ?? notify.error ?? check.error) as ApiRequestError | null;
 
   return (
@@ -103,10 +103,10 @@ function IncidentPanel({ id }: { id: string }) {
             <SeverityBadge severity={net.severity} />
             {net.acknowledgedAt ? (
               <span className="badge badge-active">
-                {tr('NOC:')} {net.acknowledgedBy ?? tr('seen')} · {formatTime(net.acknowledgedAt)}
+                {tr('Acknowledged:')} {net.acknowledgedBy ?? tr('seen')} · {formatTime(net.acknowledgedAt)}
               </span>
             ) : (
-              <span className="badge badge-late">{tr('Not acknowledged by NOC')}</span>
+              <span className="badge badge-late">{tr('Not acknowledged yet')}</span>
             )}
           </div>
         </div>
@@ -211,7 +211,7 @@ function IncidentPanel({ id }: { id: string }) {
         </h2>
         <span className="meta" style={{ fontSize: 14 }}>
           {tr(
-            'No-power calls from nearby are linked automatically. They are closed together when NOC closes the incident, and every caller gets an SMS.'
+            'No-power calls from nearby are linked automatically. They are closed together when an operations supervisor closes the incident, and every caller gets an SMS.'
           )}
         </span>
         {net.linkedTickets.slice(0, 6).map((l) => (
@@ -228,7 +228,7 @@ function IncidentPanel({ id }: { id: string }) {
 
       {t.allowedActions.includes('close') && (
         <div className="box" style={{ gap: 10 }}>
-          <strong>{tr('The crew says it is fixed: NOC check')}</strong>
+          <strong>{tr('The crew says it is fixed: supervisor check')}</strong>
           <textarea
             rows={2}
             placeholder={tr('What the network shows (optional)')}

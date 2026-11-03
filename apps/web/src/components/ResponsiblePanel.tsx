@@ -14,7 +14,7 @@ type Mode = 'team' | 'takeBack' | 'person' | null;
 
 /**
  * "Who is on it": the team and the person holding the ticket, in one place. A waiting ticket is offered to the whole
- * team in the app, and whoever claims it first goes; from here NOC, technical managers and administrators move a
+ * team in the app, and whoever claims it first goes; from here operations supervisors and administrators move a
  * ticket to another team, and managers tell the team again, take a job back or name the person who goes.
  */
 export function ResponsiblePanel({

@@ -40,7 +40,7 @@ function steps(t: TicketDetail) {
   // Who checks the work, by type: the same split as the Closing checks queues.
   const checker =
     t.type === 'network_incident' || t.type === 'planned_work'
-      ? tr('by NOC')
+      ? tr('by an operations supervisor')
       : t.type === 'new_customer_survey'
         ? tr('by itself')
         : t.type === 'new_connection' && t.source === 'sales'
@@ -321,8 +321,8 @@ export function TicketDetailPage() {
         {t.escalationLevel >= 2 && !['closed', 'cancelled', 'resolved'].includes(t.status) && (
           <div className="error">
             {t.escalationLevel === 3
-              ? tr('Badly late: technical managers, team manager and NOC have been told.')
-              : tr('Past the time limit: the team manager and NOC have been told.')}
+              ? tr('Badly late: the team manager and the operations supervisors have been told.')
+              : tr('Past the time limit: the team manager and the operations supervisors have been told.')}
           </div>
         )}
         {t.status !== 'cancelled' && (
@@ -626,7 +626,7 @@ export function TicketDetailPage() {
   );
 }
 
-/** Network incident: element, alarms, linked customer tickets and NOC acknowledgement. */
+/** Network incident: element, alarms, linked customer tickets and the supervisor acknowledgement. */
 function NetworkCard({ t, onChange }: { t: TicketDetail; onChange: (updated: TicketDetail) => void }) {
   const me = useMe();
   const net = t.network!;
@@ -668,13 +668,13 @@ function NetworkCard({ t, onChange }: { t: TicketDetail; onChange: (updated: Tic
       </span>
       {net.acknowledgedAt ? (
         <span className="meta">
-          {tr('Acknowledged by')} {net.acknowledgedBy ?? tr('NOC')} {tr('at')}{' '}
+          {tr('Acknowledged by')} {net.acknowledgedBy ?? tr('Operations supervisor')} {tr('at')}{' '}
           {formatTime(net.acknowledgedAt)}
         </span>
       ) : (
-        hasRole(me.data, 'noc', 'admin', 'technical_manager') && (
+        hasRole(me.data, 'admin', 'technical_manager') && (
           <button type="button" className="btn" disabled={ack.isPending} onClick={() => ack.mutate()}>
-            <Eye size={16} /> {tr('Acknowledge (NOC)')}
+            <Eye size={16} /> {tr('Acknowledge')}
           </button>
         )
       )}
@@ -686,7 +686,7 @@ function NetworkCard({ t, onChange }: { t: TicketDetail; onChange: (updated: Tic
 }
 
 /**
- * The ticket's team, for NOC, technical managers and administrators. A ticket outside every area has none and is put
+ * The ticket's team, for operations supervisors and administrators. A ticket outside every area has none and is put
  * in one; an unfinished ticket can move to another team, saying why. Whoever holds it is told and freed, and the new
  * team gets it like a new ticket.
  */

@@ -269,7 +269,7 @@ export function ReportsPage() {
   useEffect(() => setAreaId(region.areaId), [region.areaId]);
   const [asTable, setAsTable] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
-  const seesAll = hasRole(me.data, 'admin', 'technical_manager', 'noc');
+  const seesAll = hasRole(me.data, 'admin', 'technical_manager');
   const lookups = useQuery({
     queryKey: ['lookups'],
     queryFn: () => api<Lookups>('/lookups'),

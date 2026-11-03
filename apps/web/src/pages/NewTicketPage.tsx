@@ -63,7 +63,7 @@ interface Draft {
   callerPhone: string;
   description: string;
   joinIncident: boolean | null;
-  /** Another team than the one of the place, with the reason (NOC, technical managers, administrators). */
+  /** Another team than the one of the place, with the reason (operations supervisors, administrators). */
   team: TeamPick | null;
 }
 
@@ -163,7 +163,7 @@ const NEXT_FOR: Partial<Record<TicketType, string[]>> = {
   planned_work: [
     'The team manager assigns it to a staff member.',
     'The time limit is the end of the planned work.',
-    'NOC checks the network and closes it.'
+    'An operations supervisor checks the network and closes it.'
   ],
   new_customer_survey: [
     'The team of the area gets it and visits the premises.',
@@ -173,7 +173,7 @@ const NEXT_FOR: Partial<Record<TicketType, string[]>> = {
   new_connection: [
     'The team of the area gets it; the material estimate of the survey is set aside.',
     'The customer confirms the handover with an SMS code or a signed form.',
-    'The Call Center, NOC or an administrator checks with the customer, then closes it in Closing checks.'
+    'The Call Center, an operations supervisor or an administrator checks with the customer, then closes it in Closing checks.'
   ]
 };
 
@@ -692,7 +692,9 @@ export function NewTicketPage() {
                           0: p.areaName ?? 'the area',
                           1: p.autoTeam.name
                         })
-                      : t('No place marked, or outside the team areas: NOC will route it.')}
+                      : t(
+                          'No place marked, or outside the team areas: an operations supervisor will route it.'
+                        )}
                 </div>
               )}
               {p && !joining && (
@@ -762,7 +764,7 @@ export function NewTicketPage() {
                   ) : (
                     <>
                       <strong>{t('No team yet')}</strong>
-                      <div className="meta">{t('NOC sends it to the right team.')}</div>
+                      <div className="meta">{t('An operations supervisor sends it to the right team.')}</div>
                     </>
                   )}
                 </div>

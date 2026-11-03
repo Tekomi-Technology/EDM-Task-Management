@@ -61,16 +61,16 @@ export function useMe() {
 }
 
 /** Who may send a ticket to another team than the one of its place (at creation or later). */
-export const CHOOSE_TEAM_ROLES = ['noc', 'technical_manager', 'admin'];
+export const CHOOSE_TEAM_ROLES = ['technical_manager', 'admin'];
 
 /** EDM staff who may answer a call and enter a ticket themselves (New ticket screen). */
-export const TAKES_CALLS_ROLES = ['admin', 'technical_manager', 'team_manager', 'noc', 'bo_support'];
+export const TAKES_CALLS_ROLES = ['admin', 'technical_manager', 'team_manager'];
 
 /** Who may create each ticket type on the New ticket screen (the API checks it too). */
 export const CREATE_ROLES: Record<TicketType, string[]> = {
   customer_complaint: TAKES_CALLS_ROLES,
   network_incident: TAKES_CALLS_ROLES,
-  planned_work: ['network_team', 'noc', 'technical_manager', 'admin'],
+  planned_work: ['admin', 'technical_manager', 'team_manager'],
   new_customer_survey: ['technical_manager', 'admin'],
   new_connection: ['technical_manager', 'admin'],
   other: TAKES_CALLS_ROLES
@@ -81,17 +81,15 @@ export function creatableTypes(me: CurrentUser | undefined): TicketType[] {
   return (Object.keys(CREATE_ROLES) as TicketType[]).filter((type) => hasRole(me, ...CREATE_ROLES[type]));
 }
 
-export const OFFICE_ROLES = [
-  'admin',
-  'technical_manager',
-  'team_manager',
-  'noc',
-  'bo_support',
-  'network_team'
-];
+export const OFFICE_ROLES = ['admin', 'technical_manager', 'team_manager'];
 
 export function hasRole(me: CurrentUser | undefined, ...roles: string[]): boolean {
   return !!me && me.roles.some((r) => roles.includes(r));
+}
+
+/** A team manager with no higher role: acts on their own team only (the highest role decides). */
+export function isTeamManagerOnly(me: CurrentUser | undefined): boolean {
+  return hasRole(me, 'team_manager') && !hasRole(me, 'admin', 'technical_manager');
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {

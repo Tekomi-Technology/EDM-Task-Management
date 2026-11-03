@@ -3,15 +3,8 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { ROLE_HELP, ROLE_LABEL } from '../format';
 import { t } from '../i18n';
 
-const ROLES: UserRole[] = [
-  'field_staff',
-  'team_manager',
-  'noc',
-  'network_team',
-  'bo_support',
-  'technical_manager',
-  'admin'
-];
+/** Highest first. */
+const ROLES: UserRole[] = ['admin', 'technical_manager', 'team_manager', 'field_staff'];
 const TEAM_ROLES: UserRole[] = ['field_staff', 'team_manager'];
 
 interface Props {
@@ -29,7 +22,8 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
   const startTeam = lookups.teams.find((t) => t.id === user?.teamId);
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [username, setUsername] = useState(user?.username ?? '');
-  const [role, setRole] = useState<UserRole>((user?.roles[0] as UserRole | undefined) ?? 'field_staff');
+  const known = (user?.roles ?? []).filter((r): r is UserRole => (ROLES as string[]).includes(r));
+  const [role, setRole] = useState<UserRole>(known[0] ?? 'field_staff');
   const [areaId, setAreaId] = useState(startTeam?.areaId ?? '');
   const [teamId, setTeamId] = useState(user?.teamId ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
@@ -38,7 +32,7 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
   const needsTeam = TEAM_ROLES.includes(role);
   const teams = lookups.teams.filter((t) => !areaId || t.areaId === areaId);
   const problem = needsTeam && !teamId ? t('Field staff and team managers need a team.') : null;
-  const otherRoles = (user?.roles ?? []).filter((r) => r !== role);
+  const otherRoles = known.filter((r) => r !== role);
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -85,6 +79,7 @@ export function UserEditor({ lookups, user, busy, onSubmit, actions }: Props) {
             </option>
           ))}
         </select>
+        {user && known.length === 0 && <span className="meta">{t('No role yet: choose one and save.')}</span>}
         {otherRoles.length > 0 && (
           <span className="meta">
             {t('Also has:')} {otherRoles.map((r) => ROLE_LABEL[r] ?? r).join(', ')}

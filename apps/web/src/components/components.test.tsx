@@ -2,7 +2,7 @@ import type { AdminUser, Lookups } from '../types';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { initials, timeCell, timeLeft, waitingFor } from '../format';
+import { initials, rolesText, timeCell, timeLeft, waitingFor } from '../format';
 import { StatusBadge } from './StatusBadge';
 import { UserEditor } from './UserEditor';
 
@@ -34,7 +34,9 @@ describe('time left', () => {
     expect(timeCell({ dueAt: null, status: 'resolved', source: 'call_center' })).toEqual({
       text: 'Call Center'
     });
-    expect(timeCell({ dueAt: null, status: 'resolved', source: 'nms' })).toEqual({ text: 'NOC' });
+    expect(timeCell({ dueAt: null, status: 'resolved', source: 'nms' })).toEqual({
+      text: 'Operations supervisor'
+    });
     expect(timeCell({ dueAt: null, status: 'closed', source: 'call_center' })).toEqual({ text: 'Done' });
   });
   it('says how long something has waited', () => {
@@ -90,7 +92,7 @@ describe('UserEditor', () => {
     });
   });
 
-  it('explains each role, does not need a team for NOC, and locks the username when editing', async () => {
+  it('explains each role, does not need a team for an operations supervisor, and locks the username when editing', async () => {
     const onSubmit = vi.fn();
     const user: AdminUser = {
       id: 'u1',
@@ -98,7 +100,7 @@ describe('UserEditor', () => {
       fullName: 'Nádia Mussa',
       email: null,
       phone: null,
-      roles: ['noc'],
+      roles: ['technical_manager'],
       teamId: null,
       teamName: null,
       areaName: null,
@@ -109,8 +111,47 @@ describe('UserEditor', () => {
     };
     render(<UserEditor lookups={lookups} user={user} busy={false} onSubmit={onSubmit} />);
     expect(screen.getByLabelText('Username')).toBeDisabled();
-    expect(screen.getByText(/checks network jobs and closes or reopens them/)).toBeInTheDocument();
+    expect(screen.getByText(/handles network incidents, checks finished jobs/)).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole('option')
+        .filter((o) => o.closest('#u-role'))
+        .map((o) => o.textContent)
+    ).toEqual(['Administrator', 'Operations supervisor', 'Team manager', 'Field staff']);
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ roles: ['noc'], teamId: null }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ roles: ['technical_manager'], teamId: null })
+    );
+  });
+});
+
+describe('UserEditor for an account without a role', () => {
+  it('says the account has no role and offers field staff to start with', () => {
+    const user: AdminUser = {
+      id: 'u9',
+      username: 'paulo.bo',
+      fullName: 'Paulo Machava',
+      email: null,
+      phone: null,
+      roles: [],
+      teamId: null,
+      teamName: null,
+      areaName: null,
+      status: 'active',
+      onDuty: false,
+      lastSeenAt: null,
+      createdAt: '2026-10-26T08:00:00Z'
+    };
+    render(<UserEditor lookups={{ areas: [], teams: [] }} user={user} busy={false} onSubmit={vi.fn()} />);
+    expect(screen.getByText('No role yet: choose one and save.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Role')).toHaveValue('field_staff');
+  });
+});
+
+describe('rolesText', () => {
+  it('names the roles, and says No role when none is left', () => {
+    expect(rolesText(['team_manager', 'field_staff'])).toBe('Team manager, Field staff');
+    expect(rolesText([])).toBe('No role');
+    expect(rolesText(['noc'])).toBe('No role');
   });
 });

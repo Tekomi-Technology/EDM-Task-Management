@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
-import { Avatar, hasRole, useCrumbs, useMe } from '../components/ui';
+import { Avatar, isTeamManagerOnly, useCrumbs, useMe } from '../components/ui';
 import { ago, STAFF_STATE_LABEL, STATUS_LABEL, ticketTitle } from '../format';
 import { useRegion } from '../components/topbar';
 import { t } from '../i18n';
@@ -42,7 +42,7 @@ export function FieldStaffPage() {
       api<StaffPerformance[]>(withArea(`/field-staff?days=${days}${teamId ? `&teamId=${teamId}` : ''}`)),
     refetchInterval: 60_000
   });
-  const seesAll = !hasRole(me.data, 'team_manager') || hasRole(me.data, 'admin', 'technical_manager', 'noc');
+  const seesAll = !isTeamManagerOnly(me.data);
   const lookups = useQuery({
     queryKey: ['lookups'],
     queryFn: () => api<Lookups>('/lookups'),

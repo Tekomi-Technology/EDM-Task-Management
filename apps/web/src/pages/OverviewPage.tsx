@@ -77,7 +77,7 @@ export function OverviewPage() {
             <Kpi
               title={tr('Waiting for check')}
               value={data.waitingCheck}
-              note={tr('Call Center {0} · NOC {1}', {
+              note={tr('Call Center {0} · supervisors {1}', {
                 0: data.waitingCallCenter,
                 1: data.waitingCheck - data.waitingCallCenter
               })}

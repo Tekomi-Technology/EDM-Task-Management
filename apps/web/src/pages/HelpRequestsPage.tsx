@@ -18,7 +18,7 @@ const STATUS: Record<HelpStatus, { label: string; className: string }> = {
 const QUICK = [
   'A second person is on the way.',
   'A truck is on the way.',
-  'We asked NOC to switch the line off; wait for their call.'
+  'We asked an operations supervisor to switch the line off; wait for their call.'
 ];
 
 function Conversation({ request }: { request: HelpRequestView }) {
@@ -130,7 +130,7 @@ function Conversation({ request }: { request: HelpRequestView }) {
   );
 }
 
-/** W13: field staff ask the back office (BO) for help from the app; answer here. */
+/** W13: field staff ask for help from the app; team managers and operations supervisors answer here. */
 export function HelpRequestsPage() {
   const { areaId, withArea } = useRegion();
   useCrumbs([{ label: t('Field') }, { label: t('Help requests') }]);
@@ -148,7 +148,7 @@ export function HelpRequestsPage() {
       <div>
         <h1>{t('Help requests')}</h1>
         <div className="subtitle">
-          {t('Field staff ask the back-office (BO) team for help from the app. Answer here.')}
+          {t('Field staff ask for help from the app. Team managers and operations supervisors answer here.')}
         </div>
       </div>
       {list.data && items.length === 0 ? (

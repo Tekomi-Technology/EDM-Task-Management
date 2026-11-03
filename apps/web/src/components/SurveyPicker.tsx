@@ -57,7 +57,7 @@ function SurveyDetails({ s }: { s: WaitingSurvey }) {
         <div className="wide">
           <dt>{t('Who goes')}</dt>
           <dd>
-            {s.team ? s.team.name : t('No team yet: NOC sends it to the right team.')}
+            {s.team ? s.team.name : t('No team yet: an operations supervisor sends it to the right team.')}
             {s.team && s.teamStaff > 0 && ` · ${t('offered to {0} field staff', { 0: s.teamStaff })}`}
           </dd>
         </div>

@@ -40,8 +40,8 @@ function signedInAs(roles: string[]) {
 }
 
 describe('TeamChoice', () => {
-  it('shows the team of the place, and lets NOC choose another team with a reason', async () => {
-    const wrapper = signedInAs(['noc']);
+  it('shows the team of the place, and lets an operations supervisor choose another team with a reason', async () => {
+    const wrapper = signedInAs(['technical_manager']);
     const onChange = vi.fn<(v: TeamPick | null) => void>();
     const { rerender } = render(<TeamChoice autoTeamName="South 1" value={null} onChange={onChange} />, {
       wrapper
@@ -62,7 +62,7 @@ describe('TeamChoice', () => {
   });
 
   it('does not offer another team to people who may not choose it', async () => {
-    const wrapper = signedInAs(['bo_support']);
+    const wrapper = signedInAs(['team_manager']);
     render(<TeamChoice autoTeamName="South 1" value={null} onChange={vi.fn()} />, { wrapper });
     await screen.findByText('South 1');
     // Give the role check a moment to settle before asserting absence.

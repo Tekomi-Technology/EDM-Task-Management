@@ -26,29 +26,30 @@ export const SOURCE_LABEL: Record<TicketSource, string> = translated({
   call_center: 'Call Center',
   sales: 'Sales',
   nms: 'NMS',
-  network_team: 'Network team',
+  network_team: 'Planned maintenance',
   office: 'EDM office'
 });
 
 export const ROLE_LABEL: Record<string, string> = translated({
   admin: 'Administrator',
-  technical_manager: 'Technical manager',
+  technical_manager: 'Operations supervisor',
   team_manager: 'Team manager',
-  noc: 'NOC operator',
-  network_team: 'Network team',
-  bo_support: 'BO support',
   field_staff: 'Field staff'
 });
+
+/** The roles of an account, by name; roles the app no longer has are left out ("No role" when none is left). */
+export function rolesText(roles: readonly string[]): string {
+  const known = roles.filter((r) => r in ROLE_LABEL);
+  return known.length ? known.map((r) => ROLE_LABEL[r]).join(', ') : t('No role');
+}
 
 /** Shown on the Users & roles screen so admins know what they are giving. */
 export const ROLE_HELP: Record<string, string> = translated({
   field_staff: 'Sees and updates own jobs in the EDM Field app: accept, pause, finish with notes and photos.',
-  team_manager: 'Sees the tickets of their team, assigns them to field staff and cancels duplicates.',
-  noc: 'Sees every ticket, checks network jobs and closes or reopens them, cancels tickets.',
-  network_team: 'Sees every ticket and adds notes; network work orders come in phase 3.',
-  bo_support: 'Sees every ticket to help field staff and adds notes.',
+  team_manager:
+    'Runs the field staff of one team: sees its tickets, assigns them or offers them to the team, answers help requests, plans maintenance for the team and cancels duplicates.',
   technical_manager:
-    'Sees every ticket, team and field staff member, assigns in any team, and is told when tickets are badly late.',
+    'Sees every ticket, team and field staff member, assigns in any team, handles network incidents, checks finished jobs and closes or reopens them, answers help requests, and is told when tickets are late.',
   admin: 'Everything above, plus accounts, roles and teams.'
 });
 
@@ -73,7 +74,7 @@ export const EVENT_LABEL: Record<string, string> = translated({
   alarm_raised: 'reported another alarm',
   alarm_cleared: 'reported an alarm cleared',
   all_alarms_cleared: 'reported every alarm cleared',
-  acknowledge: 'acknowledged the incident (NOC)',
+  acknowledge: 'acknowledged the incident',
   customers_notified: 'sent an SMS to the affected customers',
   team_changed: 'moved it to another team',
   take_back: 'took the job back',
@@ -192,7 +193,8 @@ export function timeCell(ticket: Pick<TicketSummary, 'dueAt' | 'status' | 'sourc
   text: string;
   className?: string;
 } {
-  if (ticket.status === 'resolved') return { text: ticket.source === 'call_center' ? 'Call Center' : 'NOC' };
+  if (ticket.status === 'resolved')
+    return { text: ticket.source === 'call_center' ? 'Call Center' : t('Operations supervisor') };
   if (ticket.status === 'closed') return { text: t('Done') };
   if (ticket.status === 'cancelled') return { text: '—' };
   const left = timeLeft(ticket.dueAt, ticket.status);

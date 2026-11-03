@@ -12,8 +12,8 @@ export interface TeamPick {
 }
 
 /**
- * "Team: South 1 (team of the place) · Choose another team". The team of the place goes by default; NOC, technical
- * managers and administrators may send it to another team, saying why (the reason goes into the ticket's history).
+ * "Team: South 1 (team of the place) · Choose another team". The team of the place goes by default; operations
+ * supervisors and administrators may send it to another team, saying why (the reason goes into the ticket's history).
  */
 export function TeamChoice({
   autoTeamName,

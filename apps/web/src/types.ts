@@ -5,15 +5,7 @@
 
 // ---- Roles ----
 
-export const USER_ROLES = [
-  'admin',
-  'technical_manager',
-  'team_manager',
-  'noc',
-  'network_team',
-  'bo_support',
-  'field_staff'
-] as const;
+export const USER_ROLES = ['admin', 'technical_manager', 'team_manager', 'field_staff'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 // ---- Tickets ----
@@ -177,7 +169,7 @@ export interface TicketDetail extends TicketSummary {
   planned: PlannedInfo | null;
   /** Customer tickets caused by a known network incident. */
   incident: { id: string; code: string; title: string; status: TicketStatus } | null;
-  /** 0 = on time; 1 = staff reminded; 2 = late, team manager and NOC told; 3 = badly late, technical manager told. */
+  /** 0 = on time; 1 = staff reminded; 2 = late, team manager and operations supervisors told; 3 = badly late, operations supervisors told again. */
   escalationLevel: number;
   /** While nobody has claimed it: the last time the team was told, and who. */
   offer: TicketOffer | null;
@@ -757,7 +749,7 @@ export interface CreateUser {
 
 /** POST /tickets (New ticket screen): an EDM customer, a member of the public reporting the network, or other work. */
 /**
- * Another team than the one of the place (NOC, technical managers and administrators only), with the reason.
+ * Another team than the one of the place (operations supervisors and administrators only), with the reason.
  */
 export interface TeamChoiceInput {
   teamId?: string;

@@ -288,7 +288,7 @@ function ShellLayout() {
               <NavItem to="/stock" icon={<Package size={20} />} label={t('Stock')} />
             </>
           )}
-          {hasRole(me.data, 'admin', 'technical_manager', 'team_manager', 'noc') && (
+          {hasRole(me.data, 'admin', 'technical_manager', 'team_manager') && (
             <>
               <div className="nav-group">{t('Insights')}</div>
               <NavItem to="/reports" icon={<BarChart3 size={20} />} label={t('Reports')} />

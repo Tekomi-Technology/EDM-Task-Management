@@ -9,7 +9,7 @@ import { hasRole, useMe } from './ui';
 import { t } from '../i18n';
 
 /** People who see every area and can narrow the screens to one; team managers already see their own team. */
-const SEES_ALL_AREAS = ['admin', 'technical_manager', 'noc', 'bo_support', 'network_team'];
+const SEES_ALL_AREAS = ['admin', 'technical_manager'];
 const REGION_KEY = 'edm.region';
 
 interface Region {
@@ -227,7 +227,7 @@ export function HelpButton() {
                 ['accepted', t('The staff member is on the way.')],
                 ['in_progress', t('Being fixed on site.')],
                 ['on_hold', t('Work stopped for a reason given by the staff member.')],
-                ['resolved', t('Reported fixed; the Call Center or NOC checks with the customer.')],
+                ['resolved', t('Reported fixed; the Call Center or an operations supervisor checks it.')],
                 ['reopened', t('The check found it not fixed; it is offered to the team again.')],
                 ['closed', t('Checked and finished.')]
               ] as const

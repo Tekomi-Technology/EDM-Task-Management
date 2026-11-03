@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { api, ApiRequestError } from '../api';
-import { hasRole, useCrumbs, useMe } from '../components/ui';
+import { hasRole, isTeamManagerOnly, useCrumbs, useMe } from '../components/ui';
 import { formatTime } from '../format';
 import { useRegion } from '../components/topbar';
 import { t, dateLocale } from '../i18n';
@@ -33,11 +33,16 @@ const dayLabel = (iso: string) =>
 
 /** Maintenance or a network change; also offered on the New ticket screen. */
 export function PlanForm({ lookups, onCreated }: { lookups: Lookups; onCreated: (t: TicketDetail) => void }) {
+  const me = useMe();
+  // A team manager plans work for their own team only (the API refuses other teams).
+  const ownTeamOnly = isTeamManagerOnly(me.data);
+  const teams = ownTeamOnly ? lookups.teams.filter((x) => x.id === me.data?.teamId) : lookups.teams;
   const tomorrow = isoDay(new Date(Date.now() + DAY));
   const [kind, setKind] = useState<PlannedWorkKind>('maintenance');
   const [title, setTitle] = useState('');
   const [element, setElement] = useState('');
   const [teamId, setTeamId] = useState('');
+  const chosenTeam = ownTeamOnly ? (me.data?.teamId ?? '') : teamId;
   const [date, setDate] = useState(tomorrow);
   const [from, setFrom] = useState('08:00');
   const [to, setTo] = useState('13:00');
@@ -53,7 +58,7 @@ export function PlanForm({ lookups, onCreated }: { lookups: Lookups; onCreated: 
           kind,
           title: title.trim(),
           element: element.trim(),
-          teamId,
+          teamId: chosenTeam,
           scheduledStart: `${date}T${from}:00${OFFSET}`,
           scheduledEnd: `${date}T${to}:00${OFFSET}`,
           outage,
@@ -70,7 +75,7 @@ export function PlanForm({ lookups, onCreated }: { lookups: Lookups; onCreated: 
       setCustomers('');
     }
   });
-  const problem = !teamId
+  const problem = !chosenTeam
     ? t('Choose the team that will do it.')
     : to <= from
       ? t('The end must be after the start.')
@@ -125,9 +130,9 @@ export function PlanForm({ lookups, onCreated }: { lookups: Lookups; onCreated: 
         </div>
         <div className="field">
           <label htmlFor="p-team">{t('Team')}</label>
-          <select id="p-team" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-            <option value="">{t('Choose a team…')}</option>
-            {lookups.teams.map((t) => (
+          <select id="p-team" value={chosenTeam} onChange={(e) => setTeamId(e.target.value)}>
+            {!ownTeamOnly && <option value="">{t('Choose a team…')}</option>}
+            {teams.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name} · {t.areaName}
               </option>
@@ -199,7 +204,7 @@ export function PlanForm({ lookups, onCreated }: { lookups: Lookups; onCreated: 
   );
 }
 
-/** W09: maintenance and network changes planned by the network team; the team manager assigns them. */
+/** W09: maintenance and network changes planned for the teams; offered to the field staff of the team. */
 export function PlannedWorkPage() {
   const { areaId, withArea } = useRegion();
   useCrumbs([{ label: t('Tickets'), to: '/tickets' }, { label: t('Planned work') }]);
@@ -214,7 +219,7 @@ export function PlannedWorkPage() {
     queryFn: () => api<PlannedWorkItem[]>(withArea(`/planned-work?from=${from}&to=${to}`))
   });
   const lookups = useQuery({ queryKey: ['lookups'], queryFn: () => api<Lookups>('/lookups') });
-  const canPlan = hasRole(me.data, 'network_team', 'noc', 'admin', 'technical_manager');
+  const canPlan = hasRole(me.data, 'admin', 'technical_manager', 'team_manager');
 
   const byDay = new Map<string, PlannedWorkItem[]>();
   for (const w of work.data ?? []) {
@@ -229,7 +234,7 @@ export function PlannedWorkPage() {
     <div className="content">
       <div>
         <h1>{t('Planned work')}</h1>
-        <div className="subtitle">{t('Maintenance and network changes planned by the network team.')}</div>
+        <div className="subtitle">{t('Maintenance and network changes planned for the teams.')}</div>
       </div>
       {created && (
         <div className="notice">

@@ -84,10 +84,7 @@ export const pt: Record<string, string> = {
   Accepted: 'Aceite',
   'accepted the job': 'aceitou o trabalho',
   Accounts: 'Contas',
-  Acknowledge: 'Confirmar',
-  'Acknowledge (NOC)': 'Confirmar (NOC)',
   'Acknowledged by': 'Confirmado por',
-  'acknowledged the incident (NOC)': 'confirmou o incidente (NOC)',
   Actions: 'Ações',
   'Activated and closed': 'Ativado e fechado',
   'activated by Sales': 'ativado pela área Comercial',
@@ -99,7 +96,6 @@ export const pt: Record<string, string> = {
   'added a note': 'adicionou uma nota',
   'added a note, also sent to the staff member': 'adicionou uma nota, também enviada ao técnico',
   Address: 'Morada',
-  Administrator: 'Administrador',
   Advice: 'Aconselhamento',
   'Alarms from the network management system (NMS) and network problems reported by the public. Alarms with the same cause are grouped into one incident.':
     'Alarmes do sistema de gestão da rede (NMS) e problemas de rede comunicados pelo público. Alarmes com a mesma causa são agrupados num só incidente.',
@@ -142,8 +138,6 @@ export const pt: Record<string, string> = {
   'Back to the ticket': 'Voltar ao ticket',
   'Back to tickets': 'Voltar aos tickets',
   'badly late': 'muito atrasado',
-  'Badly late: technical managers, team manager and NOC have been told.':
-    'Muito atrasado: gestores técnicos, chefe de equipa e NOC foram avisados.',
   'Being connected': 'Em ligação',
   'Being fixed': 'Em reparação',
   'Being fixed now': 'Em reparação agora',
@@ -162,14 +156,12 @@ export const pt: Record<string, string> = {
   'by {0} today': 'por {0} hoje',
   'by Call Center': 'pelo Call Center',
   'by itself': 'automaticamente',
-  'by NOC': 'pelo NOC',
   'By staff member': 'Por técnico',
   'By team': 'Por equipa',
   'Cable down or danger': 'Cabo caído ou perigo',
   'Cable down or hanging low': 'Cabo caído ou muito baixo',
   Call: 'Ligar',
   'Call Center': 'Call Center',
-  'Call Center {0} · NOC {1}': 'Call Center {0} · NOC {1}',
   'Call Center checks': 'Verificações do Call Center',
   'Call now': 'Ligar agora',
   'Call the customer': 'Ligar ao cliente',
@@ -292,12 +284,9 @@ export const pt: Record<string, string> = {
   Feasible: 'Viável',
   'Feasible with works': 'Viável com obras',
   Field: 'Terreno',
-  'Field staff': 'Técnicos de terreno',
   'Field staff ·': 'Técnicos de terreno ·',
   'Field staff and team managers need a team.':
     'Técnicos de terreno e chefes de equipa precisam de uma equipa.',
-  'Field staff ask the back-office (BO) team for help from the app. Answer here.':
-    'Os técnicos de terreno pedem ajuda à equipa de back office (BO) pela app. Responda aqui.',
   'Field staff on duty, open tickets and the team areas.':
     'Técnicos de serviço, tickets abertos e as áreas das equipas.',
   'Find the customer and choose the problem first.': 'Encontre primeiro o cliente e escolha o problema.',
@@ -374,8 +363,6 @@ export const pt: Record<string, string> = {
   'm to the network': 'm até à rede',
   Main: 'Principal',
   Maintenance: 'Manutenção',
-  'Maintenance and network changes planned by the network team.':
-    'Manutenções e alterações de rede planeadas pela equipa de rede.',
   'Map of tickets and field staff': 'Mapa de tickets e técnicos de terreno',
   'Map: click where the problem is': 'Mapa: clique onde está o problema',
   'Maputo region': 'Região de Maputo',
@@ -437,8 +424,6 @@ export const pt: Record<string, string> = {
   'no outage': 'sem corte',
   'No photos yet. Field staff add them when they finish the job.':
     'Ainda sem fotos. Os técnicos adicionam-nas quando terminam o trabalho.',
-  'No place marked, or outside the team areas: NOC will route it.':
-    'Sem local marcado, ou fora das áreas das equipas: o NOC encaminha-o.',
   'no position yet': 'ainda sem posição',
   'No power cut': 'Sem corte de energia',
   'No power, one home': 'Sem energia, uma casa',
@@ -451,8 +436,6 @@ export const pt: Record<string, string> = {
   'No tickets closed in this period.': 'Nenhum ticket fechado neste período.',
   'No tickets closed or fixed in this period.': 'Nenhum ticket fechado ou reparado neste período.',
   'No tickets here.': 'Nenhum ticket aqui.',
-  'No-power calls from nearby are linked automatically. They are closed together when NOC closes the incident, and every caller gets an SMS.':
-    'As chamadas por falta de energia nas proximidades são ligadas automaticamente. São fechadas em conjunto quando o NOC fecha o incidente, e cada pessoa que ligou recebe um SMS.',
   'No, it is different': 'Não, é diferente',
   Nobody: 'Ninguém',
   'Nobody assigned': 'Ninguém atribuído',
@@ -464,17 +447,11 @@ export const pt: Record<string, string> = {
   'Nobody is left in the team to give it to; the manager gets an SMS.':
     'Não resta ninguém na equipa para o receber; o chefe de equipa recebe um SMS.',
   'Nobody yet': 'Ainda ninguém',
-  NOC: 'NOC',
-  'NOC and administrators record the result.': 'O NOC e os administradores registam o resultado.',
-  'NOC checks': 'Verificações do NOC',
   'NOC operator': 'Operador NOC',
-  'NOC sends it to the right team.': 'O NOC envia-o para a equipa certa.',
-  'NOC:': 'NOC:',
   'None closed': 'Nenhum fechado',
   'None in the {0} days before': 'Nenhum nos {0} dias anteriores',
   'Normally the Call Center system records this after calling the customer.':
     'Normalmente o sistema do Call Center regista isto depois de ligar ao cliente.',
-  'Not acknowledged by NOC': 'Não confirmado pelo NOC',
   'not delivered': 'não entregue',
   'Not feasible': 'Não viável',
   'Not assigned': 'Não atribuído',
@@ -486,7 +463,6 @@ export const pt: Record<string, string> = {
   'Not signed in yet': 'Ainda não entrou',
   Note: 'Nota',
   'Note (optional)': 'Nota (opcional)',
-  'Note (what the customer or NOC said)': 'Nota (o que o cliente ou o NOC disse)',
   'Notes for the team (optional)': 'Notas para a equipa (opcional)',
   'Nothing checked yet': 'Ainda nada verificado',
   'Nothing finished this week.': 'Nada terminado esta semana.',
@@ -526,8 +502,6 @@ export const pt: Record<string, string> = {
   'Outside the team areas': 'Fora das áreas das equipas',
   Overview: 'Visão geral',
   'past the time limit': 'fora do prazo',
-  'Past the time limit: the team manager and NOC have been told.':
-    'Fora do prazo: o chefe de equipa e o NOC foram avisados.',
   'Past their time limit and not fixed': 'Fora do prazo e por reparar',
   Paused: 'Em pausa',
   'paused work': 'pôs o trabalho em pausa',
@@ -540,7 +514,6 @@ export const pt: Record<string, string> = {
   Place: 'Local',
   'Plan new work': 'Planear novo trabalho',
   'Planned job': 'Trabalho planeado',
-  'Planned maintenance': 'Manutenção planeada',
   'Planned network change': 'Alteração de rede planeada',
   'Planned work': 'Trabalho planeado',
   'position unknown': 'posição desconhecida',
@@ -584,8 +557,6 @@ export const pt: Record<string, string> = {
   'Reported by phone': 'Comunicado por telefone',
   'Reported by phone, no NMS alarms.': 'Comunicado por telefone, sem alarmes do NMS.',
   'reported every alarm cleared': 'comunicou todos os alarmes resolvidos',
-  'Reported fixed; the Call Center or NOC checks with the customer.':
-    'Dado como reparado; o Call Center ou o NOC verifica com o cliente.',
   'reported the job done': 'deu o trabalho como feito',
   'reported the job done with {0} photo': 'deu o trabalho como feito com {0} foto',
   'reported the job done with {0} photos': 'deu o trabalho como feito com {0} fotos',
@@ -628,10 +599,6 @@ export const pt: Record<string, string> = {
     'Vê todos os tickets para ajudar os técnicos e adiciona notas.',
   'Sees every ticket, checks network jobs and closes or reopens them, cancels tickets.':
     'Vê todos os tickets, verifica os trabalhos de rede e fecha-os ou reabre-os, cancela tickets.',
-  'Sees every ticket, team and field staff member, assigns in any team, and is told when tickets are badly late.':
-    'Vê todos os tickets, equipas e técnicos de terreno, atribui em qualquer equipa e é avisado quando os tickets estão muito atrasados.',
-  'Sees the tickets of their team, assigns them to field staff and cancels duplicates.':
-    'Vê os tickets da sua equipa, atribui-os aos técnicos de terreno e cancela duplicados.',
   'Selected staff': 'Técnico selecionado',
   Send: 'Enviar',
   'Send a crew': 'Enviar uma equipa',
@@ -699,7 +666,6 @@ export const pt: Record<string, string> = {
   'team {0}': 'equipa {0}',
   'Team {0}': 'Equipa {0}',
   'Team {0} · nobody assigned yet': 'Equipa {0} · ainda ninguém atribuído',
-  'Team manager': 'Chefe de equipa',
   'Technical manager': 'Gestor técnico',
   'The area next to the search narrows lists, maps and reports to that area.':
     'A área ao lado da pesquisa limita listas, mapas e relatórios a essa área.',
@@ -710,7 +676,6 @@ export const pt: Record<string, string> = {
   'The count matches the books.': 'A contagem coincide com os registos.',
   'The crew on the incident fixes it; nobody else is sent.':
     'A equipa do incidente repara-o; ninguém mais é enviado.',
-  'The crew says it is fixed: NOC check': 'A equipa diz que está reparado: verificação do NOC',
   'The end must be after the start.': 'O fim tem de ser depois do início.',
   'the job in the app (or by SMS); the customer was told when the ticket was opened.':
     'o trabalho na app (ou por SMS); o cliente foi avisado quando o ticket foi aberto.',
@@ -772,8 +737,6 @@ export const pt: Record<string, string> = {
   'Waits for the manager of team': 'Aguarda o chefe da equipa',
   Warning: 'Aviso',
   Watch: 'Seguir',
-  'We asked NOC to switch the line off; wait for their call.':
-    'Pedimos ao NOC para desligar a linha; aguarde a chamada deles.',
   Week: 'Semana',
   What: 'O quê',
   'What happens next': 'O que acontece a seguir',
@@ -1010,10 +973,6 @@ export const pt: Record<string, string> = {
   'Shown here once the steps on the left are filled in.':
     'Aparece aqui depois de preencher os passos à esquerda.',
   Supply: 'Fornecimento',
-  'Team managers, technical managers, NOC and administrators record the result.':
-    'Chefes de equipa, gestores técnicos, NOC e administradores registam o resultado.',
-  'The team of the area builds the connection. Then the Call Center, NOC or an administrator checks it with the customer and closes it in Closing checks.':
-    'A equipa da área faz a ligação. Depois o Call Center, o NOC ou um administrador verifica com o cliente e fecha-a em Verificação e fecho.',
   'The team of the area surveys the premises. The survey closes when the report is sent; nothing is sent to the Sales system.':
     'A equipa da área faz a vistoria ao local. A vistoria fecha quando o relatório é enviado; nada é enviado ao sistema Comercial.',
   'The work is done': 'O trabalho está feito',
@@ -1036,7 +995,6 @@ export const pt: Record<string, string> = {
   'Anything else that comes up': 'Qualquer outra coisa que surja',
   'The team manager assigns it to a staff member.': 'O chefe de equipa atribui-o a um técnico.',
   'The time limit is the end of the planned work.': 'O prazo é o fim do trabalho planeado.',
-  'NOC checks the network and closes it.': 'O NOC verifica a rede e fecha-o.',
   'The team of the area gets it and visits the premises.': 'A equipa da área recebe-o e visita o local.',
   'The customer gets an SMS.': 'O cliente recebe um SMS.',
   'The survey closes when the report is sent.': 'A vistoria fecha quando o relatório é enviado.',
@@ -1044,8 +1002,6 @@ export const pt: Record<string, string> = {
     'A equipa da área recebe-o; a estimativa de material da vistoria é reservada.',
   'The customer confirms the handover with an SMS code or a signed form.':
     'O cliente confirma a entrega com um código SMS ou um auto assinado.',
-  'The Call Center, NOC or an administrator checks with the customer, then closes it in Closing checks.':
-    'O Call Center, o NOC ou um administrador verifica com o cliente e depois fecha-o em Verificação e fecho.',
   'Maintenance / network change': 'Manutenção / alteração de rede',
   'by the office': 'pelo escritório',
   'Finding the address of the point…': 'A procurar a morada do ponto…',
@@ -1160,8 +1116,6 @@ export const pt: Record<string, string> = {
   'New team in {0}': 'Nova equipa em {0}',
   'New team name': 'Nome da nova equipa',
   'No areas yet. Add the first one.': 'Ainda não há áreas. Adicione a primeira.',
-  'No team yet: tickets here wait for NOC to send them to a team.':
-    'Ainda sem equipa: os tickets daqui esperam que o NOC os envie para uma equipa.',
   'People, tickets or vans belong to this team, so it is kept. Move its people to another team instead.':
     'Pessoas, tickets ou viaturas pertencem a esta equipa, por isso é mantida. Mova antes as pessoas para outra equipa.',
   'Read the boundary from a GeoJSON file': 'Ler o limite de um ficheiro GeoJSON',
@@ -1275,7 +1229,6 @@ export const pt: Record<string, string> = {
   'Asked for': 'Pedido',
   '{0} m to the network': '{0} m até à rede',
   'Surveyed by': 'Vistoriado por',
-  'No team yet: NOC sends it to the right team.': 'Ainda sem equipa: o NOC envia-o para a equipa certa.',
   'Estimated material · {0}': 'Material estimado · {0}',
   'Estimated material': 'Material estimado',
   'No depot in this area': 'Esta área não tem armazém',
@@ -1354,5 +1307,57 @@ export const pt: Record<string, string> = {
   'offered the job to the team': 'ofereceu o trabalho à equipa',
   'Offered to the team; nobody has claimed it yet.': 'Oferecido à equipa; ninguém o aceitou ainda.',
   'The check found it not fixed; it is offered to the team again.':
-    'A verificação mostrou que não ficou resolvido; é oferecido de novo à equipa.'
+    'A verificação mostrou que não ficou resolvido; é oferecido de novo à equipa.',
+  Administrator: 'Administrador',
+  'Operations supervisor': 'Supervisor de operações',
+  'Team manager': 'Chefe de equipa',
+  'Field staff': 'Técnico de campo',
+  'Planned maintenance': 'Manutenção planeada',
+  'No role yet: choose one and save.': 'Ainda sem função: escolha uma e guarde.',
+  'Runs the field staff of one team: sees its tickets, assigns them or offers them to the team, answers help requests, plans maintenance for the team and cancels duplicates.':
+    'Coordena os técnicos de uma equipa: vê os tickets da equipa, atribui-os ou oferece-os à equipa, responde aos pedidos de ajuda, planeia manutenção para a equipa e cancela duplicados.',
+  'Sees every ticket, team and field staff member, assigns in any team, handles network incidents, checks finished jobs and closes or reopens them, answers help requests, and is told when tickets are late.':
+    'Vê todos os tickets, equipas e técnicos, atribui em qualquer equipa, trata os incidentes de rede, verifica os trabalhos terminados e fecha-os ou reabre-os, responde aos pedidos de ajuda e é avisado quando os tickets estão atrasados.',
+  'acknowledged the incident': 'confirmou o incidente',
+  'No team yet: tickets here wait for an operations supervisor to send them to a team.':
+    'Ainda sem equipa: os tickets daqui esperam que um supervisor de operações os envie para uma equipa.',
+  'by an operations supervisor': 'por um supervisor de operações',
+  'Badly late: the team manager and the operations supervisors have been told.':
+    'Muito atrasado: o chefe de equipa e os supervisores de operações foram avisados.',
+  'Past the time limit: the team manager and the operations supervisors have been told.':
+    'Fora do prazo: o chefe de equipa e os supervisores de operações foram avisados.',
+  Acknowledge: 'Confirmar',
+  'Operations supervisor checks': 'Verificações do supervisor de operações',
+  'Note (what the customer or the supervisor said)': 'Nota (o que o cliente ou o supervisor disse)',
+  'Team managers, operations supervisors and administrators record the result.':
+    'Chefes de equipa, supervisores de operações e administradores registam o resultado.',
+  'Operations supervisors and administrators record the result.':
+    'Os supervisores de operações e os administradores registam o resultado.',
+  'Acknowledged:': 'Confirmado:',
+  'Not acknowledged yet': 'Ainda não confirmado',
+  'No-power calls from nearby are linked automatically. They are closed together when an operations supervisor closes the incident, and every caller gets an SMS.':
+    'As chamadas por falta de energia nas proximidades são ligadas automaticamente. São fechadas em conjunto quando um supervisor de operações fecha o incidente, e cada pessoa que ligou recebe um SMS.',
+  'The crew says it is fixed: supervisor check': 'A equipa diz que está reparado: verificação do supervisor',
+  'Call Center {0} · supervisors {1}': 'Call Center {0} · supervisores {1}',
+  'We asked an operations supervisor to switch the line off; wait for their call.':
+    'Pedimos a um supervisor de operações para desligar a linha; aguarde a chamada.',
+  'Field staff ask for help from the app. Team managers and operations supervisors answer here.':
+    'Os técnicos pedem ajuda na aplicação. Os chefes de equipa e os supervisores de operações respondem aqui.',
+  'Reported fixed; the Call Center or an operations supervisor checks it.':
+    'Dado como reparado; o Call Center ou um supervisor de operações verifica.',
+  'An operations supervisor checks the network and closes it.':
+    'Um supervisor de operações verifica a rede e fecha-o.',
+  'The Call Center, an operations supervisor or an administrator checks with the customer, then closes it in Closing checks.':
+    'O Call Center, um supervisor de operações ou um administrador verifica com o cliente e depois fecha-o em Verificação e fecho.',
+  'No place marked, or outside the team areas: an operations supervisor will route it.':
+    'Sem local marcado, ou fora das áreas das equipas: um supervisor de operações encaminha-o.',
+  'An operations supervisor sends it to the right team.':
+    'Um supervisor de operações envia-o para a equipa certa.',
+  'The team of the area builds the connection. Then the Call Center, an operations supervisor or an administrator checks it with the customer and closes it in Closing checks.':
+    'A equipa da área faz a ligação. Depois o Call Center, um supervisor de operações ou um administrador verifica com o cliente e fecha-a em Verificação e fecho.',
+  'No team yet: an operations supervisor sends it to the right team.':
+    'Ainda sem equipa: um supervisor de operações envia-o para a equipa certa.',
+  'Maintenance and network changes planned for the teams.':
+    'Manutenção e alterações da rede planeadas para as equipas.',
+  'No role': 'Sem função'
 };

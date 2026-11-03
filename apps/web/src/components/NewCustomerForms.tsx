@@ -373,7 +373,7 @@ export function ConnectionForm({ onCreated }: { onCreated: (t: Created) => void 
       />
       <div className="notice" style={{ margin: 0 }}>
         {t(
-          'The team of the area builds the connection. Then the Call Center, NOC or an administrator checks it with the customer and closes it in Closing checks.'
+          'The team of the area builds the connection. Then the Call Center, an operations supervisor or an administrator checks it with the customer and closes it in Closing checks.'
         )}
       </div>
       {create.error && <div className="error">{(create.error as Error).message}</div>}

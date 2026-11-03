@@ -6,7 +6,7 @@ import { api, ApiRequestError } from '../api';
 import { TemporaryPasswordDialog, type TemporaryPassword } from '../components/TemporaryPasswordDialog';
 import { useCrumbs } from '../components/ui';
 import { UserEditor } from '../components/UserEditor';
-import { ROLE_LABEL } from '../format';
+import { rolesText, ROLE_LABEL } from '../format';
 import { t } from '../i18n';
 
 function UserStatus({ user }: { user: AdminUser }) {
@@ -169,7 +169,7 @@ export function UsersPage() {
                         <div className="meta">{u.username}</div>
                       </td>
                       <td className="wrap" style={{ minWidth: 120 }}>
-                        {u.roles.map((r) => ROLE_LABEL[r] ?? r).join(', ')}
+                        {rolesText(u.roles)}
                       </td>
                       <td>
                         {u.areaName ? `${u.areaName}${u.teamName ? ` · ${u.teamName}` : ''}` : t('All areas')}

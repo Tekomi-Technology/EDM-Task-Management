@@ -14,11 +14,11 @@ type Queue = 'call_center' | 'noc' | 'office';
 const QUEUES: Queue[] = ['call_center', 'noc', 'office'];
 const QUEUE_LABEL: Record<Queue, string> = {
   call_center: 'Call Center checks',
-  noc: 'NOC checks',
+  noc: 'Operations supervisor checks',
   office: 'Office checks'
 };
 
-/** Network work is checked by NOC; customer work by the Call Center, which calls the customer back; other work by the office. */
+/** Network work is checked by operations supervisors; customer work by the Call Center, which calls the customer back; other work by the office. */
 const NETWORK_TYPES: string[] = ['network_incident', 'planned_work'];
 const queueOf = (t: TicketSummary): Queue =>
   NETWORK_TYPES.includes(t.type) ? 'noc' : t.type === 'other' ? 'office' : 'call_center';
@@ -154,7 +154,7 @@ function CheckPanel({ id, queue }: { id: string; queue: Queue }) {
           <textarea
             rows={3}
             aria-label={tr('Note')}
-            placeholder={tr('Note (what the customer or NOC said)')}
+            placeholder={tr('Note (what the customer or the supervisor said)')}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -173,15 +173,15 @@ function CheckPanel({ id, queue }: { id: string; queue: Queue }) {
       ) : (
         <span className="meta">
           {queue === 'office'
-            ? tr('Team managers, technical managers, NOC and administrators record the result.')
-            : tr('NOC and administrators record the result.')}
+            ? tr('Team managers, operations supervisors and administrators record the result.')
+            : tr('Operations supervisors and administrators record the result.')}
         </span>
       )}
     </section>
   );
 }
 
-/** Jobs staff say are done, waiting for the Call Center or NOC to confirm before closing. */
+/** Jobs staff say are done, waiting for the Call Center or an operations supervisor to confirm before closing. */
 export function ClosingChecksPage() {
   const { areaId, withArea } = useRegion();
   useCrumbs([{ label: tr('Tickets'), to: '/tickets' }, { label: tr('Closing checks') }]);

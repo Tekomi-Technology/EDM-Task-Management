@@ -47,7 +47,7 @@ describe('ResponsiblePanel', () => {
     expect(screen.getByText('Team South 1')).toBeInTheDocument();
     expect(screen.getByText('Accepted, on the way')).toBeInTheDocument();
     expect(screen.getByText('Ana Sitoe')).toBeInTheDocument();
-    // Moving to another team is for NOC, technical managers and administrators.
+    // Moving to another team is for operations supervisors and administrators.
     expect(screen.queryByRole('button', { name: 'Move to another team' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Change person' })).toBeInTheDocument();
 
@@ -59,7 +59,7 @@ describe('ResponsiblePanel', () => {
   });
 
   it('says the ticket waits when nobody is left in the team', () => {
-    const wrapper = signedInAs(['noc']);
+    const wrapper = signedInAs(['technical_manager']);
     render(
       <ResponsiblePanel
         t={ticket({ status: 'new', assignee: null, allowedActions: ['cancel'] })}

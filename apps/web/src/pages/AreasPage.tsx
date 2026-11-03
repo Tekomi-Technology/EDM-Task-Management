@@ -447,7 +447,7 @@ export function AreasPage() {
                 )}
                 {a.teams.length === 0 ? (
                   <div className="meta area-empty">
-                    {t('No team yet: tickets here wait for NOC to send them to a team.')}
+                    {t('No team yet: tickets here wait for an operations supervisor to send them to a team.')}
                   </div>
                 ) : (
                   <div className="area-teams">
