@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import type { ChangePassword, SignIn, SignInResult } from '../contract';
+import { USER_ROLES, type ChangePassword, type SignIn, type SignInResult } from '../contract';
 import { and, eq, gt, isNull, ne, sql } from 'drizzle-orm';
 import { AppError } from '../common/errors';
 import { DB, type Db } from '../db/db.module';
@@ -48,7 +48,8 @@ export class AuthService {
         status: users.status,
         mustChangePassword: users.mustChangePassword,
         failedSignIns: users.failedSignIns,
-        lockedUntil: users.lockedUntil
+        lockedUntil: users.lockedUntil,
+        roles: users.roles
       })
       .from(users)
       .where(sql`lower(${users.username}) = ${input.username.trim().toLowerCase()}`);
@@ -68,6 +69,15 @@ export class AuthService {
         .set({ failedSignIns: lockedUntil ? 0 : failed, lockedUntil })
         .where(eq(users.id, user.id));
       throw lockedUntil ? this.locked(lockedUntil) : wrongCredentials();
+    }
+
+    // Right password but no role left (e.g. a role that was removed): say so instead of a puzzling empty app.
+    if (!user.roles.some((r) => (USER_ROLES as readonly string[]).includes(r))) {
+      throw new AppError(
+        HttpStatus.FORBIDDEN,
+        'NO_ROLE',
+        'Your account has no role yet. Ask an administrator.'
+      );
     }
 
     await this.db

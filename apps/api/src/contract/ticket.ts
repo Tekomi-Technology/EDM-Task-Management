@@ -131,41 +131,31 @@ export const ACTION_RULES: Record<TicketAction, ActionRule> = {
   close: {
     from: ['resolved'],
     to: 'closed',
-    roles: [
-      'integration_call_center',
-      'integration_sales',
-      'noc',
-      'admin',
-      'team_manager',
-      'technical_manager'
-    ]
+    roles: ['integration_call_center', 'integration_sales', 'admin', 'team_manager', 'technical_manager']
   },
   reopen: {
     from: ['resolved'],
     to: 'reopened',
-    roles: [
-      'integration_call_center',
-      'integration_sales',
-      'noc',
-      'admin',
-      'team_manager',
-      'technical_manager'
-    ]
+    roles: ['integration_call_center', 'integration_sales', 'admin', 'team_manager', 'technical_manager']
   },
   cancel: {
     from: ['new', 'assigned', 'accepted', 'in_progress', 'on_hold', 'resolved', 'reopened'],
     to: 'cancelled',
-    roles: ['integration_call_center', 'noc', 'admin', 'team_manager', 'technical_manager']
+    roles: ['integration_call_center', 'admin', 'team_manager', 'technical_manager']
   }
 };
 
-/** Who may check a finished ticket and close or reopen it: team and technical managers only check "other" tickets. */
+/** Who may check a finished ticket and close or reopen it: team managers only check "other" tickets. */
 export function mayCheck(type: TicketType, roles: readonly Role[]): boolean {
   return (
     roles.some(
-      (r) => r === 'integration_call_center' || r === 'integration_sales' || r === 'noc' || r === 'admin'
+      (r) =>
+        r === 'integration_call_center' ||
+        r === 'integration_sales' ||
+        r === 'technical_manager' ||
+        r === 'admin'
     ) ||
-    (type === 'other' && roles.some((r) => r === 'team_manager' || r === 'technical_manager'))
+    (type === 'other' && roles.includes('team_manager'))
   );
 }
 

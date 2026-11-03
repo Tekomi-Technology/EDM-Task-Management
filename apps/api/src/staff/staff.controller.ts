@@ -23,7 +23,7 @@ import { StaffService } from './staff.service';
 
 const suggestionQuerySchema = z.object({ ticketId: z.string().uuid().optional() });
 
-const OFFICE = ['admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team'] as const;
+const OFFICE = ['admin', 'technical_manager', 'team_manager'] as const;
 
 @ApiTags('field staff')
 @ApiBearerAuth()

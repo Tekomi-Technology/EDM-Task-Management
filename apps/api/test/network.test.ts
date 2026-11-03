@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { alarms, notificationOutbox, tickets } from '../src/db/schema';
+import { alarms, notificationOutbox, tickets, users } from '../src/db/schema';
 import { TicketsService } from '../src/tickets/tickets.service';
 import { createTestApp, ids, resetData, type TestContext } from './helpers';
 
-const NADIA_NOC = '+258840000003';
+const NADIA = '+258840000003';
 const HELENA = '+258840000002';
 const ARMANDO = '+258840000006';
 const ROSA = '+258841110001';
@@ -52,7 +52,7 @@ describe('network incidents from the NMS and the public, and planned work', () =
   const detail = async (id: string, who: Parameters<TestContext['as']>[0] = 'nadia.mussa') =>
     (await t.as(who).get(`/api/tickets/${id}`)).body;
 
-  it('opens a network incident for an alarm, routed to the team of the place, and tells NOC', async () => {
+  it('opens a network incident for an alarm, routed to the team of the place, and tells the operations supervisors', async () => {
     const [r] = await send(alarm());
     expect(r).toMatchObject({ result: 'created', code: expect.stringMatching(/^TK-/) });
     const d = await detail(r!.ticketId!);
@@ -64,7 +64,9 @@ describe('network incidents from the NMS and the public, and planned work', () =
       title: 'Breaker trip, overcurrent · Feeder F-12',
       network: { elementCode: 'F-12', severity: 'critical', activeAlarms: 1 }
     });
-    expect((await smsTo(NADIA_NOC)).some((b) => b.includes(r!.code!))).toBe(true);
+    const toNadia = await smsTo(NADIA);
+    expect(toNadia.some((b) => b.includes(r!.code!))).toBe(true);
+    expect(toNadia.find((b) => b.includes(r!.code!))).toMatch(/^EDM: Novo incidente de rede /);
     // Offered to the whole team, on duty or not; the manager is not bothered.
     expect(d).toMatchObject({ status: 'new', offer: { notified: ['Ana Sitoe', 'Armando Cossa'] } });
     expect(await smsTo(HELENA)).toHaveLength(0);
@@ -221,7 +223,7 @@ describe('network incidents from the NMS and the public, and planned work', () =
     expect(d).toMatchObject({ incident: null, status: 'new', assignee: null, offer: { round: 1 } });
   });
 
-  it('lets NOC link and unlink by hand, acknowledge, and text the linked customers', async () => {
+  it('lets an operations supervisor link and unlink by hand, acknowledge, and text the linked customers', async () => {
     const [inc] = await send(alarm());
     const far = await t.as('call-center').post('/api/intake/call-center/complaints', {
       externalRef: 'CC-M1',
@@ -292,7 +294,7 @@ describe('network incidents from the NMS and the public, and planned work', () =
     ).toBe(403);
   });
 
-  it('lets the network team plan work for a team, offered to its staff, and tells the Call Center', async () => {
+  it('lets an operations supervisor plan work for a team, offered to its staff, and tells the Call Center', async () => {
     const teams = (await t.as('nadia.mussa').get('/api/lookups')).body.teams;
     const south2 = teams.find((x: { name: string }) => x.name === 'South 2').id;
     await t.as('ofelia.tembe').post('/api/me/duty', { onDuty: true });
@@ -308,7 +310,7 @@ describe('network incidents from the NMS and the public, and planned work', () =
       outage: true,
       customersAffected: 240
     };
-    const created = await t.as('carlos.nhantumbo').post('/api/planned-work', work);
+    const created = await t.as('nadia.mussa').post('/api/planned-work', work);
     expect(created.status).toBe(201);
     expect(created.body).toMatchObject({
       type: 'planned_work',
@@ -350,9 +352,33 @@ describe('network incidents from the NMS and the public, and planned work', () =
 
     expect((await t.as('armando.cossa').post('/api/planned-work', work)).status).toBe(403);
     const backwards = await t
-      .as('carlos.nhantumbo')
+      .as('nadia.mussa')
       .post('/api/planned-work', { ...work, scheduledEnd: work.scheduledStart });
     expect(backwards.status).toBe(400);
+  });
+
+  it('lets a team manager plan work for their own team only', async () => {
+    const teams = (await t.as('nadia.mussa').get('/api/lookups')).body.teams;
+    const teamId = (name: string) => teams.find((x: { name: string }) => x.name === name).id;
+    const day = new Date(Date.now() + 24 * 3600_000).toISOString().slice(0, 10);
+    const work = (team: string) => ({
+      kind: 'maintenance',
+      title: 'Check switchgear',
+      element: 'SW-12',
+      teamId: teamId(team),
+      scheduledStart: `${day}T06:00:00Z`,
+      scheduledEnd: `${day}T08:00:00Z`,
+      outage: false
+    });
+
+    const own = await t.as('helena.mondlane').post('/api/planned-work', work('South 1'));
+    expect(own.status).toBe(201);
+    const other = await t.as('helena.mondlane').post('/api/planned-work', work('South 2'));
+    expect([other.status, other.body.code]).toEqual([403, 'NOT_IN_TEAM']);
+
+    await t.db.update(users).set({ teamId: null }).where(eq(users.id, ids['helena.mondlane']));
+    const noTeam = await t.as('helena.mondlane').post('/api/planned-work', work('South 1'));
+    expect([noTeam.status, noTeam.body.code]).toEqual([403, 'NOT_IN_TEAM']);
   });
 
   it('keeps every alarm, linked to its incident', async () => {

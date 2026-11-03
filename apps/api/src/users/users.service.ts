@@ -233,7 +233,7 @@ export class UsersService {
     return new Map(result.rows.map((r) => [r.id, Math.round(Number(r.m))]));
   }
 
-  /** Active people with a role (e.g. NOC, technical managers), to alert by SMS and in the web app. */
+  /** Active people with a role (e.g. operations supervisors), to alert by SMS and in the web app. */
   withRole(role: Role, db: Db | Tx = this.db): Promise<OfficeRecipient[]> {
     return db
       .select({ id: users.id, phone: users.phone })

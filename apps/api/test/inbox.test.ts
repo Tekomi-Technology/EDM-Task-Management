@@ -57,11 +57,11 @@ describe('notifications under the bell', () => {
     ).toEqual([]);
   });
 
-  it('tells BO about help requests, linking to the help screen', async () => {
+  it('tells operations supervisors about help requests, linking to the help screen', async () => {
     await t
       .as('armando.cossa')
       .post('/api/help-requests', { kind: 'truck', message: 'Need the crane truck' });
-    const bo = await inbox('paulo.bo');
+    const bo = await inbox('carla.manhica');
     expect(bo.items[0]).toMatchObject({ title: 'Armando Cossa asks for help: truck', link: '/help' });
     // Helena manages Armando's team, so she is told too, once.
     expect(

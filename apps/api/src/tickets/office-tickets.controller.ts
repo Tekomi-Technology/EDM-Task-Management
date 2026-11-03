@@ -19,7 +19,7 @@ import { ApiZodBody, ZodBody, ZodQuery } from '../common/zod';
 import { OfficeTicketsService } from './office-tickets.service';
 
 /** EDM staff who answer the phone themselves (the Call Center normally sends tickets through /intake). */
-const TAKES_CALLS = ['admin', 'technical_manager', 'team_manager', 'noc', 'bo_support'] as const;
+const TAKES_CALLS = ['admin', 'technical_manager', 'team_manager'] as const;
 
 @ApiTags('tickets')
 @ApiBearerAuth()

@@ -17,6 +17,7 @@ import type {
   VehicleInput,
   VehicleView
 } from '../contract';
+import { isTeamManagerOnly } from '../contract';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { actorLabel, type AuthUser } from '../auth/auth-user';
@@ -791,9 +792,7 @@ export class StockService {
     await this.db.transaction(async (tx) => {
       const [v] = await tx.select().from(vehicles).where(eq(vehicles.id, vehicleId)).for('update');
       if (!v) throw notFound('Vehicle');
-      const isManagerOnly =
-        actor.roles.includes('team_manager') &&
-        !actor.roles.some((r) => r === 'admin' || r === 'technical_manager');
+      const isManagerOnly = isTeamManagerOnly(actor.roles);
       if (isManagerOnly && v.teamId !== actor.teamId) {
         throw new AppError(HttpStatus.FORBIDDEN, 'NOT_IN_TEAM', 'This vehicle belongs to another team');
       }

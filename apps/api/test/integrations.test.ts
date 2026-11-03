@@ -77,9 +77,9 @@ describe('connected systems', () => {
   });
 
   it('shows a refused sign-in or unreadable data as a problem, solved once requests go through again', async () => {
-    expect((await t.as('paulo.bo').post('/api/intake/nms/alarms', { alarms: [alarm('A-1')] })).status).toBe(
-      403
-    );
+    expect(
+      (await t.as('carla.manhica').post('/api/intake/nms/alarms', { alarms: [alarm('A-1')] })).status
+    ).toBe(403);
     expect((await t.as('nms').post('/api/intake/nms/alarms', { alarms: [{ alarmId: 'A-2' }] })).status).toBe(
       400
     );
@@ -91,7 +91,7 @@ describe('connected systems', () => {
     );
     expect((await card('nms')).status).toBe('connected'); // bad data is their mistake, not a broken link
 
-    await t.as('paulo.bo').post('/api/intake/nms/alarms', { alarms: [alarm('A-3')] });
+    await t.as('carla.manhica').post('/api/intake/nms/alarms', { alarms: [alarm('A-3')] });
     expect(
       await waitFor(
         () => card('nms'),

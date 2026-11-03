@@ -40,7 +40,7 @@ import { tickets } from '../db/schema';
 import { TicketsQuery } from '../tickets/tickets.query';
 import { StockService } from './stock.service';
 
-const OFFICE = ['admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team'] as const;
+const OFFICE = ['admin', 'technical_manager', 'team_manager'] as const;
 const STOCK_MANAGERS = ['admin', 'technical_manager', 'team_manager'] as const;
 
 @ApiTags('stock')
@@ -148,7 +148,7 @@ export class StockController {
   /** Set material aside in the ticket's depot (planned work, big jobs). */
   @Post('tickets/:id/reservations')
   @HttpCode(200)
-  @Roles('admin', 'technical_manager', 'team_manager', 'network_team')
+  @Roles('admin', 'technical_manager', 'team_manager')
   @ApiZodBody(reserveStockSchema)
   async reserve(
     @Param('id', ParseUUIDPipe) id: string,
@@ -166,7 +166,7 @@ export class StockController {
 
   @Post('tickets/:id/reservations/release')
   @HttpCode(200)
-  @Roles('admin', 'technical_manager', 'team_manager', 'network_team')
+  @Roles('admin', 'technical_manager', 'team_manager')
   async release(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthUser

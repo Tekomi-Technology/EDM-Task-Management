@@ -104,7 +104,7 @@ export class CallCenterService {
 
   /**
    * A member of the public reports a problem with the network (800 145 145). It becomes a network ticket for the
-   * team covering the place; NOC checks and closes it.
+   * team covering the place; an operations supervisor checks and closes it.
    */
   async receiveNetworkReport(
     input: NetworkReport,

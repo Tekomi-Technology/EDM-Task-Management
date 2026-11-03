@@ -48,7 +48,7 @@ export class UsersController {
   /** The app registers its push token after sign-in, so new jobs arrive as notifications. */
   @Post('me/devices')
   @HttpCode(204)
-  @Roles('field_staff', 'team_manager', 'technical_manager', 'admin', 'noc', 'network_team', 'bo_support')
+  @Roles('field_staff', 'team_manager', 'technical_manager', 'admin')
   @ApiZodBody(pushDeviceSchema)
   async registerDevice(
     @CurrentUser() user: AuthUser,
@@ -60,7 +60,7 @@ export class UsersController {
   /** The app calls this when signing out, so the phone stops receiving this person's jobs. */
   @Post('me/devices/remove')
   @HttpCode(204)
-  @Roles('field_staff', 'team_manager', 'technical_manager', 'admin', 'noc', 'network_team', 'bo_support')
+  @Roles('field_staff', 'team_manager', 'technical_manager', 'admin')
   @ApiZodBody(removePushDeviceSchema)
   async removeDevice(
     @CurrentUser() user: AuthUser,

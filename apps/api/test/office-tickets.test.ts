@@ -19,7 +19,7 @@ describe('tickets entered by EDM staff', () => {
   });
 
   const lookup = async (q: string) =>
-    (await t.as('paulo.bo').get(`/api/customers/lookup?q=${encodeURIComponent(q)}`)).body;
+    (await t.as('carla.manhica').get(`/api/customers/lookup?q=${encodeURIComponent(q)}`)).body;
   const rosa = async () => (await lookup('40217735'))[0] as { id: string };
 
   it('finds the caller by contract, phone (as people say it), meter number or name', async () => {
@@ -46,7 +46,7 @@ describe('tickets entered by EDM staff', () => {
 
   it('shows what will happen before creating: team, who goes, time limit and the SMS', async () => {
     const customerId = (await rosa()).id;
-    const res = await t.as('paulo.bo').post('/api/tickets/preview', {
+    const res = await t.as('carla.manhica').post('/api/tickets/preview', {
       type: 'customer_complaint',
       customerId,
       problemType: 'no_power_single'
@@ -64,7 +64,7 @@ describe('tickets entered by EDM staff', () => {
     expect(Date.parse(res.body.dueAt) - Date.now()).toBeGreaterThan(239 * 60_000);
     expect(await t.db.select().from(tickets)).toEqual([]); // nothing created
 
-    const other = await t.as('paulo.bo').post('/api/tickets/preview', {
+    const other = await t.as('carla.manhica').post('/api/tickets/preview', {
       type: 'customer_complaint',
       customerId,
       problemType: 'other',
@@ -74,7 +74,7 @@ describe('tickets entered by EDM staff', () => {
   });
 
   it('creates the ticket, offers it to the team and texts the caller', async () => {
-    const res = await t.as('paulo.bo').post('/api/tickets', {
+    const res = await t.as('carla.manhica').post('/api/tickets', {
       type: 'customer_complaint',
       customerId: (await rosa()).id,
       problemType: 'no_power_single',
@@ -88,7 +88,7 @@ describe('tickets entered by EDM staff', () => {
       type: 'customer_complaint',
       title: 'No power, one home'
     });
-    expect(detail.events[0]).toMatchObject({ type: 'created', actorName: 'Paulo Machava' });
+    expect(detail.events[0]).toMatchObject({ type: 'created', actorName: 'Carla Manhiça' });
     const texts = await t.db
       .select()
       .from(notificationOutbox)
@@ -113,7 +113,7 @@ describe('tickets entered by EDM staff', () => {
     });
     const customerId = (await rosa()).id;
     const preview = (
-      await t.as('paulo.bo').post('/api/tickets/preview', {
+      await t.as('carla.manhica').post('/api/tickets/preview', {
         type: 'customer_complaint',
         customerId,
         problemType: 'no_power_single'
@@ -122,7 +122,7 @@ describe('tickets entered by EDM staff', () => {
     expect(preview.incident).toMatchObject({ elementName: 'Transformer PT-4471', linkedCustomers: 0 });
     expect(preview.sms.knownOutage).toContain('Já sabemos da avaria');
 
-    const joined = await t.as('paulo.bo').post('/api/tickets', {
+    const joined = await t.as('carla.manhica').post('/api/tickets', {
       type: 'customer_complaint',
       customerId,
       problemType: 'no_power_single',
@@ -130,7 +130,7 @@ describe('tickets entered by EDM staff', () => {
     });
     expect(joined.body).toMatchObject({ status: 'new', incident: { id: preview.incident.id } });
 
-    const separate = await t.as('paulo.bo').post('/api/tickets', {
+    const separate = await t.as('carla.manhica').post('/api/tickets', {
       type: 'customer_complaint',
       customerId,
       problemType: 'no_power_single',
@@ -174,20 +174,20 @@ describe('tickets entered by EDM staff', () => {
       description: 'Lights flicker'
     };
     expect((await t.as('armando.cossa').post('/api/tickets', body)).status).toBe(403);
-    expect((await t.as('carlos.nhantumbo').post('/api/tickets', body)).status).toBe(403);
+    expect((await t.as('ofelia.tembe').post('/api/tickets', body)).status).toBe(403);
     expect((await t.as('call-center').get('/api/customers/lookup?q=40217735')).status).toBe(403);
-    expect((await t.as('paulo.bo').post('/api/tickets', { ...body, description: '' })).status).toBe(400);
+    expect((await t.as('carla.manhica').post('/api/tickets', { ...body, description: '' })).status).toBe(400);
     expect(
       (
         await t
-          .as('paulo.bo')
+          .as('carla.manhica')
           .post('/api/tickets', { ...body, customerId: '00000000-0000-4000-8000-0000000000aa' })
       ).status
     ).toBe(404);
   });
 
   it('takes an "other" ticket with the priority chosen, and lets the team manager check it', async () => {
-    const res = await t.as('paulo.bo').post('/api/tickets', {
+    const res = await t.as('carla.manhica').post('/api/tickets', {
       type: 'other',
       title: 'Meter box door broken',
       description: 'The box is open to the street.',
@@ -229,7 +229,7 @@ describe('tickets entered by EDM staff', () => {
   };
   type Event = { type: string; data: Record<string, unknown> };
 
-  it('lets NOC, technical managers and administrators send a new ticket to another team, keeping the reason', async () => {
+  it('lets operations supervisors and administrators send a new ticket to another team, keeping the reason', async () => {
     const south2 = await teamId('South 2');
     const res = await t.as('carla.manhica').post('/api/tickets', {
       ...otherTicket,
@@ -255,10 +255,10 @@ describe('tickets entered by EDM staff', () => {
     });
   });
 
-  it('asks why another team goes, and lets only NOC, technical managers and administrators choose it', async () => {
+  it('asks why another team goes, and lets only operations supervisors and administrators choose it', async () => {
     const body = { ...otherTicket, teamId: await teamId('South 2') };
     expect((await t.as('nadia.mussa').post('/api/tickets', body)).status).toBe(400);
-    for (const who of ['paulo.bo', 'helena.mondlane'] as const) {
+    for (const who of ['joao.matsinhe', 'helena.mondlane'] as const) {
       expect(
         (await t.as(who).post('/api/tickets', { ...body, teamReason: 'Closer to the place' })).status
       ).toBe(403);
@@ -267,7 +267,7 @@ describe('tickets entered by EDM staff', () => {
 
   it('shows the team of the place and the team chosen instead, before creating', async () => {
     const auto = await t
-      .as('paulo.bo')
+      .as('carla.manhica')
       .post('/api/tickets/preview', { type: 'other', priority: 2, location: MATOLA });
     expect(auto.body).toMatchObject({
       team: { name: 'South 1' },
@@ -292,7 +292,7 @@ describe('tickets entered by EDM staff', () => {
 
   it('moves a ticket someone is working on to another team, with a reason, and tells that staff member', async () => {
     const south2 = await teamId('South 2');
-    const id = (await t.as('paulo.bo').post('/api/tickets', otherTicket)).body.id as string;
+    const id = (await t.as('carla.manhica').post('/api/tickets', otherTicket)).body.id as string;
     await t.as('armando.cossa').post(`/api/tickets/${id}/claim`);
 
     expect((await t.as('nadia.mussa').post(`/api/tickets/${id}/team`, { teamId: south2 })).status).toBe(422);
@@ -329,17 +329,17 @@ describe('tickets entered by EDM staff', () => {
     ).toBe(422);
   });
 
-  it('sends an "other" ticket with no place to NOC, and asks for a priority', async () => {
+  it('sends an "other" ticket with no place to the operations supervisors, and asks for a priority', async () => {
     const body = { type: 'other', title: 'Wrong address on a bill', description: 'Customer asks to fix it.' };
-    expect((await t.as('paulo.bo').post('/api/tickets', body)).status).toBe(400);
-    const res = await t.as('paulo.bo').post('/api/tickets', { ...body, priority: 3 });
+    expect((await t.as('carla.manhica').post('/api/tickets', body)).status).toBe(400);
+    const res = await t.as('carla.manhica').post('/api/tickets', { ...body, priority: 3 });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ status: 'new', assigneeName: null });
     const inbox = (await t.as('nadia.mussa').get('/api/me/notifications')).body;
     expect(inbox.items[0]).toMatchObject({ title: expect.stringContaining(res.body.code) });
 
     // A team manager does not close customer complaints: the Call Center checks those.
-    const complaint = await t.as('paulo.bo').post('/api/tickets', {
+    const complaint = await t.as('carla.manhica').post('/api/tickets', {
       type: 'customer_complaint',
       customerId: (await rosa()).id,
       problemType: 'low_voltage',

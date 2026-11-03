@@ -14,7 +14,7 @@ import { CurrentUser, Roles } from '../auth/decorators';
 import { ApiZodBody, ZodBody, ZodQuery } from '../common/zod';
 import { HelpService } from './help.service';
 
-const OFFICE = ['admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team'] as const;
+const OFFICE = ['admin', 'technical_manager', 'team_manager'] as const;
 
 @ApiTags('help requests')
 @ApiBearerAuth()

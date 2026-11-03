@@ -92,7 +92,7 @@ export class SalesController {
 @ApiTags('new customers')
 @ApiBearerAuth()
 @Controller('new-customers')
-@Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team')
+@Roles('admin', 'technical_manager', 'team_manager')
 export class NewCustomersController {
   constructor(private readonly sales: SalesService) {}
 

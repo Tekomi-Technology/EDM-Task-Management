@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import request from 'supertest';
+import { users } from '../src/db/schema';
 import { SEED_PASSWORD } from '../src/db/seed-data';
 import { createTestApp, ids, resetData, type TestContext } from './helpers';
 
@@ -66,6 +68,14 @@ describe('signing in', () => {
     expect((await signIn('nadia.mussa', reset.body.temporaryPassword)).status).toBe(200);
   });
 
+  it('refuses an account with no role, clearly, without counting a wrong password', async () => {
+    await t.db.update(users).set({ roles: [] }).where(eq(users.id, ids['ana.sitoe']));
+    const res = await signIn('ana.sitoe', SEED_PASSWORD);
+    expect([res.status, res.body.code]).toEqual([403, 'NO_ROLE']);
+    const [row] = await t.db.select().from(users).where(eq(users.id, ids['ana.sitoe']));
+    expect(row!.failedSignIns).toBe(0);
+  });
+
   it('makes a person with a temporary password choose their own before anything else', async () => {
     const temp = (await t.as('admin.edm').post(`/api/admin/users/${ids['ana.sitoe']}/reset-password`)).body
       .temporaryPassword as string;
@@ -110,8 +120,8 @@ describe('signing in', () => {
       (await t.as('admin.edm').put('/api/admin/settings/sign-in', { ...rules, minPasswordLength: 4 })).status
     ).toBe(400);
 
-    for (let i = 0; i < 2; i++) await signIn('paulo.bo', 'wrong-password-1');
-    expect((await signIn('paulo.bo', 'wrong-password-1')).body.code).toBe('ACCOUNT_LOCKED');
+    for (let i = 0; i < 2; i++) await signIn('carla.manhica', 'wrong-password-1');
+    expect((await signIn('carla.manhica', 'wrong-password-1')).body.code).toBe('ACCOUNT_LOCKED');
   });
 
   it('lets administrators make and revoke API keys for the other systems', async () => {

@@ -247,7 +247,7 @@ describe('full ticket lifecycle: offered to the team, claimed, given back, pause
 
     const path = `/api/tickets/${ticketId}/take-back`;
     expect((await t.as('helena.mondlane').post(path, {})).status).toBe(400);
-    expect((await t.as('paulo.bo').post(path, { reason: 'Ana is sick' })).status).toBe(403);
+    expect((await t.as('ofelia.tembe').post(path, { reason: 'Ana is sick' })).status).toBe(403);
     expect((await t.as('joao.matsinhe').post(path, { reason: 'Ana is sick' })).status).toBe(404);
     const back = await t.as('helena.mondlane').post(path, { reason: 'Ana is sick' });
     expect(back.status).toBe(200);

@@ -1,6 +1,7 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
   CHOOSE_TEAM_ROLES,
+  isTeamManagerOnly,
   MAX_ATTACHMENT_BYTES,
   mayCheck,
   nextStatus,
@@ -102,13 +103,13 @@ export interface CreatedTicket {
 const hashCode = (ticketId: string, code: string) =>
   createHash('sha256').update(`${ticketId}:${code}`).digest('hex');
 
-/** Only NOC, technical managers and administrators send a ticket to another team than the one of its place. */
+/** Only operations supervisors and administrators send a ticket to another team than the one of its place. */
 export function assertMayChooseTeam(teamId: string | undefined, actor: AuthUser): void {
   if (teamId && !actor.roles.some((r) => (CHOOSE_TEAM_ROLES as readonly string[]).includes(r))) {
     throw new AppError(
       HttpStatus.FORBIDDEN,
       'FORBIDDEN_ROLE',
-      'Only NOC, technical managers and administrators choose another team'
+      'Only operations supervisors and administrators choose another team'
     );
   }
 }
@@ -248,11 +249,11 @@ export class TicketsService {
           }
         }
       }
-      // An "other" ticket with no place, or outside every team area: NOC puts it in the right team.
+      // An "other" ticket with no place, or outside every team area: an operations supervisor puts it in the right team.
       if (input.type === 'other' && !route?.teamId) {
         messages.push(
           ...toOffice(
-            await this.users.withRole('noc', tx),
+            await this.users.withRole('technical_manager', tx),
             sms.managerNewTicket(code, input.title),
             inbox.newTicket(code, input.title),
             ticket.id
@@ -262,8 +263,8 @@ export class TicketsService {
       if (input.type === 'network_incident') {
         messages.push(
           ...toOffice(
-            await this.users.withRole('noc', tx),
-            sms.nocNewIncident(code, input.title),
+            await this.users.withRole('technical_manager', tx),
+            sms.newIncident(code, input.title),
             inbox.newIncident(code, input.title),
             ticket.id
           )
@@ -357,18 +358,18 @@ export class TicketsService {
         );
       }
 
-      // Team and technical managers check "other" tickets; the rest is checked by the Call Center, NOC or Sales.
+      // Team managers check "other" tickets; the rest is checked by the Call Center, operations supervisors or Sales.
       const checks = action === 'close' || action === 'reopen';
       if (checks && !mayCheck(ticket.type, actor.roles)) {
         throw new AppError(
           HttpStatus.FORBIDDEN,
           'FORBIDDEN_ROLE',
-          'Only the Call Center, NOC or an administrator can check this ticket'
+          'Only the Call Center, operations supervisors or an administrator can check this ticket'
         );
       }
 
       // A team manager may only assign, cancel or check their own team's tickets.
-      const isManagerOnly = actor.roles.includes('team_manager') && !actor.roles.includes('admin');
+      const isManagerOnly = isTeamManagerOnly(actor.roles);
       if (
         (action === 'assign' ||
           (checks && ticket.type === 'other') ||
@@ -379,7 +380,7 @@ export class TicketsService {
         throw new AppError(HttpStatus.FORBIDDEN, 'NOT_IN_TEAM', 'This ticket belongs to another team');
       }
 
-      // Network work is checked by NOC (the network management team), not by the Call Center.
+      // Network work is checked by operations supervisors, not by the Call Center.
       if (
         (action === 'close' || action === 'reopen') &&
         actor.roles.includes('integration_call_center') &&
@@ -388,7 +389,7 @@ export class TicketsService {
         throw new AppError(
           HttpStatus.FORBIDDEN,
           'NOC_CHECKS_NETWORK',
-          'NOC checks and closes network tickets'
+          'Operations supervisors check and close network tickets'
         );
       }
 
@@ -696,7 +697,7 @@ export class TicketsService {
   }
 
   /**
-   * Closes the customer tickets linked to a network incident when NOC closes it: the cause is fixed, so the
+   * Closes the customer tickets linked to a network incident when an operations supervisor closes it: the cause is fixed, so the
    * Call Center does not need to call each customer back. Each customer gets an SMS.
    */
   private async closeLinked(
@@ -1000,7 +1001,7 @@ export class TicketsService {
     return count;
   }
 
-  /** NOC confirms it has seen a network incident (shown to everyone on the incident). */
+  /** An operations supervisor confirms they have seen a network incident (shown to everyone on the incident). */
   async acknowledge(ticketId: string, actor: AuthUser): Promise<void> {
     await this.db.transaction(async (tx) => {
       const [ticket] = await tx.select().from(tickets).where(eq(tickets.id, ticketId)).for('update');
@@ -1239,9 +1240,11 @@ export class TicketsService {
     return [...new Set(ids.filter((id): id is string => !!id))];
   }
 
-  /** NOC, admins and the Call Center may cancel any ticket; team managers only their own team's. */
+  /** Operations supervisors, admins and the Call Center may cancel any ticket; team managers only their own team's. */
   private canCancelAnyTeam(actor: AuthUser): boolean {
-    return actor.roles.some((r) => r === 'noc' || r === 'admin' || r === 'integration_call_center');
+    return actor.roles.some(
+      (r) => r === 'technical_manager' || r === 'admin' || r === 'integration_call_center'
+    );
   }
 
   /** A note from the office in the ticket history; optionally sent to the assigned staff member too. */

@@ -154,7 +154,8 @@ describe('field staff: positions, distance, time limits and performance', () => 
     await escalation.run();
     expect((await smsTo(PHONES.helena)).at(-1)).toContain('passou o prazo');
     expect((await smsTo(PHONES.nadia)).at(-1)).toContain('passou o prazo');
-    expect(await smsTo(PHONES.carla)).toEqual([]);
+    // Every operations supervisor is told as soon as it is late (NOC used to be).
+    expect((await smsTo(PHONES.carla)).at(-1)).toContain('passou o prazo');
 
     await setTimes(160, -60); // one and a half times the limit
     await escalation.run();
@@ -168,8 +169,8 @@ describe('field staff: positions, distance, time limits and performance', () => 
         .map((e: { data: { level: number; notified: string[] } }) => [e.data.level, e.data.notified])
     ).toEqual([
       [1, ['Armando Cossa']],
-      [2, ['Armando Cossa', 'team manager', 'NOC']],
-      [3, ['technical managers']]
+      [2, ['Armando Cossa', 'team manager', 'operations supervisor']],
+      [3, ['operations supervisors']]
     ]);
   });
 

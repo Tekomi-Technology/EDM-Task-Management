@@ -67,7 +67,7 @@ export class TicketsController {
   }
 
   @Get('tickets')
-  @Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team', 'field_staff')
+  @Roles('admin', 'technical_manager', 'team_manager', 'field_staff')
   list(
     @CurrentUser() user: AuthUser,
     @ZodQuery(ticketListQuerySchema) q: TicketListQuery
@@ -77,20 +77,20 @@ export class TicketsController {
 
   /** Number of tickets in each tab of the Tickets screen. Declared before tickets/:id so "counts" is not an id. */
   @Get('tickets/counts')
-  @Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team')
+  @Roles('admin', 'technical_manager', 'team_manager')
   counts(@CurrentUser() user: AuthUser, @ZodQuery(areaFilterSchema) q: AreaFilter): Promise<TicketCounts> {
     return this.query.counts(user, q.areaId);
   }
 
   @Get('overview')
-  @Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team')
+  @Roles('admin', 'technical_manager', 'team_manager')
   overview(@CurrentUser() user: AuthUser, @ZodQuery(areaFilterSchema) q: AreaFilter): Promise<Overview> {
     return this.query.overview(user, q.areaId);
   }
 
   /** Areas and teams, for the filters on the Tickets screen. */
   @Get('lookups')
-  @Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team')
+  @Roles('admin', 'technical_manager', 'team_manager')
   lookups(): Promise<Lookups> {
     return this.query.lookups();
   }
@@ -109,7 +109,7 @@ export class TicketsController {
   }
 
   @Get('tickets/:id')
-  @Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team', 'field_staff')
+  @Roles('admin', 'technical_manager', 'team_manager', 'field_staff')
   detail(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser): Promise<TicketDetail> {
     return this.query.detail(id, user);
   }
@@ -226,7 +226,7 @@ export class TicketsController {
     return this.query.detail(id, user);
   }
 
-  /** Field staff report the job done; the ticket then waits for the Call Center or NOC check. */
+  /** Field staff report the job done; the ticket then waits for the Call Center or operations supervisor check. */
   @Post('tickets/:id/resolve')
   @HttpCode(200)
   @Roles('field_staff')
@@ -260,12 +260,12 @@ export class TicketsController {
   }
 
   /**
-   * NOC closes network tickets; customer tickets are closed by the Call Center system through /intake. Team and
+   * Operations supervisors close network tickets; customer tickets are closed by the Call Center system through /intake. Team and
    * technical managers close "other" tickets (checked in the service).
    */
   @Post('tickets/:id/close')
   @HttpCode(200)
-  @Roles('noc', 'admin', 'team_manager', 'technical_manager')
+  @Roles('admin', 'technical_manager', 'team_manager')
   @ApiZodBody(noteSchema)
   async close(
     @Param('id', ParseUUIDPipe) id: string,
@@ -278,7 +278,7 @@ export class TicketsController {
 
   @Post('tickets/:id/reopen')
   @HttpCode(200)
-  @Roles('noc', 'admin', 'team_manager', 'technical_manager')
+  @Roles('admin', 'technical_manager', 'team_manager')
   @ApiZodBody(noteSchema)
   async reopen(
     @Param('id', ParseUUIDPipe) id: string,
@@ -292,7 +292,7 @@ export class TicketsController {
   /** For duplicates, withdrawn requests or tickets created by mistake. Team managers only within their team. */
   @Post('tickets/:id/cancel')
   @HttpCode(200)
-  @Roles('noc', 'admin', 'team_manager', 'technical_manager')
+  @Roles('admin', 'technical_manager', 'team_manager')
   @ApiZodBody(reasonSchema)
   async cancel(
     @Param('id', ParseUUIDPipe) id: string,
@@ -304,14 +304,14 @@ export class TicketsController {
   }
 
   @Get('tickets/:id/messages')
-  @Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team')
+  @Roles('admin', 'technical_manager', 'team_manager')
   messages(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser): Promise<TicketMessage[]> {
     return this.query.messages(id, user);
   }
 
   @Post('tickets/:id/notes')
   @HttpCode(200)
-  @Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team')
+  @Roles('admin', 'technical_manager', 'team_manager')
   @ApiZodBody(ticketNoteSchema)
   async addNote(
     @Param('id', ParseUUIDPipe) id: string,

@@ -23,7 +23,7 @@ type Candidate = {
 /**
  * Watches time limits. For a ticket that is not fixed yet, measured from when it opened (or its planned start):
  *  1. a quarter of the time is left → the staff member holding it is reminded;
- *  2. the time limit has passed → the staff member, the team manager and NOC are told;
+ *  2. the time limit has passed → the staff member, the team manager and the operations supervisors are told;
  *  3. one and a half times the limit has passed → technical managers are told.
  * Each level is sent once; the level is stored on the ticket in the same transaction, so several API instances
  * can run this at the same time.
@@ -111,14 +111,20 @@ export class EscalationService implements OnModuleInit, OnModuleDestroy {
     } else if (level === 2) {
       toStaff(sms.late(t.code, t.title), push.late);
       const late = [sms.late(t.code, t.title), inbox.late(t.code, t.title)] as const;
-      if (t.team_id) toPeople(await this.users.teamManagers(t.team_id, tx), ...late, 'team manager');
-      toPeople(await this.users.withRole('noc', tx), ...late, 'NOC');
+      const managers = t.team_id ? await this.users.teamManagers(t.team_id, tx) : [];
+      if (managers.length) toPeople(managers, ...late, 'team manager');
+      // Someone who is both the team's manager and a supervisor is told once.
+      const alreadyTold = new Set(managers.map((m) => m.id));
+      const supervisors = (await this.users.withRole('technical_manager', tx)).filter(
+        (p) => !alreadyTold.has(p.id)
+      );
+      toPeople(supervisors, ...late, 'operations supervisor');
     } else {
       toPeople(
         await this.users.withRole('technical_manager', tx),
         sms.badlyLate(t.code, t.title, t.hours_open),
         inbox.badlyLate(t.code, t.title, t.hours_open),
-        'technical managers'
+        'operations supervisors'
       );
     }
     await this.tickets.event(tx, t.id, 'escalate', TIME_LIMITS_ACTOR, { level, notified: told });

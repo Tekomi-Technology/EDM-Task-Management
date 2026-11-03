@@ -14,7 +14,7 @@ import { UsersService } from '../users/users.service';
 const requester = alias(users, 'requester');
 const handler = alias(users, 'handler');
 const author = alias(users, 'author');
-const SEE_ALL = ['admin', 'technical_manager', 'noc', 'bo_support', 'network_team'];
+const SEE_ALL = ['admin', 'technical_manager'];
 
 const KIND_LABEL: Record<string, string> = {
   second_person: 'second person',
@@ -67,7 +67,7 @@ export class HelpService {
         });
       }
       const people = [
-        ...(await this.users.withRole('bo_support', tx)),
+        ...(await this.users.withRole('technical_manager', tx)),
         ...(actor.teamId ? await this.users.teamManagers(actor.teamId, tx) : [])
       ];
       const kind = KIND_LABEL[input.kind] ?? input.kind;

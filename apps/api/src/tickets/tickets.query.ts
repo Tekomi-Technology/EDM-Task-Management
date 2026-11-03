@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  isTeamManagerOnly,
   allowedActions,
   mayCheck,
   OPEN_JOB_STATUSES,
@@ -62,7 +63,7 @@ import { StockService } from '../stock/stock.service';
 import { StorageService } from '../storage/storage.service';
 
 /** Roles that may see every ticket in the region. */
-const SEE_ALL_ROLES = ['admin', 'technical_manager', 'noc', 'bo_support', 'network_team'] as const;
+const SEE_ALL_ROLES = ['admin', 'technical_manager'] as const;
 
 /** Days are counted in Mozambique time (UTC+2), wherever the server runs. */
 const startOfToday = sql`(date_trunc('day', now() at time zone 'Africa/Maputo') at time zone 'Africa/Maputo')`;
@@ -126,7 +127,12 @@ function toSummary(r: SummaryRow): TicketSummary {
 
 function toOffer(data: unknown, at: Date): TicketOffer {
   const d = (data ?? {}) as { teamName?: string; notified?: string[]; round?: number };
-  return { teamName: d.teamName ?? '', notified: d.notified ?? [], round: d.round ?? 1, at: at.toISOString() };
+  return {
+    teamName: d.teamName ?? '',
+    notified: d.notified ?? [],
+    round: d.round ?? 1,
+    at: at.toISOString()
+  };
 }
 
 const ACTIVE = inArray(tickets.status, [
@@ -578,7 +584,9 @@ export class TicketsQuery {
     if (!user.userId || !user.teamId) return [];
     const here = (await this.locations.latest([user.userId])).get(user.userId);
     const distance = here?.fresh
-      ? sql<number | null>`round(ST_Distance(${tickets.location}::geography, ST_SetSRID(ST_MakePoint(${here.lng}, ${here.lat}), 4326)::geography))::int`
+      ? sql<
+          number | null
+        >`round(ST_Distance(${tickets.location}::geography, ST_SetSRID(ST_MakePoint(${here.lng}, ${here.lat}), 4326)::geography))::int`
       : sql<null>`null::int`;
     const rows = await this.db
       .select({ ...summaryColumns, distanceM: distance })
@@ -699,10 +707,11 @@ export class TicketsQuery {
       summary.assignee?.id ?? null
     );
     if (!mayCheck(summary.type, user.roles)) actions = actions.filter((a) => a !== 'close' && a !== 'reopen');
-    const waiting = !summary.assignee && !row.incidentId && (summary.status === 'new' || summary.status === 'reopened');
+    const waiting =
+      !summary.assignee && !row.incidentId && (summary.status === 'new' || summary.status === 'reopened');
     if (!waiting || summary.teamId !== user.teamId) actions = actions.filter((a) => a !== 'claim');
     const lastOffer = waiting ? [...events].reverse().find((e) => e.type === 'offered') : undefined;
-    const isManagerOnly = user.roles.includes('team_manager') && !user.roles.includes('admin');
+    const isManagerOnly = isTeamManagerOnly(user.roles);
     if (isManagerOnly && summary.teamId !== user.teamId) {
       actions = actions.filter(
         (a) =>

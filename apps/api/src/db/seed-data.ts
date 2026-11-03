@@ -59,23 +59,7 @@ export const SEED_USERS = [
     fullName: 'Nádia Mussa',
     phone: '+258840000003',
     team: null,
-    roles: ['noc']
-  },
-  {
-    id: '00000000-0000-4000-8000-000000000004',
-    username: 'carlos.nhantumbo',
-    fullName: 'Carlos Nhantumbo',
-    phone: '+258840000004',
-    team: null,
-    roles: ['network_team']
-  },
-  {
-    id: '00000000-0000-4000-8000-000000000005',
-    username: 'paulo.bo',
-    fullName: 'Paulo Machava',
-    phone: '+258840000005',
-    team: null,
-    roles: ['bo_support']
+    roles: ['technical_manager']
   },
   {
     id: '00000000-0000-4000-8000-000000000006',

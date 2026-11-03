@@ -38,7 +38,7 @@ describe('account management (Users & roles)', () => {
 
   it('lists people with their team and area, and filters them', async () => {
     const all = (await t.as('admin.edm').get('/api/admin/users')).body;
-    expect(all).toHaveLength(10);
+    expect(all).toHaveLength(8);
     expect(all.find((u: { username: string }) => u.username === 'ana.sitoe')).toMatchObject({
       teamName: 'South 1',
       areaName: 'Matola',
@@ -118,7 +118,9 @@ describe('account management (Users & roles)', () => {
 
     const noTeam = await t.as('admin.edm').patch(`/api/admin/users/${ids['ana.sitoe']}`, { teamId: null });
     expect(noTeam.body.code).toBe('TEAM_REQUIRED');
-    const self = await t.as('admin.edm').patch(`/api/admin/users/${ids['admin.edm']}`, { roles: ['noc'] });
+    const self = await t
+      .as('admin.edm')
+      .patch(`/api/admin/users/${ids['admin.edm']}`, { roles: ['technical_manager'] });
     expect([self.status, self.body.code]).toEqual([422, 'CANNOT_CHANGE_SELF']);
   });
 

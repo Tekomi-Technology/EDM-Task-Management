@@ -104,11 +104,11 @@ export class NmsService {
         elementCode: e.elementCode,
         severity: e.severity
       });
-      // A new alarm on an incident the crew says is fixed: NOC should look before closing.
+      // A new alarm on an incident the crew says is fixed: an operations supervisor should look before closing.
       if (incident.status === 'resolved') {
         const messages = toOffice(
-          await this.users.withRole('noc', tx),
-          sms.nocNewIncident(incident.code, `novo alarme: ${e.alarmType}`),
+          await this.users.withRole('technical_manager', tx),
+          sms.newIncident(incident.code, `novo alarme: ${e.alarmType}`),
           inbox.alarmOnFixed(incident.code, e.alarmType),
           incident.id
         );
@@ -168,7 +168,7 @@ export class NmsService {
       )
     ).rows;
     if (active === 0) {
-      // Everything is back according to the NMS: tell whoever holds the job; NOC still confirms and closes.
+      // Everything is back according to the NMS: tell whoever holds the job; an operations supervisor still confirms and closes.
       await this.tickets.event(tx, alarm.ticketId, 'all_alarms_cleared', actor, {});
       const [t] = await tx
         .select({ code: tickets.code, assigneeId: tickets.assigneeId, status: tickets.status })

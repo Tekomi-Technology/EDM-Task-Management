@@ -1,6 +1,7 @@
-import { Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
+  isTeamManagerOnly,
   linkTicketsSchema,
   notifyCustomersSchema,
   plannedWorkQuerySchema,
@@ -14,6 +15,7 @@ import {
 } from '../contract';
 import { z } from 'zod';
 import type { AuthUser } from '../auth/auth-user';
+import { AppError } from '../common/errors';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { ApiZodBody, ZodBody, ZodQuery } from '../common/zod';
 import { TicketsQuery } from '../tickets/tickets.query';
@@ -23,7 +25,7 @@ const incidentViewSchema = z.object({
   view: z.enum(['open', 'recent']).default('open'),
   areaId: z.string().uuid().optional()
 });
-const OFFICE = ['admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team'] as const;
+const OFFICE = ['admin', 'technical_manager', 'team_manager'] as const;
 
 /** Network incidents (from the NMS and public reports) and planned network work. */
 @ApiTags('network')
@@ -44,10 +46,10 @@ export class NetworkController {
     return this.query.incidents(user, q.view, q.areaId);
   }
 
-  /** NOC confirms it has seen the incident. */
+  /** An operations supervisor confirms they have seen the incident. */
   @Post('tickets/:id/acknowledge')
   @HttpCode(200)
-  @Roles('noc', 'admin', 'technical_manager')
+  @Roles('admin', 'technical_manager')
   async acknowledge(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthUser
@@ -60,7 +62,7 @@ export class NetworkController {
   /** Customer tickets caused by this incident: nobody else is sent, and they close with it. */
   @Post('incidents/:id/link')
   @HttpCode(200)
-  @Roles('noc', 'admin', 'technical_manager', 'team_manager')
+  @Roles('admin', 'technical_manager', 'team_manager')
   @ApiZodBody(linkTicketsSchema)
   async link(
     @Param('id', ParseUUIDPipe) id: string,
@@ -74,7 +76,7 @@ export class NetworkController {
 
   @Post('incidents/:id/unlink')
   @HttpCode(200)
-  @Roles('noc', 'admin', 'technical_manager', 'team_manager')
+  @Roles('admin', 'technical_manager', 'team_manager')
   @ApiZodBody(linkTicketsSchema)
   async unlink(
     @Param('id', ParseUUIDPipe) id: string,
@@ -88,7 +90,7 @@ export class NetworkController {
 
   @Post('incidents/:id/notify-customers')
   @HttpCode(200)
-  @Roles('noc', 'admin', 'technical_manager')
+  @Roles('admin', 'technical_manager')
   @ApiZodBody(notifyCustomersSchema)
   async notifyCustomers(
     @Param('id', ParseUUIDPipe) id: string,
@@ -105,7 +107,7 @@ export class NetworkController {
    */
   @Post('tickets/:id/team')
   @HttpCode(200)
-  @Roles('noc', 'admin', 'technical_manager')
+  @Roles('admin', 'technical_manager')
   @ApiZodBody(setTeamSchema)
   async setTeam(
     @Param('id', ParseUUIDPipe) id: string,
@@ -126,14 +128,17 @@ export class NetworkController {
     return this.query.plannedWork(user, q.from, q.to, q.areaId);
   }
 
-  /** The network team plans maintenance or a network change; the team manager then assigns it. */
+  /** Maintenance or a network change is planned for a team (a team manager only for their own team); it is then offered to that team. */
   @Post('planned-work')
-  @Roles('network_team', 'noc', 'admin', 'technical_manager')
+  @Roles('admin', 'technical_manager', 'team_manager')
   @ApiZodBody(plannedWorkSchema)
   async createPlannedWork(
     @ZodBody(plannedWorkSchema) body: PlannedWork,
     @CurrentUser() user: AuthUser
   ): Promise<TicketDetail> {
+    if (isTeamManagerOnly(user.roles) && (!user.teamId || body.teamId !== user.teamId)) {
+      throw new AppError(HttpStatus.FORBIDDEN, 'NOT_IN_TEAM', 'This ticket belongs to another team');
+    }
     const start = new Date(body.scheduledStart);
     const end = new Date(body.scheduledEnd);
     const created = await this.tickets.create(

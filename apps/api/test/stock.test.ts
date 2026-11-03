@@ -176,7 +176,7 @@ describe('stock: a ledger of depots and vans, deducted when jobs close', () => {
   it('sets material aside for a ticket and frees it when the ticket is cancelled', async () => {
     const teams = (await t.as('nadia.mussa').get('/api/lookups')).body.teams;
     const day = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-    const work = await t.as('carlos.nhantumbo').post('/api/planned-work', {
+    const work = await t.as('nadia.mussa').post('/api/planned-work', {
       kind: 'maintenance',
       title: 'Replace transformer PT-1180',
       element: 'PT-1180',
@@ -185,7 +185,7 @@ describe('stock: a ledger of depots and vans, deducted when jobs close', () => {
       scheduledEnd: `${day}T11:00:00Z`
     });
     const reserve = (quantity: number) =>
-      t.as('carlos.nhantumbo').post(`/api/tickets/${work.body.id}/reservations`, {
+      t.as('nadia.mussa').post(`/api/tickets/${work.body.id}/reservations`, {
         lines: [{ itemId: items['POL-W9']!.id, quantity }]
       });
     const ok = await reserve(2);

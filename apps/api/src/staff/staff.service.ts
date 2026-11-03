@@ -7,7 +7,7 @@ import { teams, users } from '../db/schema';
 import { LocationService } from '../location/location.service';
 import { TicketsQuery } from '../tickets/tickets.query';
 
-const SEE_ALL = ['admin', 'technical_manager', 'noc', 'bo_support', 'network_team'];
+const SEE_ALL = ['admin', 'technical_manager'];
 const OUTER_USER_ID = sql.raw('"users"."id"');
 const TODAY = sql.raw(`(date_trunc('day', now() at time zone 'Africa/Maputo') at time zone 'Africa/Maputo')`);
 
@@ -20,7 +20,7 @@ export class StaffService {
     private readonly tickets: TicketsQuery
   ) {}
 
-  /** Field staff the caller may see: everyone for NOC and managers above teams, own team for team managers. */
+  /** Field staff the caller may see: everyone for operations supervisors and admins, own team for team managers. */
   private teamFilter(user: AuthUser, teamId?: string, areaId?: string) {
     if (!user.roles.some((r) => SEE_ALL.includes(r))) {
       return user.teamId ? eq(users.teamId, user.teamId) : sql`false`;

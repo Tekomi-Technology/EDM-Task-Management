@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
-import { notificationOutbox, tickets } from '../src/db/schema';
+import { notificationOutbox, tickets, users } from '../src/db/schema';
 import { createTestApp, ids, JPEG, resetData, type TestContext } from './helpers';
 
 const complaint = (ref: string, contractNo = '40217735') => ({
@@ -61,7 +61,7 @@ describe('inputs and situations that must not break the system', () => {
     );
   });
 
-  it('still records a complaint from outside every area, unassigned to any team, for NOC to see', async () => {
+  it('still records a complaint from outside every area, unassigned to any team, for the operations supervisors to see', async () => {
     const res = await t
       .as('call-center')
       .post('/api/intake/call-center/complaints', complaint('CC-12', '40999999'));
@@ -107,6 +107,18 @@ describe('inputs and situations that must not break the system', () => {
     await t.as('helena.mondlane').post(`/api/tickets/${id}/assign`, { assigneeId: ids['armando.cossa'] });
     const colleague = await t.as('ana.sitoe').post(`/api/tickets/${id}/accept`);
     expect([colleague.status, colleague.body.code]).toEqual([403, 'NOT_ASSIGNEE']);
+  });
+
+  it('lets a supervisor who is also a team manager assign in another team', async () => {
+    const { body } = await t.as('call-center').post('/api/intake/call-center/complaints', complaint('CC-15'));
+    await t.db
+      .update(users)
+      .set({ roles: ['team_manager', 'technical_manager'] })
+      .where(eq(users.id, ids['joao.matsinhe']));
+    const res = await t
+      .as('joao.matsinhe')
+      .post(`/api/tickets/${body.ticketId}/assign`, { assigneeId: ids['armando.cossa'] });
+    expect(res.status).toBe(200);
   });
 
   it('refuses steps out of order with a clear message', async () => {

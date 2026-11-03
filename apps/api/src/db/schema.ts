@@ -189,7 +189,7 @@ export const tickets = pgTable(
     customersAffected: integer('customers_affected'),
     /** Customer tickets: the network incident causing the problem; they are closed together with it. */
     incidentId: uuid('incident_id').references((): AnyPgColumn => tickets.id),
-    /** Network incidents: NOC confirmed it has seen the incident. */
+    /** Network incidents: an operations supervisor confirmed they have seen the incident. */
     acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }),
     acknowledgedBy: uuid('acknowledged_by').references(() => users.id),
     /** Planned work: the agreed window; the time limit is its end. */

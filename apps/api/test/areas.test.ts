@@ -50,7 +50,7 @@ describe('areas and teams (Settings)', () => {
     const team = await admin().post('/api/admin/teams', { name: 'Norte 1', areaId: made.body.id });
     expect(team.body).toMatchObject({ code: 'NORTE_1', name: 'Norte 1', areaName: 'Matola Norte' });
 
-    const ticket = await t.as('paulo.bo').post('/api/tickets', {
+    const ticket = await t.as('carla.manhica').post('/api/tickets', {
       type: 'other',
       title: 'Fallen tree on the line',
       description: 'Tree resting on the low-voltage line',
@@ -125,7 +125,7 @@ describe('areas and teams (Settings)', () => {
       ((await areaNamed('Matola')) as unknown as { teams: { name: string }[] }).teams.map((x) => x.name);
     const whoGets = async () =>
       (
-        await t.as('paulo.bo').post('/api/tickets/preview', {
+        await t.as('carla.manhica').post('/api/tickets/preview', {
           type: 'other',
           priority: 2,
           location: { lat: -25.931, lng: 32.471 }

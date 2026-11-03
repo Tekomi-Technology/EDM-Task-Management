@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { allowedActions, nextStatus, TransitionError } from './ticket.js';
+import { isTeamManagerOnly } from './roles.js';
+import { allowedActions, mayCheck, nextStatus, TransitionError } from './ticket.js';
 
 const manager = { userId: 'm1', roles: ['team_manager'] as const };
 const staff = { userId: 's1', roles: ['field_staff'] as const };
 const otherStaff = { userId: 's2', roles: ['field_staff'] as const };
 const callCenter = { userId: null, roles: ['integration_call_center'] as const };
-const noc = { userId: 'n1', roles: ['noc'] as const };
+const supervisor = { userId: 'n1', roles: ['technical_manager'] as const };
 
 function codeOf(fn: () => unknown): string | undefined {
   try {
@@ -55,9 +56,9 @@ describe('ticket state machine', () => {
 
   it('cancels unfinished tickets but never finished ones', () => {
     expect(nextStatus('new', 'cancel', callCenter, null)).toBe('cancelled');
-    expect(nextStatus('in_progress', 'cancel', noc, 's1')).toBe('cancelled');
-    expect(codeOf(() => nextStatus('closed', 'cancel', noc, 's1'))).toBe('INVALID_TRANSITION');
-    expect(codeOf(() => nextStatus('cancelled', 'reopen', noc, 's1'))).toBe('INVALID_TRANSITION');
+    expect(nextStatus('in_progress', 'cancel', supervisor, 's1')).toBe('cancelled');
+    expect(codeOf(() => nextStatus('closed', 'cancel', supervisor, 's1'))).toBe('INVALID_TRANSITION');
+    expect(codeOf(() => nextStatus('cancelled', 'reopen', supervisor, 's1'))).toBe('INVALID_TRANSITION');
     expect(codeOf(() => nextStatus('new', 'cancel', staff, null))).toBe('FORBIDDEN_ROLE');
   });
 
@@ -82,5 +83,19 @@ describe('ticket state machine', () => {
     expect(allowedActions('assigned', otherStaff, 's1')).toEqual([]);
     expect(allowedActions('resolved', callCenter, 's1')).toEqual(['close', 'reopen', 'cancel']);
     expect(allowedActions('closed', manager, 's1')).toEqual([]);
+  });
+
+  it('lets operations supervisors check every kind of ticket, as NOC did', () => {
+    expect(mayCheck('network_incident', ['technical_manager'])).toBe(true);
+    expect(mayCheck('customer_complaint', ['technical_manager'])).toBe(true);
+    expect(mayCheck('network_incident', ['team_manager'])).toBe(false);
+    expect(mayCheck('other', ['team_manager'])).toBe(true);
+  });
+
+  it('treats someone as a team manager only when they have no higher role', () => {
+    expect(isTeamManagerOnly(['team_manager'])).toBe(true);
+    expect(isTeamManagerOnly(['team_manager', 'technical_manager'])).toBe(false);
+    expect(isTeamManagerOnly(['team_manager', 'admin'])).toBe(false);
+    expect(isTeamManagerOnly(['field_staff'])).toBe(false);
   });
 });

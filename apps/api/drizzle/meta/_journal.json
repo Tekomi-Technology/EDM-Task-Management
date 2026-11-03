@@ -127,6 +127,13 @@
       "when": 1793363397666,
       "tag": "0017_ticket_offers",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793704971306,
+      "tag": "0018_four_roles",
+      "breakpoints": true
     }
   ]
 }

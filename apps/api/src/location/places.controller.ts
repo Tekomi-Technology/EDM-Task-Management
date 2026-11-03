@@ -9,7 +9,7 @@ import { PlacesService } from './places.service';
 @ApiTags('places')
 @ApiBearerAuth()
 @Controller('places')
-@Roles('admin', 'technical_manager', 'team_manager', 'noc', 'bo_support', 'network_team')
+@Roles('admin', 'technical_manager', 'team_manager')
 export class PlacesController {
   constructor(private readonly places: PlacesService) {}
 

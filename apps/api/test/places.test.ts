@@ -21,7 +21,7 @@ describe('address of a point on the map', () => {
     await geocoder.close();
   });
 
-  const reverse = (lat: number, lng: number, who: Parameters<TestContext['as']>[0] = 'paulo.bo') =>
+  const reverse = (lat: number, lng: number, who: Parameters<TestContext['as']>[0] = 'carla.manhica') =>
     t.as(who).get(`/api/places/reverse?lat=${lat}&lng=${lng}`);
 
   it('gives street, neighbourhood and town, asks once per point and names itself', async () => {

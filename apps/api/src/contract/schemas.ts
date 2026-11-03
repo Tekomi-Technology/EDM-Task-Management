@@ -326,7 +326,8 @@ export const networkReportSchema = z.object({
     example: 'Av. de Moçambique, near Escola 3 de Fevereiro'
   }),
   location: pointSchema.optional().meta({
-    description: 'The place, to send the nearest team. Without it NOC routes the ticket.',
+    description:
+      'The place, to send the nearest team. Without it an operations supervisor routes the ticket.',
     example: { lat: -25.962, lng: 32.57 }
   }),
   callerPhone: z
@@ -488,7 +489,7 @@ export const activationResultSchema = z.object({
 export type ActivationResult = z.infer<typeof activationResultSchema>;
 
 /**
- * Another team than the one covering the place, chosen by NOC, a technical manager or an administrator. The place
+ * Another team than the one covering the place, chosen by an operations supervisor or an administrator. The place
  * keeps its area; the reason goes into the ticket's history.
  */
 const teamChoice = {

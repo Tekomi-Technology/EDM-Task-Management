@@ -1,13 +1,14 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { notificationOutbox } from '../src/db/schema';
+import { notificationOutbox, users } from '../src/db/schema';
 import { createTestApp, ids, resetData, type TestContext } from './helpers';
 
-const PAULO_BO = '+258840000005';
+const NADIA = '+258840000003';
+const CARLA = '+258840000011';
 const HELENA = '+258840000002';
 const ARMANDO = '+258840000006';
 
-describe('help requests from the field to the back office', () => {
+describe('help requests from the field to the office', () => {
   let t: TestContext;
   beforeAll(async () => {
     t = await createTestApp();
@@ -33,7 +34,7 @@ describe('help requests from the field to the back office', () => {
     return c.body.ticketId as string;
   }
 
-  it('lets staff ask for help on their job; BO and the team manager are told', async () => {
+  it('lets staff ask for help on their job; the team manager and every operations supervisor are told', async () => {
     const job = await armandosJob();
     const res = await t.as('armando.cossa').post('/api/help-requests', {
       kind: 'truck',
@@ -50,7 +51,8 @@ describe('help requests from the field to the back office', () => {
         { fromField: true, body: 'Need a bucket truck to lift the cable', authorName: 'Armando Cossa' }
       ]
     });
-    expect((await smsTo(PAULO_BO))[0]).toContain('Armando Cossa pede ajuda');
+    expect((await smsTo(NADIA))[0]).toContain('Armando Cossa pede ajuda');
+    expect((await smsTo(CARLA))[0]).toContain('Armando Cossa pede ajuda');
     expect((await smsTo(HELENA)).some((m) => m.includes('pede ajuda'))).toBe(true);
     const history = (await t.as('helena.mondlane').get(`/api/tickets/${job}`)).body.events;
     expect(history.at(-1)).toMatchObject({ type: 'help_requested', data: { kind: 'truck' } });
@@ -66,6 +68,15 @@ describe('help requests from the field to the back office', () => {
     expect((await t.as('helena.mondlane').get('/api/tickets/counts')).body.help).toBe(1);
   });
 
+  it('tells someone who is both the team manager and a supervisor only once', async () => {
+    await t.db
+      .update(users)
+      .set({ roles: ['team_manager', 'technical_manager'] })
+      .where(eq(users.id, ids['helena.mondlane']));
+    await t.as('armando.cossa').post('/api/help-requests', { kind: 'other', message: 'Ladder broke' });
+    expect((await smsTo(HELENA)).filter((m) => m.includes('pede ajuda'))).toHaveLength(1);
+  });
+
   it('answers and solves the request; the staff member gets the reply and can write back', async () => {
     const created = await t
       .as('armando.cossa')
@@ -73,14 +84,14 @@ describe('help requests from the field to the back office', () => {
     const id = created.body.id as string;
 
     const answered = await t
-      .as('paulo.bo')
+      .as('carla.manhica')
       .post(`/api/help-requests/${id}/messages`, { body: 'Use the old meter number from billing: 0412-77' });
-    expect(answered.body).toMatchObject({ status: 'in_progress', handledBy: 'Paulo Machava' });
+    expect(answered.body).toMatchObject({ status: 'in_progress', handledBy: 'Carla Manhiça' });
     expect((await smsTo(ARMANDO)).at(-1)).toContain('0412-77');
 
     await t.as('armando.cossa').post(`/api/help-requests/${id}/messages`, { body: 'Found it, thanks' });
     const solved = await t
-      .as('paulo.bo')
+      .as('carla.manhica')
       .post(`/api/help-requests/${id}/messages`, { body: 'Good', status: 'solved' });
     expect(solved.body.status).toBe('solved');
     expect(solved.body.messages.map((m: { fromField: boolean }) => m.fromField)).toEqual([
@@ -93,6 +104,6 @@ describe('help requests from the field to the back office', () => {
     const mine = (await t.as('armando.cossa').get('/api/me/help-requests')).body;
     expect(mine).toHaveLength(1);
     expect((await t.as('ana.sitoe').get(`/api/help-requests/${id}`)).status).toBe(404);
-    expect((await t.as('paulo.bo').get('/api/tickets/counts')).body.help).toBe(0);
+    expect((await t.as('carla.manhica').get('/api/tickets/counts')).body.help).toBe(0);
   });
 });

@@ -25,7 +25,7 @@ export const sms = {
     `EDM: A avaria na sua zona foi reparada (pedido ${code}). Obrigado pela paciência.`,
   customerOutageUpdate: (code: string) =>
     `EDM: Pedido ${code}: a equipa continua a trabalhar na avaria da sua zona. Avisaremos quando a energia voltar.`,
-  nocNewIncident: (code: string, title: string) => `EDM NOC: Novo incidente de rede ${code} – ${title}.`,
+  newIncident: (code: string, title: string) => `EDM: Novo incidente de rede ${code} – ${title}.`,
   staffDueSoon: (code: string, minutes: number) =>
     `EDM Tasks: O trabalho ${code} tem de ficar pronto em ${minutes} min.`,
   late: (code: string, title: string) => `EDM Tasks: O ticket ${code} (${title}) passou o prazo.`,
